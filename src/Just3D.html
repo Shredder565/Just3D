@@ -454,6 +454,9 @@ function draw(){
   m.f.forEach((f,fi)=>{if(!ortho&&f.some(i=>V[i][2]+dist<.05))return;const a=V[f[0]],b=V[f[1]],c=V[f[2]];
    let nx=(b[1]-a[1])*(c[2]-a[2])-(b[2]-a[2])*(c[1]-a[1]),ny=(b[2]-a[2])*(c[0]-a[0])-(b[0]-a[0])*(c[2]-a[2]),nz=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
    nx=ny=nz=0;for(let k=0;k<f.length;k++){const u=V[f[k]],w=V[f[(k+1)%f.length]];nx+=(u[1]-w[1])*(u[2]+w[2]);ny+=(u[2]-w[2])*(u[0]+w[0]);nz+=(u[0]-w[0])*(u[1]+w[1])}
+   if(frontOnly&&editMode&&oi===sel){/* Affect Front Vertices: hide the polygons that face away from the camera (the viewer looks along +z in this space; in perspective the camera sits at z = -dist) */
+    let cx=0,cy=0,cz=0;f.forEach(i=>{cx+=V[i][0];cy+=V[i][1];cz+=V[i][2]});cx/=f.length;cy/=f.length;cz/=f.length;
+    if((ortho?nz:nx*cx+ny*cy+nz*(cz+dist))*BACKSIGN>0)return}
    const nl=Math.hypot(nx,ny,nz)||1,sh=Math.abs((-.4*nx+.6*ny-.7*nz)/nl);
    polys.push({z:f.reduce((s,i)=>s+V[i][2],0)/f.length,pts:f.map(i=>S[i]),zs:f.map(i=>V[i][2]),sh,oi,fi})})});
  polys.sort((p,q)=>q.z-p.z);if(editMode||sculptOn)buildDepth(polys,W,H);else draw.zb=null;
@@ -697,9 +700,9 @@ function syncEdges(){selPts.clear();selEdges.forEach(k=>{const[a,b]=k.split('_')
 /* Mirror Polygons for tools that change the shape: finds the point on the other side of the plane (same place mirrored, measured on the shape before manual point edits) */
 function baseMesh(o){const en=editNode(o),i=en?o.nodes.indexOf(en):-1;return i>0?o.nodes[i-1].out:null}
 function symMirrorIdx(m,ax){const key=v=>v.map(t=>Math.round(t*1e4)).join(','),c=canonOf(m),K=new Map();m.v.forEach((v,i)=>{if(c[i]===i)K.set(key(v),i)});
- return i=>{const v=m.v[i];if(!v)return undefined;const w=v.slice();w[ax]=-w[ax];return K.get(key(w))}}
+ return i=>{const v=m.v[i];if(!v)return undefined;const w=v.slice();w[ax]=-w[ax];return mfind(K,w)}}
 function mirPt(i){const o=objs[sel],en=editNode(o);if(!symEdit||!en||!en.out||!en.rep)return undefined;const ax=symAxis(),V=en.out.v,off=en.off,key=a=>a.map(t=>Math.round(t*1e4)).join(','),base=j=>{const q=off[j]||[0,0,0],v=V[j];return[v[0]-q[0],v[1]-q[1],v[2]-q[2]]};
- const b=base(i);b[ax]=-b[ax];const t=key(b);for(let j=0;j<V.length;j++)if(en.rep[j]===j&&key(base(j))===t)return j;return undefined}
+ const b=base(i);b[ax]=-b[ax];for(let j=0;j<V.length;j++)if(en.rep[j]===j){const q=base(j);if(Math.abs(q[0]-b[0])<1.5e-4&&Math.abs(q[1]-b[1])<1.5e-4&&Math.abs(q[2]-b[2])<1.5e-4)return j}return undefined}
 function loopInsert(h){const o=objs[sel],nn=mk('LoopCut');nn.edge=[h.a,h.b];let mirror=null;
  if(symEdit){const m=baseMesh(o);if(m){const mi=symMirrorIdx(m,symAxis()),a2=mi(h.a),b2=mi(h.b);
   if(a2!==undefined&&b2!==undefined&&a2!==b2){const r=ringOf(m,h.a,h.b),c=r&&r.c;if(c&&ek(c[a2],c[b2])!==ek(c[h.a],c[h.b])&&!r.R.has(ek(c[a2],c[b2])))mirror=[a2,b2]}
@@ -717,7 +720,7 @@ function faceOp(name){const o=objs[sel];if(!o||sub!=='face'||!selPts.size)return
 function symFaces(o,set){if(!symEdit||!o)return set;const m=evaluate(o),en=editNode(o),ax=symAxis(),key=c=>c.map(t=>Math.round(t*1e4)).join(',');
  const bp=i=>{const v=m.v[i],q=en&&en.rep&&en.off[en.rep[i]];return q?[v[0]-q[0],v[1]-q[1],v[2]-q[2]]:v},cen=f=>{const c=[0,0,0];f.forEach(i=>{const b=bp(i);c[0]+=b[0]/f.length;c[1]+=b[1]/f.length;c[2]+=b[2]/f.length});return c};
  const K=new Map();m.f.forEach((f,i)=>K.set(key(cen(f)),i));const out=new Set(set);
- set.forEach(i=>{const f=m.f[i];if(!f)return;const c=cen(f);c[ax]=-c[ax];const j=K.get(key(c));if(j!==undefined)out.add(j)});return out}
+ set.forEach(i=>{const f=m.f[i];if(!f)return;const c=cen(f);c[ax]=-c[ax];const j=mfind(K,c);if(j!==undefined)out.add(j)});return out}
 function deleteFaces(){const o=objs[sel];if(!o||sub!=='face'||!selPts.size)return;const nf=evaluate(o).f.length,d=symFaces(o,new Set([...selPts].filter(i=>i<nf)));if(!d.size)return;
  const fc={};let k=0;for(let i=0;i<nf;i++){if(d.has(i))continue;if(o.fc&&o.fc[i])fc[k]=o.fc[i];k++}o.fc=fc;
  const nn=mk('Delete'),L=o.nodes.length-1;nn.fl=[...d];placeNode(o,nn);
@@ -735,13 +738,13 @@ function loopSelected(){const o=objs[sel],m=symEdit?baseMesh(o):null,done=new Se
 function paintFaces(clear){const o=objs[sel];if(!o)return;if(clear){o.fc={};draw();return}const c=($('#fpaint')||{}).value||'#e5484d';symFaces(o,selPts).forEach(i=>{o.fc[i]=c});draw()}
 function resetEdits(){const o=objs[sel],en=editNode(o);if(!en)return;en.off={};dirtyFrom(o,o.nodes.indexOf(en));all()}
 /* Affect Front Vertices: while on, selecting points or faces only picks what faces the camera (what is visible, not hidden behind other surfaces) */
-let frontOnly=false;
+let frontOnly=false;const BACKSIGN=1;
 function pruneFront(){if(!frontOnly||!editMode)return;
  if(sub==='pt'){const v=new Set((draw.pts||[]).map(p=>p.i));[...selPts].forEach(i=>{if(!v.has(i))selPts.delete(i)})}
  else if(sub==='face'){const v=new Set();(draw.polys||[]).forEach(p=>{if(p.oi!==sel)return;const cx=p.pts.reduce((a,q)=>a+q[0],0)/p.pts.length,cy=p.pts.reduce((a,q)=>a+q[1],0)/p.pts.length;if(vis(cx,cy,p.z))v.add(p.fi)});[...selPts].forEach(i=>{if(!v.has(i))selPts.delete(i)})}
  else if(sub==='edge'&&draw.edges){const v=new Set(draw.edges.map(e=>e.k));[...selEdges].forEach(k=>{if(!v.has(k))selEdges.delete(k)});syncEdges()}}
 function toggleFront(){frontOnly=!frontOnly;const n=selPts.size+selEdges.size;pruneFront();const d=n-(selPts.size+selEdges.size);syncShelf();draw();
- toast(frontOnly?'Affect Front Vertices on: only points and faces facing the camera can be selected'+(d>0?' ('+d+' hidden one'+(d>1?'s':'')+' removed from the selection)':''):'Affect Front Vertices off: selections can reach points and faces behind the model')}
+ toast(frontOnly?'Affect Front Vertices on: polygons facing away from the camera are hidden, and only points and faces facing the camera can be selected'+(d>0?' ('+d+' hidden one'+(d>1?'s':'')+' removed from the selection)':''):'Affect Front Vertices off: back polygons are shown again and selections can reach points and faces behind the model')}
 function selectAll(){const en=editNode(objs[sel]);if(!editMode||!en||!en.rep)return;selPts.clear();
  if(sub==='face')en.out.f.forEach((_,i)=>selPts.add(i));
  else if(sub==='edge'){selEdges.clear();(draw.edges||[]).forEach(e=>selEdges.add(e.k));syncEdges()}
@@ -1151,14 +1154,22 @@ function vis(x,y,z){const D=draw.zb;if(!D)return true;const q=ortho?-z:1/(z+dist
 /* Symmetrize goes after any point edits so they are mirrored too; the Edit node is then recreated on top for further editing */
 /* Mirror Polygons (symmetry editing): while on, moving, rotating or scaling points or faces repeats the mirrored edit on the matching point across the plane (X = left/right in the front view; press Y or Z first for another plane). */
 let symEdit=false;
+/* Looks up the point at a mirrored position. Positions are rounded to 1e-4; a value that sits close to a rounding boundary is tried both ways so float noise cannot hide a partner. */
+function mfind(K,a){const c=a.map(t=>{const u=t*1e4,f=Math.floor(u),r=u-f;return(r>.2&&r<.8)?[Math.round(u)]:[f,f+1]});
+ for(const x of c[0])for(const y of c[1])for(const z of c[2]){const r=K.get(x+','+y+','+z);if(r!==undefined)return r}return undefined}
 function symAxis(){return axisK!==null?axisK:0}
 function symPrep(){if(!symEdit||!editMode)return null;const so=objs[sel],en=editNode(so);if(!so||!en||!en.out||!en.rep)return null;
  const ax=symAxis(),V=en.out.v,off=en.off,key=a=>a.map(t=>Math.round(t*1e4)).join(','),base=i=>{const o=off[i]||[0,0,0],v=V[i];return[v[0]-o[0],v[1]-o[1],v[2]-o[2]]};
  const reps=[...(sub==='face'?facePts(en):selPts)];if(!reps.length)return null;const S=new Set(reps),K=new Map(),pairs=[];
  V.forEach((_,i)=>{if(en.rep[i]===i)K.set(key(base(i)),i)});
- reps.forEach(i=>{const b=base(i);b[ax]=-b[ax];const j=K.get(key(b));if(j!==undefined&&j!==i&&!S.has(j))pairs.push([i,j])});
- return{so,en,ax,pairs}}
-function symApply(P){if(!P)return;const{so,en,ax,pairs}=P,off=en.off;
+ const plane=[],full=reps.length>=K.size;let sd=0,sn=0;
+ reps.forEach(i=>{const x=base(i)[ax];if(Math.abs(x)>=2e-4){sd+=x;sn++}});const side=sn&&sd<0?-1:1;
+ /* a two-sided selection: the side the selection mostly lies on is the master and the other side copies it; with every point selected the whole model is being moved, so nothing is mirrored */
+ if(!full)reps.forEach(i=>{const b=base(i);if(Math.abs(b[ax])<2e-4){plane.push(i);return}const x=b[ax];b[ax]=-b[ax];const j=mfind(K,b);if(j===undefined||j===i)return;
+  if(S.has(j)){if(x*side>0)pairs.push([i,j])}else pairs.push([i,j])});
+ return{so,en,ax,pairs,plane}}
+function symApply(P){if(!P)return;const{so,en,ax,pairs,plane}=P,off=en.off;
+ plane.forEach(i=>{const o=off[i];if(o)o[ax]=0}); /* points on the mirror plane stay on it, otherwise the two sides could not match */
  pairs.forEach(([i,j])=>{const o=off[i]||[0,0,0],q=off[j]||(off[j]=[0,0,0]);q[0]=o[0];q[1]=o[1];q[2]=o[2];q[ax]=-q[ax]});dirtyFrom(so,so.nodes.indexOf(en))}
 function rotPts(dx,dy){const P=symPrep();rotPts0(dx,dy);symApply(P)}
 function movePts(w){const P=symPrep();movePts0(w);symApply(P)}

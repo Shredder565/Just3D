@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v112 — Symmetrize works on every point; Affect Front Vertices hides back polygons
+- **Symmetrize** (and live mirroring) was tested on every point of a sphere, torus, cube, trapezoid and teapot, with move, rotate and scale. Fixes: points on the mirror plane now stay on it, so they can no longer be dragged off and break the symmetry; a selection that holds points from both sides now mirrors from the side it mostly lies on (before, those points were just moved the same way and the result was lopsided); and finding a point's mirror partner no longer fails when a coordinate sits on a rounding boundary. Selecting every point and moving it still moves the whole model.
+- **Affect Front Vertices** now also hides the polygons that face away from the camera on the object being edited, so the back of the model is out of the way while you work.
+
 ## v111 — Symmetrize is a switch
 - **Symmetrize** now stays on once clicked (the button lights up). Clicking it mirrors the modelled side across the plane right away, and from then on every edit you make (move, rotate, scale, loop cut, knife, extrude, bevel, weld, delete) is repeated on the opposite side, until you click Symmetrize again to turn it off. Press X, Y or Z first to choose the plane. This replaces the removed Mirror Polygons button (Alt+X still toggles the same live mirroring).
 
