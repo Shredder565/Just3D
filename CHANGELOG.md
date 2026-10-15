@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v97 — Knife, Mirror Geometry and Freeze icons
+- Knife shows a blade cutting a line, Mirror Geometry shows two spheres either side of a mirror line, and Freeze shows snowflakes (on both the Modeling tools and Sculpting shelves).
+
 ## v96 — Tool icons
 - Move, Rotate and Scale buttons show the standard four-arrow, circular-arrow and diagonal-arrow icons (Transform and scene, and Polygon modeling).
 - Points shows stars, Edges shows a couple of wavy lines, and Faces shows one long flat rectangle.
