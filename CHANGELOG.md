@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v104 — Free-move handle and window icon
+- The Move gizmo now has a yellow square at its centre. Drag the arrows to move along one axis, or drag the square to move freely in the plane of the screen (hold Shift to move toward or away from the camera). Works for points, edges, faces and whole objects. Before, clicking the centre grabbed the red X arrow, so you could only move along one direction.
+- The Just3D logo is now the page icon, so the running window shows it in the taskbar / quick launch instead of the browser's icon.
+
 ## v103 — Wireframe stays a wireframe in Points / Edges / Faces mode
 - An object set to Wireframe no longer turns solid black when you enter Points, Edges or Faces mode (for example to move points with a rotoscope image behind it). It now stays see-through, so the rotoscope image and the wires remain visible. Selected faces are tinted. The global Wire view mode behaves the same way.
 
