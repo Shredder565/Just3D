@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v92 — View buttons; orthographic view stays flat
+- Two new buttons beside **Create New Model**: **Perspective View** and **Orthographic View**. Each shows that view full size; click the active one again (or press `Space`) to return to split view.
+- The orthographic view can no longer be rotated into 3D. It only sits on the six straight-on views (Front, Back, Right, Left, Top, Bottom), chosen with the view-cube arrows or cube faces; Alt-drag, right-drag and dragging the cube no longer orbit it. The perspective view is unchanged.
+
 ## v91 — Center to Object moved; desktop icon
 - **Center to Object** moved from Primitives to Polygon modeling, right after Center Pivot.
 - `Just3D.exe` now carries its own desktop icon (Just3D logo with the warrior artwork, 16–256 px).

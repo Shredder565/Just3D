@@ -355,6 +355,8 @@ function setGpu(on){if(on&&!GL){initGL();if(!GL){toast('No graphics card renderi
 function draw(){
  if(!draw.inner){draw.inner=true;const k0=curV;try{activate(0);draw();if(soloV!==0){activate(1);draw()}}finally{activate(k0);draw.inner=false}return}
 
+ /* the orthographic view is always flat: it can only sit on one of the six straight-on views (Front, Back, Right, Left, Top, Bottom) */
+ if(ortho){const q=Math.PI/2;if(Math.abs(pitch)>Math.PI/4){pitch=pitch>0?q:-q;yaw=0}else{pitch=0;yaw=Math.round(yaw/q)*q}}
  const dpr=devicePixelRatio||1,r=cv.getBoundingClientRect(),W=r.width,H=r.height;
  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr)}
  const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
@@ -708,6 +710,8 @@ const CMDS=[
  {g:'View',l:'Back to perspective view',k:'Shift+Q',en:()=>camAct>=0,f:leaveCamera},
  {g:'View',l:'Center to object',k:'Shift+Z',en:need,f:centerToSel},
  {g:'View',l:'Perspective only / split view',k:' ',f:()=>setSolo(soloV===-1?0:-1),on:()=>soloV===0},
+ {g:'View',l:'Perspective view',f:()=>setSolo(soloV===0?-1:0),on:()=>soloV===0},
+ {g:'View',l:'Orthographic view',f:()=>setSolo(soloV===1?-1:1),on:()=>soloV===1},
  {g:'View',l:'Keyboard shortcuts',k:'Shift+?',f:()=>showTip()},
  {g:'View',l:'Reset camera',k:'Home',f:()=>{VW[1].cam={yaw:0,pitch:0,dist:9,panX:0,panY:0,tgt:[0,0,0]};yaw=.6;pitch=-.35;dist=9;panX=0;panY=0;tgt=[0,0,0];camAct=-1;draw()}},
  {g:'View',l:'Front view',k:'Shift+Home',f:()=>viewTo(0,0)},
@@ -827,7 +831,7 @@ const VC=[{n:'Front',c:[0,0,-1],u:[1,0,0],v:[0,1,0],y:0,p:0},{n:'Back',c:[0,0,1]
  {n:'Top',c:[0,1,0],u:[1,0,0],v:[0,0,1],y:0,p:-Math.PI/2},{n:'Bottom',c:[0,-1,0],u:[1,0,0],v:[0,0,1],y:0,p:Math.PI/2}];
 let vcH=-1,vcD=null,vcFaces=[];
 function setProj(o){if(o!==ortho)toast('The left view is always perspective and the right view is always orthographic.')}
-function viewTo(y,p){const vk=curV,y0=yaw,p0=pitch,dy=(((y-y0+Math.PI)%TAU)+TAU)%TAU-Math.PI,t0=performance.now();
+function viewTo(y,p){if(VW[curV].ortho){yaw=y;pitch=p;draw();return}const vk=curV,y0=yaw,p0=pitch,dy=(((y-y0+Math.PI)%TAU)+TAU)%TAU-Math.PI,t0=performance.now();
  const step=t=>{const k=Math.min(1,(t-t0)/220),e=k*k*(3-2*k),k0=curV;activate(vk);yaw=y0+dy*e;pitch=p0+(p-p0)*e;activate(k0);draw();if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step)}
 function drawCube(){const c=$('#vcube'),d=devicePixelRatio||1,S=110,K=30;if(c.width!==Math.round(S*d)){c.width=Math.round(S*d);c.height=Math.round(S*d)}
  const g=c.getContext('2d');g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,S,S);
@@ -845,7 +849,7 @@ const vcPick=e=>{const r=$('#vcube').getBoundingClientRect(),x=e.clientX-r.left,
 [0,1].forEach(vk=>{const A=VW[vk].vc.addEventListener.bind(VW[vk].vc);VW[vk].vc.addEventListener=(t,fn)=>A(t,ev=>{const k0=curV;activate(vk);try{fn(ev)}finally{activate(k0)}});
 VW[vk].vc.addEventListener('pointerdown',e=>{VW[vk].vc.setPointerCapture(e.pointerId);vcD={x:e.clientX,y:e.clientY,m:0,h:vcPick(e)}});
 VW[vk].vc.addEventListener('pointermove',e=>{if(vcD){const dx=e.clientX-vcD.x,dy=e.clientY-vcD.y;vcD.m+=Math.abs(dx)+Math.abs(dy);
-  if(vcD.m>4){yaw+=dx*.01;pitch=Math.max(-1.5,Math.min(1.5,pitch+dy*.01));vcD.x=e.clientX;vcD.y=e.clientY;draw()}return}
+  if(vcD.m>4){if(ortho){vcD.x=e.clientX;vcD.y=e.clientY;return}yaw+=dx*.01;pitch=Math.max(-1.5,Math.min(1.5,pitch+dy*.01));vcD.x=e.clientX;vcD.y=e.clientY;draw()}return}
  const h=vcPick(e);if(h!==vcH){vcH=h;drawCube()}});
 VW[vk].vc.addEventListener('pointerup',()=>{if(vcD&&vcD.m<=4&&vcD.h>=0){const f=VC[vcD.h];viewTo(f.y,f.p)}vcD=null});
 VW[vk].vc.addEventListener('pointerleave',()=>{if(!vcD&&vcH!==-1){vcH=-1;drawCube()}});
@@ -907,7 +911,7 @@ const SHELVES=[
   {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move'},{c:'Rotate'},{c:'Scale'},{c:'Toggle grid',t:'Grid'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X'},{c:'Lock to Y axis',t:'Y'},{c:'Lock to Z axis',t:'Z'},{sp:1},{gl:'Scene'},{c:'Object mode',t:'Object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save or load scene',t:'Save / load'}]},
   {n:'Polygon modeling',items:[{gl:'Component'},{c:'Points'},{c:'Edges'},{c:'Faces'},{sp:1},{c:'Move'},{c:'Rotate'},{c:'Scale'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{c:'Weld'},{c:'Target weld',t:'Target Weld'},{sp:1},{c:'Duplicate'},{c:'Group selected',t:'Group'},{c:'Delete object',t:'Delete'}]},
   {n:'Modeling tools',items:[{c:'Loop cut'},{c:'Loop cut selected edges',t:'Cut'},{c:'Knife'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Mirror geometry',t:'Mirror Geometry'},{c:'Mirror polygons',t:'Mirror Polygons'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object changes',t:'Symmetrize Object Changes'},{c:'Freeze (delete history)',t:'Freeze'},{c:'Merge'}]},
-  {n:'File',items:[{c:'New file',t:'New File'},{c:'Save file',t:'Save File'},{c:'Export file',t:'Export File'},{fmt:1},{c:'Export and save to this computer',t:'Save to Computer'},{c:'Create new model',t:'Create New Model'}]}]},
+  {n:'File',items:[{c:'New file',t:'New File'},{c:'Save file',t:'Save File'},{c:'Export file',t:'Export File'},{fmt:1},{c:'Export and save to this computer',t:'Save to Computer'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Perspective view',t:'Perspective View'},{c:'Orthographic view',t:'Orthographic View'}]}]},
  {n:'Coloring and Rendering',rows:[
   {n:'Coloring',items:[{gl:'Paint'},{c:'Paint tool (click or drag faces)',t:'Paint'},{c:'Paint selected faces',t:'Paint selected'},{c:'Clear face paint',t:'Clear paint'},{sp:1},{gl:'Brush'},{brush:1},{sw:'brush'},{sp:1},{gl:'Object'},{objc:1},{sw:'obj'},{sp:1},{gl:'Display'},{c:'Shaded'},{c:'Shaded + wire'},{c:'Wire'}]},
   {n:'Render 2K',items:[{gl:'Aspect'},{rsel:'asp'},{gl:'Quality'},{rsel:'q'},{sp:1},{c:'Highlight to render',t:'Highlight to Render'},{c:'Render 2K (GPU)',t:'Render 2K · GPU'},{c:'Ray trace 2K (CPU)',t:'Ray Trace 2K · CPU'},{sp:1},{c:'Show last render',t:'Show Render'},{c:'Save last render',t:'Save Render'}]}]},
@@ -1394,7 +1398,7 @@ if(e.button===2){drag.rc=true;return}
 cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.abs(dx)+Math.abs(dy);
  if(drag.hl){const r=cv.getBoundingClientRect();box.x1=e.clientX-r.left;box.y1=e.clientY-r.top;draw();return}
  if(drag.sc){sculptMove(e);return}
- if(drag.rc||drag.orb){yaw+=dx*.008;pitch=Math.max(-1.4,Math.min(1.4,pitch+dy*.008));drag.x=e.clientX;drag.y=e.clientY;draw();return}
+ if(drag.rc||drag.orb){if(ortho){drag.x=e.clientX;drag.y=e.clientY;return}yaw+=dx*.008;pitch=Math.max(-1.4,Math.min(1.4,pitch+dy*.008));drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.zm){dist=Math.max(3,Math.min(24,dist*Math.exp((dy-dx)*.008)));drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.exm&&exNode&&draw.exm){const m=draw.exm,s2=((e.clientX-drag.x)*m.ux+(e.clientY-drag.y)*m.uy)/m.pxu/drag.exm.ks;exNode.p.dist=Math.max(-5,Math.min(5,+(drag.exm.d0+s2).toFixed(3)));const so=objs[sel],i=so.nodes.indexOf(exNode);dirtyFrom(so,i);evaluate(so);draw();return}
  if(drag.jn)return;
