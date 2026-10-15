@@ -297,6 +297,15 @@ function dissolveVerts(m,list){const c=canonOf(m),W=m.f.map((f,i)=>({p:f.slice()
   if(poly.length<3)return;
   const keep=Math.min(...idx);W[keep]={p:poly,src:W[keep].src};idx.forEach(i=>{if(i!==keep)W[i]=null});done++});
  const out=W.filter(Boolean);return{f:out.map(x=>x.p),map:out.map(x=>x.src),done}}
+/* Clean up points (Maya's Delete Vertex): a point is only removed when exactly two edges pass through it, i.e. it is just a spot on a line. Its two edges become one and every polygon keeps its shape and loses that corner. Points where three or more edges meet are structure, so they stay. */
+function cleanVerts(m,list){const c=canonOf(m),F=m.f.map(f=>f.slice());let done=0,kept=0;
+ [...new Set(list.map(i=>c[i]))].forEach(cv=>{if(cv===undefined||cv<0)return;
+  const nb=new Set(),hit=[];F.forEach((f,fi)=>{const n=f.length;for(let k=0;k<n;k++)if(c[f[k]]===cv){nb.add(c[f[(k+n-1)%n]]);nb.add(c[f[(k+1)%n]]);hit.push(fi);break}});nb.delete(cv);
+  if(!hit.length)return;
+  if(nb.size!==2||hit.some(fi=>F[fi].filter(x=>c[x]!==cv).length<3)){kept++;return}
+  hit.forEach(fi=>{F[fi]=F[fi].filter(x=>c[x]!==cv)});done++});
+ return{f:F,map:F.map((_,i)=>i),done,kept}}
+FOPS.CleanVerts={p:{},fn:(m,p,n)=>({v:m.v,f:cleanVerts(m,n.fl||[]).f})};
 FOPS.DissolveEdges={p:{},fn:(m,p,n)=>({v:m.v,f:dissolveEdges(m,n.fl||[]).f})};
 FOPS.DissolveVerts={p:{},fn:(m,p,n)=>({v:m.v,f:dissolveVerts(m,n.fl||[]).f})};
 /* Mirror Geometry: adds a reflected copy of the whole mesh on one side of a plane. The plane sits on the mesh's bounding-box edge (or at a chosen offset); optionally the border points are merged so the halves become one surface. */
@@ -530,21 +539,21 @@ function draw(){
     g.beginPath();g.arc(c0[0],c0[1],4,0,TAU);g.fill();g.font='12px system-ui,sans-serif';g.fillText('Extrude '+exNode.p.dist.toFixed(2),tip[0]+10,tip[1]-8);
     draw.exm={x0:c0[0],y0:c0[1],x1:tip[0],y1:tip[1],ux,uy,pxu}}}}
  draw.gz=null;
- if(!knife&&!paintOn&&!jointOn&&!sculptOn&&(xf==='move'||xf==='rot'||xf==='scale')&&objs[sel]){const o=objs[sel],Mo=mulM(rotMat(o.rot),diag(o.sc||[1,1,1]));let pl=null;
+ if(!knife&&!paintOn&&!jointOn&&!sculptOn&&(xe()==='move'||xe()==='rot'||xe()==='scale')&&objs[sel]){const o=objs[sel],Mo=mulM(rotMat(o.rot),diag(o.sc||[1,1,1]));let pl=null;
   if(editMode){const en=editNode(o),reps=en&&en.out&&en.rep?[...(sub==='face'?facePts(en):selPts)]:[];
    if(reps.length){pl=[0,0,0];reps.forEach(i=>{const P=en.out.v[i];pl[0]+=P[0];pl[1]+=P[1];pl[2]+=P[2]});pl=pl.map(v=>v/reps.length)}}
   else pl=[0,0,0];
   if(pl){const q=mulv(Mo,pl),pw=[q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2]],pv=view(pw[0],pw[1],pw[2]),ps=scr(pv),L=70*(ortho?dist:pv[2]+dist)/F,cols=['#e5484d','#3fb950','#4c8dff'];
-   const ax=[0,1,2].map(k=>{let e=[0,0,0];e[k]=1;if(xf==='scale'&&!editMode){e=[Mo[0][k],Mo[1][k],Mo[2][k]];const l=Math.hypot(e[0],e[1],e[2])||1;e=e.map(v=>v/l)}const tip=scr(view(pw[0]+e[0]*L,pw[1]+e[1]*L,pw[2]+e[2]*L)),ring=[];
+   const ax=[0,1,2].map(k=>{let e=[0,0,0];e[k]=1;if(xe()==='scale'&&!editMode){e=[Mo[0][k],Mo[1][k],Mo[2][k]];const l=Math.hypot(e[0],e[1],e[2])||1;e=e.map(v=>v/l)}const tip=scr(view(pw[0]+e[0]*L,pw[1]+e[1]*L,pw[2]+e[2]*L)),ring=[];
     for(let a=0;a<=48;a++){const t=a/48*TAU,u=[0,0,0];u[(k+1)%3]=Math.cos(t)*L*.8;u[(k+2)%3]=Math.sin(t)*L*.8;ring.push(scr(view(pw[0]+u[0],pw[1]+u[1],pw[2]+u[2])))}
     return{tip,ring,ez:view(e[0],e[1],e[2])[2]}});
    draw.gz={px:ps[0],py:ps[1],L,ax,zd:ortho?dist:pv[2]+dist};
    ax.forEach((A,k)=>{g.strokeStyle=cols[k];g.fillStyle=cols[k];g.lineWidth=drag&&drag.gz&&drag.gz.k===k?4.5:2.5;
-    if(xf==='scale'){g.beginPath();g.moveTo(ps[0],ps[1]);g.lineTo(A.tip[0],A.tip[1]);g.stroke();g.fillRect(A.tip[0]-5,A.tip[1]-5,10,10)}
-    else if(xf==='move'){g.beginPath();g.moveTo(ps[0],ps[1]);g.lineTo(A.tip[0],A.tip[1]);g.stroke();
+    if(xe()==='scale'){g.beginPath();g.moveTo(ps[0],ps[1]);g.lineTo(A.tip[0],A.tip[1]);g.stroke();g.fillRect(A.tip[0]-5,A.tip[1]-5,10,10)}
+    else if(xe()==='move'){g.beginPath();g.moveTo(ps[0],ps[1]);g.lineTo(A.tip[0],A.tip[1]);g.stroke();
      const an=Math.atan2(A.tip[1]-ps[1],A.tip[0]-ps[0]),tx=A.tip[0],ty=A.tip[1];g.beginPath();g.moveTo(tx+Math.cos(an)*11,ty+Math.sin(an)*11);g.lineTo(tx+Math.cos(an+2.5)*8,ty+Math.sin(an+2.5)*8);g.lineTo(tx+Math.cos(an-2.5)*8,ty+Math.sin(an-2.5)*8);g.closePath();g.fill()}
     else{g.beginPath();A.ring.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.stroke()}});
-   if(xf==='scale'){g.fillStyle='#fff';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#888';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else if(xf==='move'){g.fillStyle='#ffe066';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#5a4a00';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else{g.beginPath();g.arc(ps[0],ps[1],3.5,0,TAU);g.fillStyle='#fff';g.fill()}}}
+   if(xe()==='scale'){g.fillStyle='#fff';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#888';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else if(xe()==='move'){g.fillStyle='#ffe066';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#5a4a00';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else{g.beginPath();g.arc(ps[0],ps[1],3.5,0,TAU);g.fillStyle='#fff';g.fill()}}}
  if(sculptOn&&sPos){g.strokeStyle=acc;g.lineWidth=1.5;g.beginPath();g.arc(sPos.x,sPos.y,sSize,0,TAU);g.stroke();g.globalAlpha=.5;g.beginPath();g.arc(sPos.x,sPos.y,sSize*.5,0,TAU);g.stroke();g.globalAlpha=1}
  if(box){g.setLineDash([4,3]);g.strokeStyle=box.hl?'#f2c230':box.sub?'#e5484d':acc;g.lineWidth=1;g.strokeRect(box.x0,box.y0,box.x1-box.x0,box.y1-box.y0);g.setLineDash([])}
  if(rig.joints.length){const jp=rigPose().P.map(p=>{const s=scr(view(p[0],p[1],p[2]));return[s[0],s[1]]});
@@ -680,7 +689,9 @@ function eulerOf(M){return[Math.atan2(M[2][1],M[2][2]),-Math.asin(Math.max(-1,Ma
 const axisC=v=>{if(axisK===null)return v;const e=[0,0,0];e[axisK]=v[axisK];return e};
 /* The Select tool accumulates: every click adds to (or toggles) the selection. With Select turned off (Move, Rotate or Scale active) picking a new point, edge, face or object replaces the selection, so nothing stays selected. Shift always adds. */
 const add=e=>e.shiftKey||(multi&&xf==='select');
-function setXf(t){xf=t;axisK=null;['select','move','rot','scale'].forEach((k,i)=>$('#t'+'qwer'[i]).classList.toggle('on',k===t));draw()}
+/* Select is a selection mode, not a lock: it keeps the transform tool you used last (Move to start with), so the gizmo and dragging still move, rotate or scale the object, points, edges and faces. xe() is that effective transform. */
+let selXf='move';const xe=()=>xf==='select'?selXf:xf;
+function setXf(t){xf=t;if(t!=='select')selXf=t;axisK=null;['select','move','rot','scale'].forEach((k,i)=>$('#t'+'qwer'[i]).classList.toggle('on',k===t));draw()}
 function startBox(e,x,y){const cu=e.ctrlKey||e.metaKey,ad=add(e)||cu;box={x0:x,y0:y,x1:x,y1:y,add:ad,sub:cu,sh:e.shiftKey||cu};drag.box=true}
 /* crossing selection: anything the box touches is picked, not only things fully inside it */
 function segHitsRect(ax,ay,bx,by,x0,y0,x1,y1){let t0=0,t1=1;const dx=bx-ax,dy=by-ay;
@@ -703,24 +714,24 @@ function rotPts0(dx,dy){const so=objs[sel],en=editNode(so);if(!en||!en.out||!en.
  reps.forEach(i=>{const P=en.out.v[i],q=mulv(R,[P[0]-c[0],P[1]-c[1],P[2]-c[2]]),o=en.off[i]||(en.off[i]=[0,0,0]);o[0]+=c[0]+q[0]-P[0];o[1]+=c[1]+q[1]-P[1];o[2]+=c[2]+q[2]-P[2]});
  dirtyFrom(so,so.nodes.indexOf(en))}
 /* move / rotate the whole object (object transform sits outside the operator graph) */
-function objXform(dx,dy){const o=objs[sel];if(!o)return;if(xf==='scale'){scaleObj(axisK===null?3:axisK,Math.max(.2,Math.min(5,1+(dx-dy)/150)));return}
- if(xf==='move'){const k=(ortho?dist:drag.ot.z+dist)/draw.F,w=axisC(unview(dx*k,-dy*k,0));o.pos=o.pos.map((v,i)=>+(v+w[i]).toFixed(4))}
+function objXform(dx,dy){const o=objs[sel];if(!o)return;if(xe()==='scale'){scaleObj(axisK===null?3:axisK,Math.max(.2,Math.min(5,1+(dx-dy)/150)));return}
+ if(xe()==='move'){const k=(ortho?dist:drag.ot.z+dist)/draw.F,w=axisC(unview(dx*k,-dy*k,0));o.pos=o.pos.map((v,i)=>+(v+w[i]).toFixed(4))}
  else{const k=.01;let R;if(axisK!==null){const e=[0,0,0];e[axisK]=1;R=axisRot(e,dx*k)}else R=mulM(axisRot(unview(0,1,0),-dx*k),axisRot(unview(1,0,0),-dy*k));o.rot=eulerOf(mulM(R,rotMat(o.rot)))}}
 /* ---- on-screen gizmo: arrows (move) and rings (rotate) in world X/Y/Z ---- */
-function gizmoHit(x,y){const g=draw.gz;if(!g)return null;if((xf==='scale'||xf==='move')&&Math.hypot(x-g.px,y-g.py)<10)return{k:3};let best=null,bd=9;
+function gizmoHit(x,y){const g=draw.gz;if(!g)return null;if((xe()==='scale'||xe()==='move')&&Math.hypot(x-g.px,y-g.py)<10)return{k:3};let best=null,bd=9;
  g.ax.forEach((A,k)=>{let d;
-  if(xf==='move'||xf==='scale'){const vx=A.tip[0]-g.px,vy=A.tip[1]-g.py,l2=vx*vx+vy*vy||1,t=Math.max(0,Math.min(1,((x-g.px)*vx+(y-g.py)*vy)/l2));d=Math.hypot(x-(g.px+vx*t),y-(g.py+vy*t))}
+  if(xe()==='move'||xe()==='scale'){const vx=A.tip[0]-g.px,vy=A.tip[1]-g.py,l2=vx*vx+vy*vy||1,t=Math.max(0,Math.min(1,((x-g.px)*vx+(y-g.py)*vy)/l2));d=Math.hypot(x-(g.px+vx*t),y-(g.py+vy*t))}
   else{d=1e9;A.ring.forEach(p=>{d=Math.min(d,Math.hypot(p[0]-x,p[1]-y))})}
   if(d<bd){bd=d;best={k}}});return best}
 function movePts0(w){const so=objs[sel],en=editNode(so);if(!en)return;const l=wl(so,w);
  (sub==='face'?facePts(en):selPts).forEach(i=>{const q=en.off[i]||(en.off[i]=[0,0,0]);q[0]+=l[0];q[1]+=l[1];q[2]+=l[2]});dirtyFrom(so,so.nodes.indexOf(en))}
 function gizmoDrag(e){const g=draw.gz,h=drag.gz,so=objs[sel];if(!g||!so)return;
  const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,A=g.ax[h.k];
- if(xf==='scale'){const f=scaleFactor(g,h,A,e);if(editMode)scalePts(h.k,f);else scaleObj(h.k,f)}
- else if(xf==='move'&&h.k===3){/* centre handle: free move in the screen plane (Shift = along the view direction) */
+ if(xe()==='scale'){const f=scaleFactor(g,h,A,e);if(editMode)scalePts(h.k,f);else scaleObj(h.k,f)}
+ else if(xe()==='move'&&h.k===3){/* centre handle: free move in the screen plane (Shift = along the view direction) */
   const dx=e.clientX-drag.x,dy=e.clientY-drag.y,k=g.zd/draw.F,w=axisC(e.shiftKey?unview(0,0,-dy*k):unview(dx*k,-dy*k,0));
   if(editMode)movePts(w);else so.pos=so.pos.map((v,i)=>+(v+w[i]).toFixed(4))}
- else if(xf==='move'){const sx=A.tip[0]-g.px,sy=A.tip[1]-g.py,dl=Math.hypot(sx,sy)||1,pix=((e.clientX-drag.x)*sx+(e.clientY-drag.y)*sy)/dl,amt=pix*g.L/Math.max(dl,10),w=[0,0,0];w[h.k]=amt;
+ else if(xe()==='move'){const sx=A.tip[0]-g.px,sy=A.tip[1]-g.py,dl=Math.hypot(sx,sy)||1,pix=((e.clientX-drag.x)*sx+(e.clientY-drag.y)*sy)/dl,amt=pix*g.L/Math.max(dl,10),w=[0,0,0];w[h.k]=amt;
   if(editMode)movePts(w);else so.pos=so.pos.map((v,i)=>+(v+w[i]).toFixed(4))}
  else{let t=Math.atan2(-(y-g.py),x-g.px)-Math.atan2(-(drag.y-r.top-g.py),drag.x-r.left-g.px);
   if(t>Math.PI)t-=2*Math.PI;if(t<-Math.PI)t+=2*Math.PI;t*=A.ez>0?1:-1;
@@ -787,7 +798,7 @@ function invertSel(){const en=editNode(objs[sel]);if(!editMode||!en||!en.rep)ret
  else{const s=new Set(selPts);selPts.clear();en.rep.forEach((r,i)=>r===i&&!s.has(i)&&selPts.add(i))}pruneFront();all()}
 function clearSel(){if(hlMode){hlMode=false;cv.style.cursor='';box=null}tw=false;twSrc=null;selPts.clear();selEdges.clear();axisK=null;kn=null;box=null;panels();draw()}
 function dupObj(){const o=objs[sel];if(!o)return;objs.push({name:o.name+'_copy',pos:[o.pos[0]+1.5,o.pos[1],o.pos[2]],rot:[...o.rot],sc:[...(o.sc||[1,1,1])],hue:0,color:o.color,fc:{...o.fc},nodes:o.nodes.map(n=>({...n,p:{...n.p},off:n.off?JSON.parse(JSON.stringify(n.off)):null,out:null,dirty:true}))});sel=objs.length-1;osel.clear();selPts.clear();all()}
-/* Delete: removes only what is selected, in the mode you are in. Objects: every selected object (and nothing else). Faces: just those polygons. Edges: just those edge lines (the two polygons beside each edge become one). Points: just those points (the polygons around each become one). With Symmetrize on, the mirrored partners go too. */
+/* Delete: removes only what is selected, in the mode you are in. Objects: every selected object (and nothing else). Faces: just those polygons. Edges: just those edge lines (the two polygons beside each edge become one). Points: only points that sit on a single line (exactly two edges), as in Maya's Delete Vertex; this cleans up the points left over after edges are deleted. With Symmetrize on, the mirrored partners go too. */
 function delObj(){const set=new Set(osel);if(objs[sel])set.add(objs[sel]);if(!set.size)return;
  const first=Math.min(...[...set].map(o=>objs.indexOf(o)).filter(i=>i>=0));let n=0;
  for(let i=objs.length-1;i>=0;i--)if(set.has(objs[i])){objs.splice(i,1);n++}
@@ -803,10 +814,10 @@ function deleteEdges(){const o=objs[sel];if(!inEd()||!selEdges.size)return;const
  toast('Deleted '+r.done+' edge'+(r.done>1?'s':'')+' (the polygons beside '+(r.done>1?'each':'it')+' were joined). Ctrl+Z brings '+(r.done>1?'them':'it')+' back.');all()}
 function deletePoints(){const o=objs[sel];if(!inEd()||!selPts.size)return;const list=[],seen=new Set(),add=a=>{if(a===undefined||seen.has(a))return;seen.add(a);list.push(a)};
  [...selPts].forEach(a=>{add(a);if(symEdit)add(mirPt(a))});
- const m=evaluate(o),r=dissolveVerts(m,list);
- if(!r.done){toast('Nothing deleted: those points are not part of any polygon fan that can be joined.');return}
- remapColors(o,r.map);const nn=mk('DissolveVerts');nn.fl=list;placeNode(o,nn);selPts.clear();selEdges.clear();
- toast('Deleted '+r.done+' point'+(r.done>1?'s':'')+' (the polygons around '+(r.done>1?'each':'it')+' were joined). Ctrl+Z brings '+(r.done>1?'them':'it')+' back.');all()}
+ const m=evaluate(o),r=cleanVerts(m,list);
+ if(!r.done){toast('Nothing deleted: only a point that sits on a single line (exactly two edges) can be deleted. '+(r.kept>1?'These points join':'This point joins')+' three or more edges, so '+(r.kept>1?'they stay':'it stays')+'. Delete edges or faces first to free a point.');return}
+ const nn=mk('CleanVerts');nn.fl=list;placeNode(o,nn);selPts.clear();selEdges.clear();
+ toast('Deleted '+r.done+' point'+(r.done>1?'s':'')+' on a line (its two edges became one).'+(r.kept?' '+r.kept+' point'+(r.kept>1?'s':'')+' with three or more edges '+(r.kept>1?'were':'was')+' left alone.':'')+' Ctrl+Z brings '+(r.done>1?'them':'it')+' back.');all()}
 function smartDelete(){if(!objs[sel]&&!osel.size)return;if(!editMode){delObj();return}
  if(sub==='face')deleteFaces();else if(sub==='pt')deletePoints();else deleteEdges()}
 function setMode(i){mode=i;document.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',+b.dataset.m===i));draw()}
@@ -817,6 +828,7 @@ const CMDS=[
  {g:'Tools',l:'Rotate',k:'H',f:()=>setXf('rot'),on:()=>xf==='rot'},
  {g:'Tools',l:'Scale',k:'R',f:()=>setXf('scale'),on:()=>xf==='scale'},
  ...['X','Y','Z'].map((a,i)=>({g:'Tools',l:'Lock to '+a+' axis',k:a,f:()=>{axisK=axisK===i?null:i;draw()},on:()=>axisK===i})),
+ {g:'Tools',l:'World (free move)',f:()=>{axisK=null;draw();toast('World: no axis lock, so moving is free in every direction')},on:()=>axisK===null},
  {g:'Component mode',l:'Object mode',k:'O',f:()=>{setTool(null);all()},on:()=>!editMode&&!knife},
  {g:'Component mode',l:'Points',k:'1',k2:'P',en:need,f:pick('pt'),on:()=>editMode&&sub==='pt'},
  {g:'Component mode',l:'Edges',k:'2',k2:'E',en:need,f:pick('edge'),on:()=>editMode&&sub==='edge'},
@@ -1104,7 +1116,7 @@ let shelfIdx=0;const BR=['#e5484d','#f2b01e','#3fb950','#2dc4ad','#4a7fd1','#b55
 const SHELVES=[
  {n:'Basic Modeling Tools',rows:[
   {n:'Primitives',items:[{c:'Add cube',t:'Cube',ic:'cube'},{c:'Add sphere',t:'Sphere',ic:'sphere'},{c:'Add torus',t:'Torus',ic:'torus'},{c:'Add trapezoid',t:'Trapezoid',ic:'trap'},{c:'Add teapot',t:'Teapot',ic:'teapot'},{c:'Add tree',t:'Tree',ic:'tree'}]},
-  {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid'},{sp:1},{gl:'Component'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{gl:'Pivot'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X',ic:'axX'},{c:'Lock to Y axis',t:'Y',ic:'axY'},{c:'Lock to Z axis',t:'Z',ic:'axZ'},{sp:1},{gl:'Scene'},{c:'Object mode',t:'Object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save or load scene',t:'Save / load'}]},
+  {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid'},{sp:1},{gl:'Component'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{gl:'Pivot'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X',ic:'axX'},{c:'Lock to Y axis',t:'Y',ic:'axY'},{c:'Lock to Z axis',t:'Z',ic:'axZ'},{c:'World (free move)',t:'World',ic:'world'},{sp:1},{gl:'Scene'},{c:'Object mode',t:'Object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save or load scene',t:'Save / load'}]},
   {n:'Modeling tools',items:[{c:'Loop cut'},{c:'Loop cut selected edges',t:'Cut'},{c:'Knife',ic:'knife'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object changes',t:'Symmetrize Object Changes'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Duplicate',ic:'dup'},{c:'Group selected',t:'Group'},{c:'Delete',t:'Delete'}]},
   {n:'Rotoscope',items:[{c:'Rotoscope: load image',t:'Load image…'},{c:'Rotoscope: move and scale',t:'Move / Scale'},{c:'Rotoscope: show or hide',t:'Visible'},{c:'Rotoscope: remove image',t:'Remove'},{roto:'op'},{roto:'size'},{roto:'x'},{roto:'y'},{rname:1}]},
   {n:'File',items:[{c:'New file',t:'New File'},{c:'Open file',t:'Open File'},{c:'Save file',t:'Save File'},{c:'Save file as',t:'Save As'},{fname:1},{c:'Export file',t:'Export File'},{fmt:1},{c:'Export and save to this computer',t:'Save to Computer'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Perspective view',t:'Perspective View'},{c:'Orthographic view',t:'Orthographic View'},{sp:1},{gl:'Selected object'},{c:'Object wireframe',t:'Wireframe'},{c:'Object shaded',t:'Shaded'},{vp:'op'},{sp:1},{c:'Affect front vertices',t:'Affect Front Vertices'}]}]},
@@ -1129,6 +1141,7 @@ const ICONS={
  torus:'<path fill-rule="evenodd" d="M2 12a10 6.6 0 1 0 20 0a10 6.6 0 1 0-20 0zM7.6 12a4.4 2.5 0 1 0 8.8 0a4.4 2.5 0 1 0-8.8 0z" fill="#d98a4e" stroke="#6b3a14" stroke-width=".9"/><path d="M5 10Q12 4.6 19 10" fill="none" stroke="#fff" stroke-width="1.3" opacity=".45" stroke-linecap="round"/>',
  trap:'<polygon points="7,5 17,5 22,19 2,19" fill="#d98a4e" stroke="#6b3a14" stroke-width=".9" stroke-linejoin="round"/><polygon points="7,5 17,5 16.2,8.4 7.8,8.4" fill="#f0b27f"/><polygon points="17,5 22,19 18.5,19 14.8,8.4" fill="#a8602a" opacity=".55"/>',
  teapot:'<path d="M4.4 10.5C.8 10.3.6 16 4.8 17.4" fill="none" stroke="#6b3a14" stroke-width="2.2" stroke-linecap="round"/><path d="M17.2 12.2c2.8-.4 4.2-3 4.6-5.6l-1.5-.2c-.5 2.2-1.6 3.8-3.6 4z" fill="#d98a4e" stroke="#6b3a14" stroke-width=".8"/><ellipse cx="11" cy="14.2" rx="7.6" ry="6" fill="#d98a4e" stroke="#6b3a14" stroke-width=".9"/><ellipse cx="11" cy="8.9" rx="4.2" ry="1.7" fill="#f0b27f" stroke="#6b3a14" stroke-width=".8"/><circle cx="11" cy="6.7" r="1.2" fill="#a8602a" stroke="#6b3a14" stroke-width=".7"/>',
+ world:'<circle cx="12" cy="12" r="9.4" fill="none" stroke="#3fb950" stroke-width="1.8"/><ellipse cx="12" cy="12" rx="4.2" ry="9.4" fill="none" stroke="#3fb950" stroke-width="1.5"/><path d="M2.6 12H21.4M4.2 7.2H19.8M4.2 16.8H19.8" fill="none" stroke="#3fb950" stroke-width="1.5"/>',
  axX:'<path d="M12 21V5M5.6 11.4L12 4.4l6.4 7" fill="none" stroke="#e5484d" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
  axY:'<path d="M3 12H21M7.4 6.8L2.8 12l4.6 5.2M16.6 6.8L21.2 12l-4.6 5.2" fill="none" stroke="#f2b01e" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
  axZ:'<polygon points="11.2,8 12.8,8 14.8,16.2 9.2,16.2" fill="#4c8dff"/><polygon points="9.4,8.6 12,1.8 14.6,8.6" fill="#4c8dff" stroke="#4c8dff" stroke-width=".8" stroke-linejoin="round"/><polygon points="6,15.6 12,22.6 18,15.6" fill="#4c8dff" stroke="#4c8dff" stroke-width=".8" stroke-linejoin="round"/>',
@@ -1653,7 +1666,7 @@ if(e.button===2){drag.rc=true;return}
   if(h&&tw){drag.tw=h;if(twSrc==null){twSrc=h.i;selPts.clear();selPts.add(h.i);draw()}else if(h.i!==twSrc){twDo(twSrc,h.i);drag.tw=null;drag.moved=99}}
   else if(h){if(e.ctrlKey||e.metaKey){selPts.delete(h.i)}else if(e.shiftKey){selPts.add(h.i)}else if(add(e)){selPts.has(h.i)?selPts.delete(h.i):selPts.add(h.i)}else if(!selPts.has(h.i)){selPts.clear();selPts.add(h.i)}drag.pt=h;draw()}
   else startBox(e,x,y)}
- else if(!editMode&&xf!=='select'&&draw.polys&&objs[sel]){const x=e.clientX-r0.left,y=e.clientY-r0.top;for(let k=draw.polys.length-1;k>=0;k--){const p=draw.polys[k];if(p.oi===sel&&inPoly(x,y,p.pts)){drag.ot={z:p.z};break}}}});
+ else if(!editMode&&draw.polys&&objs[sel]){const x=e.clientX-r0.left,y=e.clientY-r0.top;for(let k=draw.polys.length-1;k>=0;k--){const p=draw.polys[k];if(p.oi===sel&&inPoly(x,y,p.pts)){drag.ot={z:p.z};break}}}});
 cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.abs(dx)+Math.abs(dy);
  if(drag.hl){const r=cv.getBoundingClientRect();box.x1=e.clientX-r.left;box.y1=e.clientY-r.top;draw();return}
  if(drag.ro){rotoDrag(e);return}
@@ -1668,9 +1681,9 @@ cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,
  if(drag.kn){const r=cv.getBoundingClientRect();let x=e.clientX-r.left,y=e.clientY-r.top;
   if(e.shiftKey){const vx=x-kn.x0,vy=y-kn.y0,a=Math.round(Math.atan2(vy,vx)/(Math.PI/4))*Math.PI/4,L=Math.hypot(vx,vy);x=kn.x0+L*Math.cos(a);y=kn.y0+L*Math.sin(a)}
   kn.x1=x;kn.y1=y;draw();return}
- if(drag.pt&&xf==='select')return;
- if(drag.pt&&xf==='scale'){scalePts(axisK===null?3:axisK,Math.max(.2,Math.min(5,1+(dx-dy)/150)));drag.x=e.clientX;drag.y=e.clientY;draw();return}
- if(drag.pt&&xf==='rot'){rotPts(dx,dy);drag.x=e.clientX;drag.y=e.clientY;draw();return}
+ /* with Select on, dragging selected points, edges or faces still moves them (or rotates / scales them if Rotate or Scale was the last transform tool) */
+ if(drag.pt&&xe()==='scale'){scalePts(axisK===null?3:axisK,Math.max(.2,Math.min(5,1+(dx-dy)/150)));drag.x=e.clientX;drag.y=e.clientY;draw();return}
+ if(drag.pt&&xe()==='rot'){rotPts(dx,dy);drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.ot){objXform(dx,dy);drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.pt){const so=objs[sel],en=editNode(so),k=(ortho?dist:drag.pt.z+dist)/draw.F,w=wl(so,axisC(unview(dx*k,-dy*k,0)));
   (sub==='face'?facePts(en):selPts).forEach(i=>{const q=en.off[i]||(en.off[i]=[0,0,0]);q[0]+=w[0];q[1]+=w[1];q[2]+=w[2]});
