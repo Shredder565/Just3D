@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v99 — Viewport settings
+- New **Viewport settings** subshelf under Transform and scene, with **Wireframe**, **Shaded** and an **Opacity** slider. They change only the selected object (or every object in the selection), so one object can be a wireframe or see-through while the rest stay solid.
+- Wireframe toggles back to shaded when pressed again. Opacity 100 is solid. Settings are saved with undo/redo and scene files. They affect the viewport only (not 2K renders).
+
 ## v98 — Duplicate and Target Weld icons
 - Duplicate shows a cluster of spheres; Target Weld shows a bullseye.
 
