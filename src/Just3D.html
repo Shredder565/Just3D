@@ -573,15 +573,16 @@ function draw(){
 /* ---------- UI ---------- */
 const editBits=n=>`<div style="color:var(--mut)">${Object.keys(n.off).length} point(s) moved · ${sub==='face'?selPts.size+' face(s)':sub==='edge'?(selPts.size?selEdges.size:0)+' edge(s)':selPts.size+' point(s)'} selected</div><div class="row"><button data-sa="1">Select all</button><button data-sc="1">Clear selection</button><button data-re="1">Reset edits</button></div>${editMode&&sub==='face'?'<div class="row"><button data-ex="Extrude" title="Push the selected faces out; sliders then set distance and inset">Extrude faces</button><button data-ex="Bevel" title="Chamfer where the selection meets the mesh; sliders set width and depth">Bevel faces</button></div><div class="row" style="align-items:center"><input type="color" id="fpaint" value="#e5484d" aria-label="Face color" style="width:34px;height:26px;padding:0"><button data-pf="1" title="Color the selected faces">Paint selected</button><button data-cf="1">Clear paint</button></div>':''}${editMode&&sub==='edge'?'<div class="row"><button data-lc="1" title="Insert a loop through each selected edge">Loop cut selected</button><button data-be="1" title="Bevel the selected closed edge loop; width, segments and roundness are sliders in the stack">Bevel edges</button><button data-sl="loop" title="Grow the selection along the edge loop (L, or double-click an edge)">Select loop</button><button data-sl="ring" title="Grow the selection across the edge ring (T)">Select ring</button></div>':''}${editMode?'':'<div style="color:var(--mut)">Choose Points or Faces in the toolbar to edit this object.</div>'}`;
 /* Colors tab under the selected object: one row per color in use; click a row to select every face of that color */
+let renS=null;
 function colorGroups(o){const m=evaluate(o),G=new Map();m.f.forEach((f,fi)=>{const c=((o.fc&&o.fc[fi])||o.color||'#888888').toLowerCase();if(!G.has(c))G.set(c,[]);G.get(c).push(fi)});return G}
 function colorName(hex){const [r,g,b]=hexRgb(hex).map(v=>v/255),mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,d=mx-mn,sat=d===0?0:d/(1-Math.abs(2*l-1));
  let h=0;if(d){if(mx===r)h=((g-b)/d)%6;else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h*=60;if(h<0)h+=360}
  if(l<.1)return'Black';if(l>.93)return'White';if(sat<.14)return l>.7?'Light grey':l<.3?'Dark grey':'Grey';
  let n;if(h<14||h>=345)n=l<.32?'Maroon':l>.75?'Pink':'Red';else if(h<40)n=l<.42?'Brown':'Orange';else if(h<68)n=l<.38?'Olive':'Yellow';else if(h<95)n='Lime';else if(h<160)n='Green';else if(h<195)n=sat>.2&&h<182?'Teal':'Cyan';else if(h<255)n=l<.28?'Navy':'Blue';else if(h<305)n='Purple';else if(h<335)n=l>.72?'Pink':'Magenta';else n=l>.7?'Pink':'Rose';
  return(l>.7&&!/^(Pink|Light)/.test(n)?'Light ':l<.22&&!/^(Maroon|Navy|Olive|Brown)/.test(n)?'Dark ':'')+n}
-function colorInner(o,ind){const G=colorGroups(o);return`<div class="l2" style="margin-left:${ind+16}px;color:var(--tx);font-weight:600">Colors</div>`+[...G].sort((a,b)=>b[1].length-a[1].length).map(([c,fs])=>`<div class="n cc" data-cc="${c}" title="Select all ${fs.length} face(s) of this color (Shift adds to the selection)" style="margin-left:${ind+28}px;display:flex;align-items:center;gap:8px"><span style="width:16px;height:16px;border-radius:3px;background:${c};border:1px solid var(--line);flex:none"></span><span style="line-height:1.2"><span>${c}</span><br><span style="color:var(--mut);font-size:11.5px">${colorName(c)}</span></span><span style="color:var(--mut);margin-left:auto">${fs.length}</span></div>`).join('')}
+function colorInner(o,ind){const G=colorGroups(o);return`<div class="l2" style="margin-left:${ind+16}px;color:var(--tx);font-weight:600">Colors</div>`+[...G].sort((a,b)=>b[1].length-a[1].length).map(([c,fs])=>`<div class="n cc" data-cc="${c}" title="Select all ${fs.length} face(s) of this color (Shift adds to the selection). Double-click to name it." style="margin-left:${ind+28}px;display:flex;align-items:center;gap:8px"><span style="width:16px;height:16px;border-radius:3px;background:${c};border:1px solid var(--line);flex:none"></span><span style="line-height:1.2;min-width:0">${renS&&renS.t==='c'&&renS.o===o&&renS.c===c?`<input class="nm" data-rn="1" value="${((o.cnm&&o.cnm[c])||colorName(c)).replace(/"/g,'&quot;')}" aria-label="Color name" style="width:100%;margin:0">`:`<span>${(o.cnm&&o.cnm[c])||c}</span><br><span style="color:var(--mut);font-size:11.5px">${(o.cnm&&o.cnm[c])?c:colorName(c)}</span>`}</span><span style="color:var(--mut);margin-left:auto">${fs.length}</span></div>`).join('')}
 function colorRows(o,ind){colorRows.ind=ind;colorRows.sig=colorSig(o);return'<div id="clrs">'+colorInner(o,ind)+'</div>'}
-function colorSig(o){const m=evaluate(o);return sel+'|'+m.f.length+'|'+o.color+'|'+JSON.stringify(o.fc||{})}
+function colorSig(o){const m=evaluate(o);return sel+'|'+m.f.length+'|'+o.color+'|'+JSON.stringify(o.fc||{})+JSON.stringify(o.cnm||{})+(renS?'r':'')}
 /* keeps the Colors list current while you paint or change colors, without rebuilding the rest of the panels */
 function refreshColors(){const o=objs[sel],el=document.getElementById('clrs');if(!o||!el)return;const sg=colorSig(o);if(sg===colorRows.sig)return;colorRows.sig=sg;el.innerHTML=colorInner(o,colorRows.ind)}
 function selectColor(c,add){const o=objs[sel];if(!o)return;const fs=colorGroups(o).get(c);if(!fs)return;
@@ -591,7 +592,7 @@ const openPC=new Set();
 document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.dataset&&d.dataset.pc!==undefined){const o=objs[sel],n=o&&o.nodes[+d.dataset.pc];if(n){if(d.open)openPC.add(n);else openPC.delete(n)}}},true);
 function panels(){
  groups=groups.filter(g=>objs.some(o=>o.g===g.id));
- const row=(o,i,ind)=>`<div class="n ${i===sel?'sel':osel.has(o)?'sel2':''}" style="margin-left:${ind}px" data-o="${i}">${o.name}</div>`+(i===sel||o.g?(o.g?o.nodes:[]).map((n,ni)=>`<div class="l2" style="margin-left:${ind+16}px"><label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer;margin:0"><input type="checkbox" data-vt="${i}:${ni}" ${(ni?n.on:!o.hid)?'checked':''} aria-label="${ni?'Enable':'Show'} ${n.type}">${n.type}</label></div>`).join('')+(i===sel?colorRows(o,ind):''):'');
+ const row=(o,i,ind)=>`<div class="n ${i===sel?'sel':osel.has(o)?'sel2':''}" style="margin-left:${ind}px" data-o="${i}" title="Double-click to rename">${renS&&renS.t==='o'&&renS.o===o?`<input class="nm" data-rn="1" value="${o.name.replace(/"/g,'&quot;')}" aria-label="Object name" style="width:80%;margin:0">`:o.name}</div>`+(i===sel||o.g?(o.g?o.nodes:[]).map((n,ni)=>`<div class="l2" style="margin-left:${ind+16}px"><label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer;margin:0"><input type="checkbox" data-vt="${i}:${ni}" ${(ni?n.on:!o.hid)?'checked':''} aria-label="${ni?'Enable':'Show'} ${n.type}">${n.type}</label></div>`).join('')+(i===sel?colorRows(o,ind):''):'');
  $('#tree').innerHTML=`<div class="n">Scene</div>`+groups.map(g=>{const ms=objs.map((o,i)=>[o,i]).filter(([o])=>o.g===g.id);return`<div class="n grp" data-gh="${g.id}" style="margin-left:6px"><span data-gt="${g.id}" style="display:inline-block;width:14px">${g.open?'▾':'▸'}</span><input type="checkbox" data-vg="${g.id}" ${ms.every(([o])=>!o.hid&&o.nodes.every(n=>n.on))?'checked':''} aria-label="Show or hide everything in ${g.name}" title="Turn everything in this model on or off" style="margin:0 6px 0 0">${g.ren?`<input class="nm" data-gn="${g.id}" value="${g.name.replace(/"/g,'&quot;')}" aria-label="Model name" style="width:60%;margin:0">`:g.name} <span style="color:var(--mut)">(${ms.length})</span></div>`+(g.open?ms.map(([o,i])=>row(o,i,26)).join(''):'')}).join('')+objs.map((o,i)=>o.g&&groups.some(g=>g.id===o.g)?'':row(o,i,10)).join('');
  $('#tree').innerHTML+=cams.length?'<div class="sec">Cameras</div>'+cams.map((c,i)=>'<div class="n '+(i===camSel?'sel':'')+'" data-cam="'+i+'" style="margin-left:6px">'+(i===camAct?'🎥 ':'')+c.name+'</div>').join(''):'';
  if(camSel>=0&&cams[camSel]){const c=cams[camSel];$('#props').innerHTML='<input class="nm" data-cn="1" value="'+c.name.replace(/"/g,'&quot;')+'" aria-label="Camera name"><div class="sec">Camera</div><label>Focal length<input type="range" data-cf="1" min="10" max="200" step="1" value="'+c.f+'"><output>'+c.f+' mm</output></label><div class="row"><button data-ca="look">'+(camSel===camAct?'Looking through it':'Look through')+'</button><button data-ca="leave"'+(camAct<0?' disabled':'')+'>Back to perspective</button></div><div class="row"><button data-ca="upd" title="Move this camera to where the viewport is now">Set to current view</button><button data-ca="del">Delete camera</button></div><p style="color:var(--mut)">Look through shows the scene from this camera. Orbit, then press Set to current view to reposition it.</p>';return}
@@ -625,7 +626,7 @@ document.addEventListener('click',e=>{const t=e.target,d=t.dataset,o=objs[sel];
  else if(t.id==='del'&&o){delObj()}
  else if(t.id==='opadd'&&o){const nn=mk($('#opsel').value),L=o.nodes.length-1;if(o.nodes[L].type==='Edit'){o.nodes.splice(L,0,nn);dirtyFrom(o,L)}else o.nodes.push(nn);all()}
  else if((t.id==='tpt'||t.id==='tfc'||t.id==='tkn'||t.id==='tdg'||t.id==='tlp'||t.id==='tpn')&&o){setTool({tpt:'pt',tfc:'face',tkn:'knife',tdg:'edge',tlp:'loop',tpn:'paint'}[t.id]);all()}
- else if(t.id==='dup'&&o){objs.push({name:o.name+'_copy',pos:[o.pos[0]+1.5,o.pos[1],o.pos[2]],rot:[...o.rot],sc:[...(o.sc||[1,1,1])],hue:0,color:o.color,fc:{...o.fc},nodes:o.nodes.map(n=>({...n,p:{...n.p},off:n.off?JSON.parse(JSON.stringify(n.off)):null,out:null,dirty:true}))});sel=objs.length-1;osel.clear();selPts.clear();all()}
+ else if(t.id==='dup'&&o){objs.push({name:o.name+'_copy',pos:[o.pos[0]+1.5,o.pos[1],o.pos[2]],rot:[...o.rot],sc:[...(o.sc||[1,1,1])],hue:0,color:o.color,fc:{...o.fc},cnm:{...(o.cnm||{})},nodes:o.nodes.map(n=>({...n,p:{...n.p},off:n.off?JSON.parse(JSON.stringify(n.off)):null,out:null,dirty:true}))});sel=objs.length-1;osel.clear();selPts.clear();all()}
  else if(d.sa){const en=editNode(o);if(en&&en.rep){if(sub==='face')en.out.f.forEach((_,i)=>selPts.add(i));else en.rep.forEach((r,i)=>r===i&&selPts.add(i))}all()}
  else if(d.jsel!==undefined){rigSel=+d.jsel;panels();draw()}
  else if(d.sw){o.color=d.sw;all()}
@@ -797,7 +798,7 @@ function invertSel(){const en=editNode(objs[sel]);if(!editMode||!en||!en.rep)ret
  else if(sub==='edge'){if(!selPts.size)selEdges.clear();const s=new Set(selEdges);selEdges.clear();(draw.edges||[]).forEach(e=>s.has(e.k)||selEdges.add(e.k));syncEdges()}
  else{const s=new Set(selPts);selPts.clear();en.rep.forEach((r,i)=>r===i&&!s.has(i)&&selPts.add(i))}pruneFront();all()}
 function clearSel(){if(hlMode){hlMode=false;cv.style.cursor='';box=null}tw=false;twSrc=null;selPts.clear();selEdges.clear();axisK=null;kn=null;box=null;panels();draw()}
-function dupObj(){const o=objs[sel];if(!o)return;objs.push({name:o.name+'_copy',pos:[o.pos[0]+1.5,o.pos[1],o.pos[2]],rot:[...o.rot],sc:[...(o.sc||[1,1,1])],hue:0,color:o.color,fc:{...o.fc},nodes:o.nodes.map(n=>({...n,p:{...n.p},off:n.off?JSON.parse(JSON.stringify(n.off)):null,out:null,dirty:true}))});sel=objs.length-1;osel.clear();selPts.clear();all()}
+function dupObj(){const o=objs[sel];if(!o)return;objs.push({name:o.name+'_copy',pos:[o.pos[0]+1.5,o.pos[1],o.pos[2]],rot:[...o.rot],sc:[...(o.sc||[1,1,1])],hue:0,color:o.color,fc:{...o.fc},cnm:{...(o.cnm||{})},nodes:o.nodes.map(n=>({...n,p:{...n.p},off:n.off?JSON.parse(JSON.stringify(n.off)):null,out:null,dirty:true}))});sel=objs.length-1;osel.clear();selPts.clear();all()}
 /* Delete: removes only what is selected, in the mode you are in. Objects: every selected object (and nothing else). Faces: just those polygons. Edges: just those edge lines (the two polygons beside each edge become one). Points: only points that sit on a single line (exactly two edges), as in Maya's Delete Vertex; this cleans up the points left over after edges are deleted. With Symmetrize on, the mirrored partners go too. */
 function delObj(){const set=new Set(osel);if(objs[sel])set.add(objs[sel]);if(!set.size)return;
  const first=Math.min(...[...set].map(o=>objs.indexOf(o)).filter(i=>i>=0));let n=0;
@@ -899,8 +900,8 @@ const CMDS=[
  {g:'View',l:'Right view',k:'Shift+ArrowRight',kl:'Shift+→',f:()=>viewTo(Math.PI/2,0)},
  {g:'View',l:'Top view',k:'Shift+ArrowUp',kl:'Shift+↑',f:()=>viewTo(0,-Math.PI/2)},
  {g:'View',l:'Bottom view',k:'Shift+ArrowDown',kl:'Shift+↓',f:()=>viewTo(0,Math.PI/2)},
- {g:'View',l:'Zoom in',k:'=',f:()=>{dist=Math.max(3,dist*.85);draw()}},
- {g:'View',l:'Zoom out',k:'-',f:()=>{dist=Math.min(24,dist/.85);draw()}},
+ {g:'View',l:'Zoom in',k:'=',f:()=>{dist=Math.max(.3,dist*.85);draw()}},
+ {g:'View',l:'Zoom out',k:'-',f:()=>{dist=Math.min(80,dist/.85);draw()}},
  {g:'Rigging',l:'Joint tool (click to place)',k:'J',f:()=>{setTool('joint');all()},on:()=>jointOn},
  {g:'Rigging',l:'Bind skin to skeleton',k:'Shift+K',en:()=>need()&&rig.joints.length>0,f:bindSkin},
  {g:'Rigging',l:'Remove skin',k:'Shift+U',en:()=>hasSkin(),f:unbindSkin},
@@ -964,10 +965,10 @@ function edgeBevel(){const o=objs[sel],en=editNode(o);if(!en||!en.rep||sub!=='ed
 let lastSnap='',undoSt=[],redoSt=[];
 /* the file this project belongs to: name (shown in the top bar), the file handle when the browser allows silent saving, and the scene as it was when last saved */
 let curFile={name:'',handle:null,saved:null};
-function snap(){return JSON.stringify({v:1,rig:rig.joints,groups:groups,cams:cams,objs:objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name,pos:o.pos,rot:o.rot,sc:o.sc||[1,1,1],color:o.color,fc:o.fc,dm:o.dm,op:o.op,
+function snap(){return JSON.stringify({v:1,rig:rig.joints,groups:groups,cams:cams,objs:objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name,pos:o.pos,rot:o.rot,sc:o.sc||[1,1,1],color:o.color,fc:o.fc,cnm:o.cnm&&Object.keys(o.cnm).length?o.cnm:undefined,dm:o.dm,op:o.op,
  nodes:o.nodes.filter(n=>!(n.type==='Edit'&&!Object.keys(n.off).length)).map(n=>({type:n.type,on:n.on,p:n.p,off:n.off,fl:n.fl,edge:n.edge||null,mesh:n.mesh||null}))}))})}
 function restore(s){const sc=JSON.parse(s);if(!sc||!Array.isArray(sc.objs))throw new Error('bad scene');
- const next=sc.objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name||'Object',pos:o.pos||[0,0,0],rot:o.rot||[0,0,0],sc:o.sc||[1,1,1],hue:0,color:o.color||'#3aa393',fc:o.fc||{},dm:o.dm,op:o.op,
+ const next=sc.objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name||'Object',pos:o.pos||[0,0,0],rot:o.rot||[0,0,0],sc:o.sc||[1,1,1],hue:0,color:o.color||'#3aa393',fc:o.fc||{},cnm:o.cnm||{},dm:o.dm,op:o.op,
   nodes:(o.nodes||[]).filter(n=>TY[n.type]).map(n=>{const k=mk(n.type);Object.assign(k.p,n.p||{});k.on=n.on!==false;if(n.off)k.off=n.off;k.fl=n.fl||null;if(n.edge)k.edge=n.edge;if(n.mesh)k.mesh=n.mesh;return k})}));
  if(!next.every(o=>o.nodes.length&&GEN[o.nodes[0].type]))throw new Error('bad scene');
  objs.length=0;next.forEach(o=>objs.push(o));rig.joints=(sc.rig||[]).map(j=>({name:j.name,p:j.p,parent:j.parent,rot:j.rot||[0,0,0]}));groups=(sc.groups||[]).map(g=>({id:g.id,name:g.name,open:g.open!==false}));gid2=groups.reduce((m,g)=>Math.max(m,g.id),0);cams=(sc.cams||[]).map(c=>({name:c.name||'camera',tgt:c.tgt||[0,0,0],yaw:c.yaw||0,pitch:c.pitch||0,dist:c.dist||9,pan:c.pan||[0,0],f:c.f||35}));if(camSel>=cams.length)camSel=-1;if(camAct>=cams.length){camAct=-1;tgt=[0,0,0]}osel.clear();rigSel=-1;sel=Math.min(sel,Math.max(0,objs.length-1));selPts.clear();selEdges.clear();ringPrev=null;all()}
@@ -987,7 +988,14 @@ function newFile(){
 async function sendFile(name,text){try{const d=await claude.use('downloads');if(!d)throw 0;await d.save({filename:name,data:text});toast('Saved '+name)}
  catch(err){if(err&&err.code==='declined')return;$('#dtx').value=text;$('#dlg').hidden=false;$('#ddl').hidden=true;toast('Downloads are not available here. Copy the text from the box instead.')}}
 /* Save File writes the whole project (every object, tree, sphere, group, colour and edit history) into the current file with no pop-up. Save As names the file first; the name then shows in the top bar. The project is stored as an .obj whose geometry any program can open; Just3D also finds the editable scene inside it. */
-function projectText(){const ms=worldMeshes(),t=buildObj(ms,true)[0];return t.replace(/^mtllib .*\n/m,'').replace(/^usemtl .*\n/gm,'')}
+/* rotoscope images travel inside the project file, on their own comment line, so they come back when the file is opened */
+function rotoPack(){const o={};['front','side','top'].forEach(pl=>{const r=ROTO[pl];if(!r)return;if(!r._d){let d=r.img.toDataURL('image/png');if(d.length>1500000)d=r.img.toDataURL('image/jpeg',.9);r._d=d}o[pl]={name:r.name,w:r.w,ox:r.ox,oy:r.oy,op:r.op,vis:r.vis,d:r._d}});return Object.keys(o).length?'#ROTOXSI '+JSON.stringify(o)+'\n':''}
+function rotoUnpack(text){['front','side','top'].forEach(pl=>{ROTO[pl]=null});rotoEdit=false;
+ const m=/^#ROTOXSI (.*)$/m.exec(text);if(!m){rotoSync();draw();return}
+ let o;try{o=JSON.parse(m[1])}catch(_){return}
+ Object.keys(o).forEach(pl=>{if(!RAX[pl]||!o[pl]||!o[pl].d)return;const r=o[pl],im=new Image();
+  im.onload=()=>{const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;c.getContext('2d').drawImage(im,0,0);ROTO[pl]={img:c,iw:c.width,ih:c.height,name:r.name||'image',w:r.w,ox:r.ox,oy:r.oy,op:r.op,vis:r.vis!==false,_d:r.d};rotoSync();draw()};im.src=r.d})}
+function projectText(){const ms=worldMeshes(),t=buildObj(ms,true)[0].replace(/^(#PROTOXSI .*\n)/m,'$1'+rotoPack().replace(/\$/g,'$$$$'));return t.replace(/^mtllib .*\n/m,'').replace(/^usemtl .*\n/gm,'')}
 function setFile(name,handle){commit();curFile={name,handle:handle||null,saved:lastSnap};updateFname()}
 function markSaved(){commit();curFile.saved=lastSnap;updateFname()}
 function anchorSave(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/octet-stream'}));a.download=name;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
@@ -1030,7 +1038,7 @@ function importObj(t){const V=[],objsF=[];let cur=null;
  const list=objsF.filter(o=>o.F.length);if(!list.length)throw new Error('no faces');
  list.forEach(o=>{const used=[...new Set(o.F.flat())],map=new Map();used.forEach((i,k)=>map.set(i,k));const ob=addObj('Mesh',0);ob.name=o.name;ob.nodes[0].mesh={v:used.map(i=>V[i]),f:o.F.map(f=>f.map(i=>map.get(i)))};ob.nodes[0].dirty=true;ob.color=ob.color});
  all()}
-function loadScene(s){try{const mk0=s.indexOf('#PROTOXSI ');if(mk0>=0)s=s.slice(mk0+10,s.indexOf('\n',mk0)<0?undefined:s.indexOf('\n',mk0));else if(/^\s*(v|f|o)\s/m.test(s)&&!/^\s*\{/.test(s)){importObj(s);commit();$('#dlg').hidden=true;toast('OBJ imported');return true}restore(s);commit();$('#dlg').hidden=true;toast('Scene loaded');return true}catch(_){toast('That text is not a valid scene');return false}}
+function loadScene(s){try{const mk0=s.indexOf('#PROTOXSI '),full=s;if(mk0>=0)s=s.slice(mk0+10,s.indexOf('\n',mk0)<0?undefined:s.indexOf('\n',mk0));else if(/^\s*(v|f|o)\s/m.test(s)&&!/^\s*\{/.test(s)){importObj(s);commit();$('#dlg').hidden=true;toast('OBJ imported');return true}restore(s);rotoUnpack(full);commit();$('#dlg').hidden=true;toast('Scene loaded');return true}catch(_){toast('That text is not a valid scene');return false}}
 /* ---- projection toggle and view cube ---- */
 const VC=[{n:'Front',c:[0,0,-1],u:[1,0,0],v:[0,1,0],y:0,p:0},{n:'Back',c:[0,0,1],u:[-1,0,0],v:[0,1,0],y:Math.PI,p:0},
  {n:'Right',c:[1,0,0],u:[0,0,1],v:[0,1,0],y:Math.PI/2,p:0},{n:'Left',c:[-1,0,0],u:[0,0,1],v:[0,1,0],y:-Math.PI/2,p:0},
@@ -1039,8 +1047,23 @@ let vcH=-1,vcD=null,vcFaces=[];
 function setProj(o){if(o!==ortho)toast('The left view is always perspective and the right view is always orthographic.')}
 /* Orbit with no limit: the view can go over the top and keep turning. grab = right-drag: the surface nearest you follows the mouse (right moves it right, down moves it down). Past straight up or down the view is upside down, so the left/right sense flips with the sign of cos(pitch) to keep the surface following the mouse. */
 function orbitBy(dx,dy,k,grab){const up=Math.cos(pitch)>=0?1:-1;yaw+=dx*k*up*(grab?-1:1);pitch+=dy*k*(grab?-1:1);pitch=((pitch+Math.PI)%TAU+TAU)%TAU-Math.PI}
-function viewTo(y,p){if(VW[curV].ortho){yaw=y;pitch=p;draw();return}const vk=curV,y0=yaw,p0=pitch,dy=(((y-y0+Math.PI)%TAU)+TAU)%TAU-Math.PI,t0=performance.now();
- const step=t=>{const k=Math.min(1,(t-t0)/220),e=k*k*(3-2*k),k0=curV;activate(vk);yaw=y0+dy*e;pitch=p0+(p-p0)*e;activate(k0);draw();if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step)}
+/* points of the selected object(s) in world space, used to centre and zoom the view onto them */
+function selWorldPts(){const set=[objs[sel],...osel].filter((o,i,a)=>o&&!o.hid&&objs.includes(o)&&a.indexOf(o)===i),P=[];
+ set.forEach(o=>{const m=evaluate(o),M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1]));[...new Set(m.f.flat())].forEach(i=>{const q=mulv(M,m.v[i]);P.push([q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2]])})});return P}
+/* centre + distance that fit the selected object in the view looking from (y,p); null when nothing is selected */
+function fitFor(y,p){if(camAct>=0)return null;const P=selWorldPts();if(!P.length)return null;
+ const mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];P.forEach(q=>{for(let k=0;k<3;k++){if(q[k]<mn[k])mn[k]=q[k];if(q[k]>mx[k])mx[k]=q[k]}});
+ const c=[0,1,2].map(k=>(mn[k]+mx[k])/2),cy=Math.cos(y),sy=Math.sin(y),cp=Math.cos(p),sp=Math.sin(p),W=draw.W||1,H=draw.H||1,F=Math.min(W,H)*1.1;let d=.3;
+ P.forEach(q=>{const x=q[0]-c[0],yy=q[1]-c[1],z=q[2]-c[2],x1=x*cy+z*sy,z1=-x*sy+z*cy,vx=x1,vy=yy*cp-z1*sp,vz=yy*sp+z1*cp;
+  const dx=F*Math.abs(vx)/(W*.4),dy=F*Math.abs(vy)/(H*.4);
+  if(VW[curV].ortho)d=Math.max(d,dx,dy);else d=Math.max(d,dx-vz,dy-vz,.3-vz)});
+ return{c,d:Math.max(.3,Math.min(80,d))}}
+function viewTo(y,p){const fit=fitFor(y,p);
+ if(VW[curV].ortho){yaw=y;pitch=p;if(fit){tgt=fit.c;dist=fit.d;panX=0;panY=0}draw();return}
+ const vk=curV,y0=yaw,p0=pitch,dy=(((y-y0+Math.PI)%TAU)+TAU)%TAU-Math.PI,t0=performance.now(),d0=dist,t00=tgt.slice(),px0=panX,py0=panY;
+ const step=t=>{const k=Math.min(1,(t-t0)/220),e=k*k*(3-2*k),k0=curV;activate(vk);yaw=y0+dy*e;pitch=p0+(p-p0)*e;
+  if(fit){dist=d0+(fit.d-d0)*e;tgt=[0,1,2].map(i=>t00[i]+(fit.c[i]-t00[i])*e);panX=px0*(1-e);panY=py0*(1-e)}
+  activate(k0);draw();if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step)}
 function drawCube(){const c=$('#vcube'),d=devicePixelRatio||1,S=110,K=30;if(c.width!==Math.round(S*d)){c.width=Math.round(S*d);c.height=Math.round(S*d)}
  const g=c.getContext('2d');g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,S,S);
  const cs=getComputedStyle(document.documentElement),acc=cs.getPropertyValue('--acc').trim(),pn=cs.getPropertyValue('--panel').trim(),tx=cs.getPropertyValue('--tx').trim(),ln=cs.getPropertyValue('--mut').trim();
@@ -1629,6 +1652,18 @@ function endGn(i,ok){const g=groups.find(x=>x.id===+i.dataset.gn);if(!g||!g.ren)
 document.addEventListener('keydown',e=>{const i=e.target;if(i&&i.dataset&&i.dataset.gn){if(e.key==='Enter')endGn(i,true);else if(e.key==='Escape')endGn(i,false)}});
 document.addEventListener('focusout',e=>{const i=e.target;if(i&&i.dataset&&i.dataset.gn)endGn(i,true)});
 document.addEventListener('dblclick',e=>{const h=e.target.closest&&e.target.closest('[data-gh]');if(!h||e.target.tagName==='INPUT')return;const g=groups.find(x=>x.id===+h.dataset.gh);if(g){g.ren=true;panels();focusGn()}});
+/* double-click an object or a color in the Explorer to type a name for it */
+function startRen(t,o,c){renS={t,o,c};panels();const i=document.querySelector('[data-rn]');if(i){i.focus();i.select()}}
+function endRen(i,ok){const r=renS;if(!r)return;renS=null;const v=i.value.trim();
+ if(ok&&v){if(r.t==='o'){if(v!==r.o.name){r.o.name=v;commit()}}else{r.o.cnm=r.o.cnm||{};if(v===colorName(r.c))delete r.o.cnm[r.c];else r.o.cnm[r.c]=v;commit()}}
+ all()}
+document.addEventListener('keydown',e=>{const i=e.target;if(i&&i.dataset&&i.dataset.rn){e.stopPropagation();if(e.key==='Enter')endRen(i,true);else if(e.key==='Escape')endRen(i,false)}},true);
+document.addEventListener('focusout',e=>{const i=e.target;if(i&&i.dataset&&i.dataset.rn)endRen(i,true)});
+/* the first click redraws the Explorer, so the browser never sends a dblclick; the second click (detail 2) is used instead */
+document.addEventListener('click',e=>{if(e.detail!==2||e.shiftKey||e.ctrlKey||e.metaKey||e.target.tagName==='INPUT')return;const t=e.target.closest&&e.target.closest('#tree');if(!t)return;
+ const cc=e.target.closest('[data-cc]'),gh=e.target.closest('[data-gh]'),r=e.target.closest('[data-o]');
+ const cv=cc&&cc.dataset.cc,gv=gh&&+gh.dataset.gh,ov=r&&+r.dataset.o;
+ setTimeout(()=>{if(cc){if(objs[sel])startRen('c',objs[sel],cv)}else if(gh){const g=groups.find(x=>x.id===gv);if(g){g.ren=true;panels();focusGn()}}else if(r){const o=objs[ov];if(o)startRen('o',o)}},0)},true);
 function ungroupSel(){const o=objs[sel];if(!o||!o.g){toast('The selected object is not in a group');return}const id=o.g;objs.forEach(x=>{if(x.g===id)x.g=0});osel.clear();all()}
 function hideCtx(){$('#ctx').hidden=true}
 function showCtx(x,y){const m=$('#ctx');let h='',g='';
@@ -1673,7 +1708,7 @@ cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,
  if(drag.ro){rotoDrag(e);return}
  if(drag.sc){sculptMove(e);return}
  if(drag.rc||drag.orb){if(ortho){drag.x=e.clientX;drag.y=e.clientY;return}orbitBy(dx,dy,.008,drag.rc);drag.x=e.clientX;drag.y=e.clientY;draw();return}
- if(drag.zm){dist=Math.max(3,Math.min(24,dist*Math.exp((dy-dx)*.008)));drag.x=e.clientX;drag.y=e.clientY;draw();return}
+ if(drag.zm){dist=Math.max(.3,Math.min(80,dist*Math.exp((dy-dx)*.008)));drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.exm&&exNode&&draw.exm){const m=draw.exm,s2=((e.clientX-drag.x)*m.ux+(e.clientY-drag.y)*m.uy)/m.pxu/drag.exm.ks;exNode.p.dist=Math.max(-5,Math.min(5,+(drag.exm.d0+s2).toFixed(3)));const so=objs[sel],i=so.nodes.indexOf(exNode);dirtyFrom(so,i);evaluate(so);draw();return}
  if(drag.jn)return;
  if(drag.pn){paintAt(e);return}
@@ -1714,7 +1749,7 @@ cv.addEventListener('pointerup',e=>{if(drag&&drag.hl){const r=cv.getBoundingClie
   if(best<0){bd=1e9;draw.centers.forEach((c,i)=>{const d=Math.hypot(c[0]-x,c[1]-y);if(d<bd){bd=d;best=i}});if(bd>=40)best=-1}
   if(best<0&&!add(e)&&!e.ctrlKey&&!e.metaKey&&(sel>=0||osel.size||camSel>=0)){sel=-1;camSel=-1;osel.clear();selPts.clear();all()}
   if(best>=0){camSel=-1;if(add(e)||e.ctrlKey||e.metaKey){const oo=objs[best];if(best===sel){if(osel.size){const nx=[...osel][0],ix=objs.indexOf(nx);osel.delete(nx);if(ix>=0)sel=ix}}else if(osel.has(oo))osel.delete(oo);else osel.add(oo)}else{sel=best;osel.clear()}selPts.clear();all()}}drag=null});
-cv.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(3,Math.min(24,dist*(1+e.deltaY*.001)));draw()},{passive:false});
+cv.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(.3,Math.min(80,dist*(1+e.deltaY*.001)));draw()},{passive:false});
 addEventListener('resize',draw);
 /* ---- scene dialog, history hooks, edge-loop double-click ---- */
 $('#dcl').onclick=()=>{$('#dlg').hidden=true};

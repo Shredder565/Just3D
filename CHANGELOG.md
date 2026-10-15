@@ -4,6 +4,12 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v116 — Rename in the Explorer, rotoscope saved with the project, View cube fits the object
+- Double-click an object, a model/group or a colour in the Explorer to type a name for it. Enter or clicking away keeps it, Esc cancels. Colour names are saved with the project.
+- Rotoscope images (and their position, size and opacity) are now stored inside the saved project .obj, so they come back when you open it.
+- Clicking a face of the view cube (or its arrows) now also centres on the selected object and zooms to fit it, in both views.
+- Zoom limits widened so small objects can be framed closely.
+
 ## v115 — Select can be switched off; Grid icon
 - The **Select** button (and the Q key) is now a switch: click it again to turn it off and go back to the transform tool you used last (Move, Rotate or Scale). Before, it could only be turned on.
 - The **Grid** button now has a tic-tac-toe style empty-field icon.
