@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v117 — Undo and Redo keep your selection
+- After undoing (or redoing) a move, extrude or any other edit, the selected points, edges, faces and objects stay selected.
+
 ## v116 — Rename in the Explorer, rotoscope saved with the project, View cube fits the object
 - Double-click an object, a model/group or a colour in the Explorer to type a name for it. Enter or clicking away keeps it, Esc cancels. Colour names are saved with the project.
 - Rotoscope images (and their position, size and opacity) are now stored inside the saved project .obj, so they come back when you open it.

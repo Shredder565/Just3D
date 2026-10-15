@@ -962,7 +962,14 @@ function edgeBevel(){const o=objs[sel],en=editNode(o);if(!en||!en.rep||sub!=='ed
  const nn=mk('Bevel'),L=o.nodes.length-1;nn.fl=[...reg];
  placeNode(o,nn);selPts.clear();selEdges.clear();all()}
 /* ---- undo / redo / scene save and load ---- */
-let lastSnap='',undoSt=[],redoSt=[];
+let lastSnap='',undoSt=[],redoSt=[],undoSel=[],redoSel=[],preSel=null;
+/* what is selected, kept with each undo step so Undo/Redo bring the selection back too */
+function selState(){return{sel,osel:[...osel].map(o=>objs.indexOf(o)).filter(i=>i>=0),pts:[...selPts],edges:[...selEdges],em:editMode,sub}}
+function applySel(st){if(!st)return;sel=Math.max(0,Math.min(st.sel,objs.length-1));osel.clear();st.osel.forEach(i=>{if(objs[i]&&i!==sel)osel.add(objs[i])});selPts.clear();selEdges.clear();
+ const o=objs[sel];if(o&&editMode&&st.em&&st.sub===sub){const m=evaluate(o),n=sub==='face'?m.f.length:m.v.length;st.pts.forEach(i=>{if(i>=0&&i<n)selPts.add(i)});
+  st.edges.forEach(k=>{const[a,b]=String(k).split('_').map(Number);if(a<m.v.length&&b<m.v.length)selEdges.add(k)})}
+ all()}
+['pointerdown','keydown'].forEach(t=>document.addEventListener(t,()=>{preSel=selState()},true));
 /* the file this project belongs to: name (shown in the top bar), the file handle when the browser allows silent saving, and the scene as it was when last saved */
 let curFile={name:'',handle:null,saved:null};
 function snap(){return JSON.stringify({v:1,rig:rig.joints,groups:groups,cams:cams,objs:objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name,pos:o.pos,rot:o.rot,sc:o.sc||[1,1,1],color:o.color,fc:o.fc,cnm:o.cnm&&Object.keys(o.cnm).length?o.cnm:undefined,dm:o.dm,op:o.op,
@@ -972,12 +979,12 @@ function restore(s){const sc=JSON.parse(s);if(!sc||!Array.isArray(sc.objs))throw
   nodes:(o.nodes||[]).filter(n=>TY[n.type]).map(n=>{const k=mk(n.type);Object.assign(k.p,n.p||{});k.on=n.on!==false;if(n.off)k.off=n.off;k.fl=n.fl||null;if(n.edge)k.edge=n.edge;if(n.mesh)k.mesh=n.mesh;return k})}));
  if(!next.every(o=>o.nodes.length&&GEN[o.nodes[0].type]))throw new Error('bad scene');
  objs.length=0;next.forEach(o=>objs.push(o));rig.joints=(sc.rig||[]).map(j=>({name:j.name,p:j.p,parent:j.parent,rot:j.rot||[0,0,0]}));groups=(sc.groups||[]).map(g=>({id:g.id,name:g.name,open:g.open!==false}));gid2=groups.reduce((m,g)=>Math.max(m,g.id),0);cams=(sc.cams||[]).map(c=>({name:c.name||'camera',tgt:c.tgt||[0,0,0],yaw:c.yaw||0,pitch:c.pitch||0,dist:c.dist||9,pan:c.pan||[0,0],f:c.f||35}));if(camSel>=cams.length)camSel=-1;if(camAct>=cams.length){camAct=-1;tgt=[0,0,0]}osel.clear();rigSel=-1;sel=Math.min(sel,Math.max(0,objs.length-1));selPts.clear();selEdges.clear();ringPrev=null;all()}
-function commit(){const s=snap();if(s!==lastSnap){undoSt.push(lastSnap);if(undoSt.length>100)undoSt.shift();redoSt.length=0;lastSnap=s}updateFname()}
+function commit(){const s=snap();if(s!==lastSnap){undoSt.push(lastSnap);undoSel.push(preSel||selState());if(undoSt.length>100){undoSt.shift();undoSel.shift()}redoSt.length=0;redoSel.length=0;lastSnap=s}updateFname()}
 function updateFname(){const e=document.getElementById('fname'),n=curFile.name||'Untitled',dirty=!!curFile.name&&lastSnap!==curFile.saved;
  if(e){e.textContent=n;e.classList.toggle('dirty',dirty);e.title=(curFile.name?'This project is saved as '+curFile.name:'Not saved yet. Use Save As to name the file.')+(dirty?' (changes since the last save)':'')}
  document.title=n+(dirty?' *':'')+' - Just3D'}
-function undo(){commit();if(!undoSt.length){toast('Nothing to undo');return}redoSt.push(lastSnap);lastSnap=undoSt.pop();restore(lastSnap)}
-function redo(){commit();if(!redoSt.length){toast('Nothing to redo');return}undoSt.push(lastSnap);lastSnap=redoSt.pop();restore(lastSnap)}
+function undo(){commit();if(!undoSt.length){toast('Nothing to undo');return}redoSt.push(lastSnap);redoSel.push(selState());lastSnap=undoSt.pop();const st=undoSel.pop();restore(lastSnap);applySel(st)}
+function redo(){commit();if(!redoSt.length){toast('Nothing to redo');return}undoSt.push(lastSnap);undoSel.push(selState());lastSnap=redoSt.pop();const st=redoSel.pop();restore(lastSnap);applySel(st)}
 function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>{t.hidden=true},2600)}
 function openScene(){$('#dtx').value=snap();$('#dlg').hidden=false;$('#ddl').hidden=true;
  try{claude.use('downloads').then(d=>{$('#ddl').hidden=!d}).catch(()=>{})}catch(_){}}
