@@ -4,6 +4,12 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v118 — Soft Select (Maya style)
+- New **Soft Select** button in Modeling tools (also Alt+B). While it is on, moving, rotating or scaling selected points, edges or faces also pulls the points around them, strongest next to the selection and fading to nothing at the falloff radius. It stays on until you click it off.
+- **Falloff radius** slider, **Volume / Surface** distance (Surface follows the edges of the mesh, so a fold or gap does not carry the pull across), and a falloff curve (Smooth, Linear, Sharp, Round).
+- The pulled points and faces are shown with a heat colour from yellow (full pull) to red (almost none).
+- Works together with Mirror/Symmetry editing and with Undo.
+
 ## v117 — Undo and Redo keep your selection
 - After undoing (or redoing) a move, extrude or any other edit, the selected points, edges, faces and objects stay selected.
 
