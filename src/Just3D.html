@@ -780,7 +780,7 @@ const CMDS=[
  {g:'Modeling',l:'Clear face paint',k:'Shift+P',en:need,f:()=>paintFaces(true)},
  {g:'Modeling',l:'Reset point edits',k:'Shift+R',en:inEd,f:resetEdits},
  {g:'Modeling',l:'Mirror polygons',k:'Alt+X',en:need,f:mirrorPolys,on:()=>symEdit},
- {g:'Modeling',l:'Symmetrize',k:'Ctrl+Shift+Y',en:need,f:symmetrize},
+ {g:'Modeling',l:'Symmetrize',k:'Ctrl+Shift+Y',en:need,f:symToggle,on:()=>symEdit},
  {g:'Modeling',l:'Symmetrize object changes',k:'Alt+Y',en:need,f:symmetrizeChanges},
  {g:'Modeling',l:'Paint tool (click or drag faces)',k:'B',en:need,f:pick('paint'),on:()=>paintOn},
  {g:'Object',l:'Add sphere',k:'Shift+S',f:addO('Sphere')},
@@ -1185,6 +1185,10 @@ function symmetrize(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK
  selPts.clear();selEdges.clear();ringPrev=null;all();toast(symWhy(r,ax)+'Change axis, dir and offset in the Symmetrize card; delete the card to undo.')}
 /* Symmetrize object changes: same detection, kept as its own command. Every earlier node and edit stays in the stack, so nothing is lost; delete the Symmetrize node to go back. */
 function symmetrizeChanges(){symmetrize()}
+/* Symmetrize is a switch: clicking it on mirrors the modelled side across the plane now and then stays on, repeating every later edit (move, rotate, scale, loop cut, knife, extrude, bevel, weld, delete) on the opposite side until it is clicked off. */
+function symToggle(){const o=objs[sel];if(!o)return;
+ if(symEdit){symEdit=false;all();toast('Symmetrize off. New edits are no longer repeated on the other side (the symmetrized shape stays; delete the Symmetrize card to undo it).');return}
+ symEdit=true;symmetrize();toast('Symmetrize on ('+'XYZ'[symAxis()]+' plane): the model was mirrored and every edit you make now is repeated on the opposite side until you click Symmetrize again. Press X, Y or Z before clicking to choose another plane.')}
 /* Merge: joins the selected objects (select two or more with Shift+click) into one object. Each object's final shape, position, rotation and scale are baked in and face colours are kept. Where objects overlap, the faces of each that lie inside the other are deleted and the nearest points along the open seam are welded together. The originals are replaced by the merged object (Ctrl+Z undoes it). */
 function insideMesh(P,M,bb){if(P[0]<bb[0][0]||P[0]>bb[1][0]||P[1]<bb[0][1]||P[1]>bb[1][1]||P[2]<bb[0][2]||P[2]>bb[1][2])return false;
  const D=[[.5774,.6101,.5422],[-.4432,.7311,-.5189],[.2977,-.5513,.7799]];let votes=0;
