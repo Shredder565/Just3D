@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v110 — Mirror Polygons button removed
+- The Mirror Polygons button is gone from Modeling tools. The Alt+X shortcut and the right-click menu entry still toggle it; Symmetrize is unchanged.
+
 ## v109 — Polygon modeling subshelf removed
 - The now-empty Polygon modeling subshelf (just a second Move / Rotate / Scale) is gone from Basic Modeling Tools. The Move, Rotate and Scale buttons in Transform and scene are unchanged.
 
