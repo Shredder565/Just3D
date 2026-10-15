@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v96 — Tool icons
+- Move, Rotate and Scale buttons show the standard four-arrow, circular-arrow and diagonal-arrow icons (Transform and scene, and Polygon modeling).
+- Points shows stars, Edges shows a couple of wavy lines, and Faces shows one long flat rectangle.
+
 ## v95 — One button per line, collapsible headings, primitive icons
 - Every button in Basic Modeling Tools is on its own line.
 - The dark blue headings (Primitives, Transform and scene, Polygon modeling, Modeling tools, Rotoscope, and the headings on the other shelves) can be minimized and expanded with a click, like the numbered tabs. A small arrow shows the state and your choice is remembered.
