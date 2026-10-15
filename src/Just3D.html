@@ -1130,11 +1130,11 @@ VW[vk].vc.addEventListener('pointerup',()=>{if(vcD&&vcD.m<=4&&vcD.h>=0){const f=
 VW[vk].vc.addEventListener('pointerleave',()=>{if(!vcD&&vcH!==-1){vcH=-1;drawCube()}});
 VW[vk].vc.addEventListener('contextmenu',e=>{e.preventDefault();showCtx(e.clientX,e.clientY)});
 });
-/* arrow buttons around the orthographic view cube: left/right step through Front, Back, Right, Left; up = Top, down = Bottom */
-document.querySelectorAll('.vnav').forEach(b=>b.addEventListener('click',()=>{const k0=curV;activate(1);try{const SV=[0,1,2,3],d=b.dataset.d;
+/* arrow buttons around the orthographic view cube: each one turns to the side face that sits on that side of the cube on screen
+   (Front: left = Left, right = Right; Back: left = Right, right = Left; and so on round the four sides); up = Top, down = Bottom */
+document.querySelectorAll('.vnav').forEach(b=>b.addEventListener('click',()=>{const k0=curV;activate(1);try{const d=b.dataset.d;
  if(d==='up'||d==='down'){const f=VC[d==='up'?4:5];viewTo(f.y,f.p)}
- else{const ang=(a,c)=>Math.abs((((a-c+Math.PI)%TAU)+TAU)%TAU-Math.PI);let ci=0,bd=9;SV.forEach(i=>{const e=ang(yaw,VC[i].y);if(e<bd){bd=e;ci=i}});if(Math.abs(pitch)>.2)ci=0;
-  const n=(ci+(d==='left'?1:3))%4,f=VC[n];viewTo(f.y,f.p)}}finally{activate(k0)}}));
+ else{const q=Math.PI/2,base=Math.round(yaw/q)*q;let y=base+(d==='right'?q:-q);y=((y+Math.PI)%TAU+TAU)%TAU-Math.PI;if(y<=-Math.PI+1e-6)y=Math.PI;viewTo(y,0)}}finally{activate(k0)}}));
 /* ---- scale tool ---- */
 const diag=s=>[[s[0],0,0],[0,s[1],0],[0,0,s[2]]],wl=(o,w)=>{const t=mulvT(rotMat(o.rot),w),s=o.sc||[1,1,1];return[t[0]/s[0],t[1]/s[1],t[2]/s[2]]};
 /* dragging a handle outward grows by the drag distance relative to the handle length; the centre square scales evenly */

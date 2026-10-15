@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v119 — View cube arrows
+- The arrows around the orthographic view cube now turn to the side that is on that side of the cube: from Front, left goes to Left and right goes to Right; from Back, left goes to Right and right goes to Left (the face drawn on that side); then round the four sides. Up is Top, down is Bottom.
+
 ## v118 — Soft Select (Maya style)
 - New **Soft Select** button in Modeling tools (also Alt+B). While it is on, moving, rotating or scaling selected points, edges or faces also pulls the points around them, strongest next to the selection and fading to nothing at the falloff radius. It stays on until you click it off.
 - **Falloff radius** slider, **Volume / Surface** distance (Surface follows the edges of the mesh, so a fold or gap does not carry the pull across), and a falloff curve (Smooth, Linear, Sharp, Round).
