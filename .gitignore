@@ -1,0 +1,4 @@
+launcher/app.html
+dist/
+*.exe
+*.zip

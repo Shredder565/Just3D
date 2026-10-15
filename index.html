@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Just3D — a fast, lightweight 3D modeler</title>
+<meta name="description" content="Just3D is a lightweight 3D modeler with a non-destructive history stack, symmetry tools and sculpting. Runs in one file, no install.">
+<link rel="icon" href="assets/icon256.png">
+<style>
+:root{--bg:#f6f8fb;--ink:#0e1a2e;--mut:#56637a;--navy:#0c1f45;--navy2:#1a3f7a;--teal:#2fc9b4;--card:#fff;--line:#dfe5ee}
+@media (prefers-color-scheme:dark){:root{--bg:#0a1220;--ink:#e8eef8;--mut:#9aa8c0;--card:#101b30;--line:#22314d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+a{color:inherit}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+.hero{background:linear-gradient(160deg,var(--navy2),var(--navy));color:#fff;padding:56px 0 150px;text-align:center}
+.hero img.logo{width:min(380px,80%);height:auto}
+.hero h1{font-size:clamp(28px,5vw,46px);line-height:1.15;margin:12px 0 10px;letter-spacing:-.5px}
+.hero p{max-width:620px;margin:0 auto 26px;color:#c9d6ee;font-size:18px}
+.btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-block;padding:13px 24px;border-radius:10px;font-weight:700;text-decoration:none;border:2px solid var(--teal)}
+.btn.p{background:var(--teal);color:#06231f}
+.btn.s{color:#fff}
+.btn:hover{filter:brightness(1.08)}
+.count{margin-top:18px;color:#c9d6ee;font-size:15px}
+.count b{color:var(--teal);font-size:20px}
+.shot{margin-top:-110px}
+.shot img{width:100%;height:auto;border-radius:12px;border:1px solid var(--line);box-shadow:0 20px 50px rgba(5,15,40,.35)}
+h2{font-size:28px;margin:64px 0 8px;letter-spacing:-.3px}
+.sub{color:var(--mut);margin:0 0 24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+.card h3{margin:0 0 6px;font-size:17px}
+.card h3:before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--teal);margin-right:9px}
+.card p{margin:0;color:var(--mut);font-size:15px}
+.dl{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px;display:grid;gap:20px;grid-template-columns:1.2fr 1fr}
+@media(max-width:720px){.dl{grid-template-columns:1fr}}
+.dl ol{margin:8px 0 0;padding-left:20px;color:var(--mut)}
+.dl .note{font-size:14px;color:var(--mut);border-left:3px solid var(--teal);padding-left:12px}
+footer{margin:70px 0 36px;color:var(--mut);font-size:14px;text-align:center}
+footer a{color:var(--mut)}
+</style>
+</head>
+<body>
+<header class="hero"><div class="wrap">
+  <img class="logo" src="assets/logo.png" alt="">
+  <h1>Just3D</h1>
+  <p>A fast, lightweight 3D modeler in a single file. Polygon modeling, a non-destructive history stack, symmetry tools and sculpting — no install, no account.</p>
+  <div class="btns">
+    <a class="btn p" id="dlbtn" href="https://github.com/Shredder565/Just3D/releases/latest">Download for Windows</a>
+    <a class="btn s" href="src/Just3D.html">Try it in your browser</a>
+    <a class="btn s" href="https://github.com/Shredder565/Just3D">View source</a>
+  </div>
+  <div class="count"><b id="cnt">–</b> downloads<span id="ver"></span></div>
+</div></header>
+
+<main class="wrap">
+  <div class="shot"><img src="assets/screenshot.png" alt="Just3D showing perspective and orthographic viewports side by side"></div>
+
+  <h2>What you get</h2>
+  <p class="sub">Everything runs locally in your browser or in a small app window.</p>
+  <div class="grid">
+    <div class="card"><h3>Two viewports</h3><p>Perspective and orthographic side by side, each with its own camera and view cube. Press Space for a full-size perspective view.</p></div>
+    <div class="card"><h3>Non-destructive history</h3><p>Every operation is a step you can reopen and edit later. See the current change at a glance, with past steps tucked underneath.</p></div>
+    <div class="card"><h3>Polygon modeling</h3><p>Points, edges and faces; loop cut, knife, extrude, bevel, weld, duplicate and group. Extrude always pushes outward.</p></div>
+    <div class="card"><h3>Symmetry tools</h3><p>Model one half and clone it across with Symmetrize Object Changes — history, paint and deleted faces carry over.</p></div>
+    <div class="card"><h3>Merge</h3><p>Join overlapping objects: interior faces are removed and the seam is welded into one clean mesh.</p></div>
+    <div class="card"><h3>Colour, render, sculpt</h3><p>Paint face colours, render close-ups, and sculpt with brushes. Export to OBJ when you’re done.</p></div>
+  </div>
+
+  <h2>Download</h2>
+  <p class="sub">Free to try. Windows 11 launcher, or use it in any modern browser.</p>
+  <div class="dl">
+    <div>
+      <b>Windows</b>
+      <ol>
+        <li>Download the zip from the <a href="https://github.com/Shredder565/Just3D/releases/latest">latest release</a>.</li>
+        <li>Right-click it → Properties → tick <b>Unblock</b> → OK, then extract.</li>
+        <li>Double-click <code>Just3D-vNN.exe</code>.</li>
+      </ol>
+      <p style="margin-top:16px"><a class="btn p" id="dlbtn2" href="https://github.com/Shredder565/Just3D/releases/latest">Download latest</a></p>
+    </div>
+    <div class="note">The launcher is about 2 MB and opens Just3D in its own window using Microsoft Edge or Google Chrome. It is not code-signed, so Windows SmartScreen may warn on first run (More info → Run anyway). The full source is in this repository if you’d rather build it yourself.</div>
+  </div>
+</main>
+
+<footer>
+  <a href="https://github.com/Shredder565/Just3D">GitHub</a> ·
+  <a href="https://github.com/Shredder565/Just3D/blob/main/CHANGELOG.md">Changelog</a> ·
+  <a href="https://github.com/Shredder565/Just3D/issues">Report an issue</a>
+</footer>
+
+<script>
+(function(){
+  var API='https://api.github.com/repos/Shredder565/Just3D/releases?per_page=100';
+  function set(id,t){var e=document.getElementById(id);if(e)e.textContent=t}
+  function fmt(n){try{return n.toLocaleString()}catch(e){return String(n)}}
+  var cached=null;try{cached=JSON.parse(sessionStorage.getItem('j3d'))}catch(e){}
+  function show(d){
+    set('cnt',fmt(d.total));if(d.tag)set('ver',' · latest '+d.tag);
+    if(d.url){['dlbtn','dlbtn2'].forEach(function(id){var a=document.getElementById(id);if(a)a.href=d.url});
+      set('dlbtn','Download for Windows ('+d.tag+')')}
+  }
+  if(cached)show(cached);
+  fetch(API).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(rel){
+    var total=0,url='',tag='';
+    rel.forEach(function(r){(r.assets||[]).forEach(function(a){total+=a.download_count||0})});
+    var latest=rel.filter(function(r){return !r.draft&&!r.prerelease})[0];
+    if(latest){tag=latest.tag_name;var z=(latest.assets||[]).filter(function(a){return /\.zip$/.test(a.name)})[0];if(z)url=z.browser_download_url}
+    var d={total:total,tag:tag,url:url};try{sessionStorage.setItem('j3d',JSON.stringify(d))}catch(e){}
+    show(d);
+  }).catch(function(){if(!cached)set('cnt','—')});
+})();
+</script>
+</body>
+</html>

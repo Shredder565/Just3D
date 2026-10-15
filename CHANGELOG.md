@@ -1,0 +1,101 @@
+# Changelog
+
+Newest first. Version numbers are the published build numbers of Just3D.
+
+> Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
+
+## v91 — Center to Object moved; desktop icon
+- **Center to Object** moved from Primitives to Polygon modeling, right after Center Pivot.
+- `Just3D.exe` now carries its own desktop icon (Just3D logo with the warrior artwork, 16–256 px).
+
+## v90 — History panel shows the current change only
+- The History panel (the non-destructive operator stack) shows only the current change as an open card.
+- Earlier changes are listed beneath as **Past changes (n)**, most recent first; click one to open it. A disabled step shows `(off)`. Open/closed state is remembered while you work.
+- Panel heading renamed from "Operator stack" to "History".
+
+## v89 — Sculpting headings
+- Brushes, Radius, Intensity, Falloff and Resolution are dark blue full-width headings with white text, each with its controls underneath.
+
+## v88 — Navigating headings
+- Camera, Cameras and Rigging are dark blue full-width headings with the buttons beneath.
+- Removed the dead "Ortho" button (the projection switch no longer exists).
+
+## v87 — Dark blue section headings
+- Primitives, Transform and scene, Polygon modeling and Modeling tools (and the headings on the other tabs) are dark blue bars with white text.
+
+## v86 — Accordion shelves in the left column
+- Each numbered tab opens its shelf directly underneath it; opening another tab closes the first.
+- Left column widened; buttons wrap onto more lines.
+
+## v85 — Logo to the top, Explorer + History on the right
+- Logo moved back to the top strip, left of the File buttons.
+- Explorer moved to the right-hand panel with History underneath it.
+
+## v84 — Numbered tabs moved to the left column
+- The four tabs became a vertical list at the top of the left column.
+
+## v83 — Merge
+- New **Merge** button (`Alt+J`): select two or more objects (Shift+click) and join them into one.
+- Faces of each object that lie inside the other are deleted and the nearest seam points are welded. Two overlapping spheres joined with no open edges in testing. Face colours are kept.
+- Limitations: the seam is face-level (can look jagged), the sources' own history is baked in, and `Ctrl+Z` undoes the merge.
+
+## v82 — Extrude always goes outward
+- Extrude (and Bevel depth) always push away from the object regardless of face winding: inside-out meshes, a single flipped face and meshes with holes all extrude outward.
+
+## v81 — File row beside tab 4
+- The File row (New File, Save File, Export File, format, Save to Computer, Create New Model) moved into the top strip and is visible on every shelf.
+
+## v80 — Beam behind the logo
+- The blast from the logo artwork stretches behind the whole "Just3D" word; the text stays readable.
+
+## v79 — Logo artwork
+- Miniature logo artwork with a transparent background added beside the wordmark.
+
+## v78 — Top button bar removed
+- The 26 buttons beside the logo and their bar were removed from view (still wired up internally).
+
+## v77 — Named shelf tabs
+- Tabs read: 1 Basic Modeling Tools, 2 Coloring and Rendering, 3 Navigating, 4 Sculpting.
+
+## v76 — Symmetrize Object Changes moved
+- Button moved to Modeling tools, right after Symmetrize.
+
+## v75 — Symmetrize carries paint and deletes
+- Symmetrize and Symmetrize Object Changes clone painted face colours to the mirrored side; deleted faces appear as holes on both sides.
+
+## v74 — Symmetrize Object Changes (`Alt+Y`)
+- Finds the side of an object where point edits were made and clones it to the other side using a Symmetrize step added to the end of the history. Nothing earlier is lost.
+
+## v73 — Renamed to Just3D
+- Renamed from "Simply 3D" (page title, logo, welcome popup, OBJ export header).
+
+## v72 — Starts orthographic + shortcut popup
+- Opens in orthographic-only view with a keyboard-shortcut popup (`Shift+?` reopens it; "Don't show at startup" option).
+- Reset camera also resets the orthographic view.
+- First packaged as a Windows launcher.
+
+## v71 — Space toggles split view
+- `Space` switches between split view and perspective-only.
+
+## v70 — Orthographic view arrows
+- Arrow buttons around the orthographic view cube: left/right step Front → Back → Right → Left, up = Top, down = Bottom.
+
+## v69 — Two viewports
+- Left viewport is perspective only; right viewport is orthographic only. Each has its own camera and view cube.
+
+## v68
+- Loop cut after scaling an object keeps the existing geometry in place and adds the loop to it.
+
+## v1 – v67 — Early versions (grouped)
+Started as an XSI-style modeler prototype, then grew to include:
+- Clicking empty space deselects points but keeps the object active; Shift keeps the selection.
+- Keyboard shortcuts: `U`, `P`, `E`, `F`, `S`, `Alt+P`, `H`, `Home`.
+- Create New Model: renameable model tabs with on/off checkboxes and hidden objects.
+- New File, and starting with a single sphere.
+- Double-click selects a row of points/faces at the same height; Shift adds to selection, Ctrl removes.
+- Box select also picks points on the back side.
+- Delete faces; Weld and Target Weld.
+- Mirror Geometry (reflected copy across a plane) and Mirror Polygons (symmetry editing: moves, deletes and paint repeat on the opposite side).
+- Undockable floating palettes for every shelf group.
+- Highlight to Render (render a close-up of a selected area).
+- Knife and loop cuts preserve painted colours.
