@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v103 — Wireframe stays a wireframe in Points / Edges / Faces mode
+- An object set to Wireframe no longer turns solid black when you enter Points, Edges or Faces mode (for example to move points with a rotoscope image behind it). It now stays see-through, so the rotoscope image and the wires remain visible. Selected faces are tinted. The global Wire view mode behaves the same way.
+
 ## v102 — Affect Front Vertices
 - New **Affect Front Vertices** button in the top bar (next to Opacity). While it is on, selecting points or faces only picks what faces the camera: box selection, Select all (Ctrl+A) and Invert selection skip anything hidden behind the model. Pressing it also removes already-selected hidden points, faces or edges from the selection. Press it again to select through the model as before.
 

@@ -347,9 +347,10 @@ GP.line=(a,za,b,zb,c)=>{GP.L.push(a[0],a[1],gpuZ(za),c[0],c[1],c[2],c[3],b[0],b[
 /* per-object viewport settings: o.dm = 0 shaded / 1 shaded+wire / 2 wireframe (unset = follow the global View mode), o.op = opacity 0.05-1 */
 const om=o=>o.dm!==undefined?o.dm:mode,oa=o=>o.op!==undefined?o.op:1;
 function gpuPolys(polys,acc){const A=hexRgb(acc).map(v=>v/255);
- for(const p of polys){const o=objs[p.oi],isel=p.oi===sel||osel.has(o),m=om(o),al=oa(o),wire=m>0||editMode||knife,fill=m<2||editMode||sculptOn;
+ for(const p of polys){const o=objs[p.oi],isel=p.oi===sel||osel.has(o),m=om(o),al=oa(o),wire=m>0||editMode||knife,fill=m<2||sculptOn||(editMode&&m!==2);
   if(fill){let c;if(m===2)c=[6/255,6/255,6/255,al];else{const C=hexRgb((o.fc&&o.fc[p.fi])||o.color),f=(.3+.7*p.sh)*(isel?1:.88);c=[Math.min(1,C[0]*f/255),Math.min(1,C[1]*f/255),Math.min(1,C[2]*f/255),al]}
    if(editMode&&sub==='face'&&p.oi===sel&&selPts.has(p.fi))c=[c[0]*.4+A[0]*.6,c[1]*.4+A[1]*.6,c[2]*.4+A[2]*.6,al];GP.tri(p.pts,p.zs,c)}
+  else if(editMode&&m===2&&sub==='face'&&p.oi===sel&&selPts.has(p.fi))GP.tri(p.pts,p.zs,[A[0],A[1],A[2],.45*al]);
   if(wire){const c=isel?[A[0],A[1],A[2],al]:[.63,.67,.72,.55*al],n=p.pts.length;for(let i=0;i<n;i++){const j=(i+1)%n;GP.line(p.pts[i],p.zs[i],p.pts[j],p.zs[j],c)}}}}
 function gpuFlush(W,H,dpr){const gl=GL.gl,vp=hexRgb(getComputedStyle(document.documentElement).getPropertyValue('--vp').trim()||'#000000').map(v=>v/255),w=Math.round(W*dpr),h=Math.round(H*dpr);if(glc.width!==w||glc.height!==h){glc.width=w;glc.height=h}glc.style.width=W+'px';glc.style.height=H+'px';
  gl.viewport(0,0,w,h);gl.clearColor(vp[0],vp[1],vp[2],1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);if(GP.I&&GP.I.length)gpuImgs(gl,W,H);gl.useProgram(GL.prog);gl.uniform2f(GL.uRes,W,H);
@@ -447,7 +448,7 @@ function draw(){
  polys.sort((p,q)=>q.z-p.z);if(editMode||sculptOn)buildDepth(polys,W,H);else draw.zb=null;
  g.lineJoin='round';
  if(useGPU)gpuPolys(polys,acc);else for(const p of polys){const o=objs[p.oi],m=om(o),al=oa(o);g.globalAlpha=al;g.beginPath();p.pts.forEach((s,i)=>i?g.lineTo(s[0],s[1]):g.moveTo(s[0],s[1]));g.closePath();
-  if(m<2||editMode||sculptOn){const C=hexRgb((o.fc&&o.fc[p.fi])||o.color),f=(.3+.7*p.sh)*(p.oi===sel||osel.has(o)?1:.88);g.fillStyle=m===2?'#060606':`rgb(${C[0]*f|0},${C[1]*f|0},${C[2]*f|0})`;g.fill()}
+  if(m<2||sculptOn||(editMode&&m!==2)){const C=hexRgb((o.fc&&o.fc[p.fi])||o.color),f=(.3+.7*p.sh)*(p.oi===sel||osel.has(o)?1:.88);g.fillStyle=m===2?'#060606':`rgb(${C[0]*f|0},${C[1]*f|0},${C[2]*f|0})`;g.fill()}
   if(m>0||editMode||knife){g.strokeStyle=(p.oi===sel||osel.has(o))?acc:'rgba(160,170,180,.55)';g.lineWidth=.6;g.stroke()}
   else if(m===0){g.strokeStyle=g.fillStyle;g.lineWidth=.5;g.stroke()}
   if(editMode&&sub==='face'&&p.oi===sel&&selPts.has(p.fi)){g.globalAlpha=.6*al;g.fillStyle=acc;g.fill()}g.globalAlpha=1}
