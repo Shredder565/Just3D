@@ -64,6 +64,7 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 .fpal .fb{display:flex;flex-wrap:wrap;align-items:center;gap:3px;padding:5px;max-width:250px}.fpal .fb button.sb{padding:4px 10px;white-space:nowrap}.fpal .fb button:disabled{opacity:.35}
 .pop{margin-left:4px;cursor:grab;touch-action:none}
 #shelf .gl,#fileBar .gl{color:var(--mut);font-size:11px;margin-left:2px;white-space:nowrap}#shelf .vs,#fileBar .vs{width:1px;height:22px;background:var(--line);margin:0 6px}
+#fileBar .fname{font-weight:600;padding:3px 10px;border:1px solid var(--line);border-radius:6px;background:rgba(0,0,0,.2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx)}#fileBar .fname.dirty:after{content:' \2022';color:#f2b01e}
 #fileBar .rs{display:flex;align-items:center;gap:6px;flex:none}#fileBar .rs span{font-size:11px;color:var(--mut)}#fileBar .rs input{width:90px}
 #shelf .rs,.fpal .rs{display:flex;align-items:center;gap:8px;flex:1 1 100%;min-width:0}#shelf .rs span,.fpal .rs span{width:78px;flex:none;font-size:11px;color:var(--mut)}#shelf .rs input,.fpal .rs input{flex:1;width:auto;min-width:0}#shelf .rn,.fpal .rn{flex:1 1 100%;margin:2px 0 0;white-space:normal}
 #shelf.one .tools{display:grid;grid-template-columns:1fr 24px;grid-auto-flow:row dense;gap:3px 6px;width:100%}#shelf.one .tools>*{grid-column:1/-1}#shelf.one .tools>.sb{grid-column:1}#shelf.one .tools>.pop{grid-column:2;margin:0;justify-self:end}#shelf.one .tools .sb{width:100%;display:flex;align-items:center;gap:8px;text-align:left;min-height:30px}#shelf .sb .ic{flex:none}.fpal .sb .ic{vertical-align:-5px;margin-right:6px}
@@ -268,6 +269,36 @@ FOPS.Symmetrize={p:{axis:[0,0,2,1],dir:[1,-1,1,2],offset:[0,-3,3,.01],merge:[.02
  keep.forEach(f=>F.push(f.map(mir).reverse()));const sr=ki.map(k=>s.src[k]);return{v:W,f:F,src:sr.concat(sr)}}};
 /* Delete: removes the selected faces and nothing else. Vertex numbers stay the same so point edits made later still line up. */
 FOPS.Delete={p:{},fn:(m,p,n)=>{const d=new Set(n.fl||[]);return{v:m.v,f:m.f.filter((_,i)=>!d.has(i))}}};
+/* Dissolve edges / points: removing an edge joins the two polygons on either side of it into one; removing a point joins every polygon around it into one. Only what was selected goes: every other point, edge and polygon stays, and vertex numbers don't change. dissolveEdges / dissolveVerts also return, for each resulting polygon, the old polygon whose colour it keeps. */
+function dissolveEdges(m,list){const c=canonOf(m),W=m.f.map((f,i)=>({p:f.slice(),src:i}));let done=0;
+ for(let q=0;q+1<list.length;q+=2){const cx=c[list[q]],cy=c[list[q+1]];if(cx===undefined||cy===undefined||cx<0||cy<0||cx===cy)continue;
+  let A=-1,B=-1,ka=-1,kb=-1; /* the two polygons that hold this edge, one in each direction */
+  for(let i=0;i<W.length;i++){const f=W[i];if(!f)continue;const n=f.p.length;for(let k=0;k<n;k++){const u=c[f.p[k]],v=c[f.p[(k+1)%n]];
+   if(u===cx&&v===cy){if(A<0){A=i;ka=k}}else if(u===cy&&v===cx){if(B<0){B=i;kb=k}}}}
+  if(A<0||B<0||A===B)continue;
+  const fa=W[A].p,fb=W[B].p,na=fa.length,nb=fb.length;
+  const Ap=fa.slice(ka+1).concat(fa.slice(0,ka+1)); /* starts at y, ends at x */
+  const Bp=fb.slice(kb+1).concat(fb.slice(0,kb+1)); /* starts at x, ends at y */
+  const merged=Ap.concat(Bp.slice(1,-1));
+  if(merged.length<3)continue;
+  W[A]={p:merged,src:W[A].src};W[B]=null;done++}
+ const out=W.filter(Boolean);return{f:out.map(x=>x.p),map:out.map(x=>x.src),done}}
+function dissolveVerts(m,list){const c=canonOf(m),W=m.f.map((f,i)=>({p:f.slice(),src:i}));let done=0;
+ [...new Set(list.map(i=>c[i]))].forEach(cv=>{if(cv===undefined||cv<0)return;
+  const idx=[];W.forEach((f,i)=>{if(f&&f.p.some(x=>c[x]===cv))idx.push(i)});if(!idx.length)return;
+  const P=idx.map(i=>{const f=W[i].p,n=f.length,k=f.findIndex(x=>c[x]===cv),path=[];for(let t=1;t<n;t++)path.push(f[(k+t)%n]);return{i,path}});
+  if(P.some(x=>x.path.length<2))return;
+  const first=x=>c[x.path[0]],last=x=>c[x.path[x.path.length-1]];
+  let start=P.find(x=>!P.some(y=>y!==x&&last(y)===first(x)));const closed=!start;if(closed)start=P[0];
+  const used=new Set([start]),poly=start.path.slice();let cur=start;
+  for(;;){const nx=P.find(y=>!used.has(y)&&first(y)===last(cur));if(!nx)break;used.add(nx);poly.push(...nx.path.slice(1));cur=nx}
+  if(used.size!==P.length)return; /* the faces around this point do not form one fan, so it cannot be dissolved */
+  if(closed&&c[poly[poly.length-1]]===c[poly[0]])poly.pop();
+  if(poly.length<3)return;
+  const keep=Math.min(...idx);W[keep]={p:poly,src:W[keep].src};idx.forEach(i=>{if(i!==keep)W[i]=null});done++});
+ const out=W.filter(Boolean);return{f:out.map(x=>x.p),map:out.map(x=>x.src),done}}
+FOPS.DissolveEdges={p:{},fn:(m,p,n)=>({v:m.v,f:dissolveEdges(m,n.fl||[]).f})};
+FOPS.DissolveVerts={p:{},fn:(m,p,n)=>({v:m.v,f:dissolveVerts(m,n.fl||[]).f})};
 /* Mirror Geometry: adds a reflected copy of the whole mesh on one side of a plane. The plane sits on the mesh's bounding-box edge (or at a chosen offset); optionally the border points are merged so the halves become one surface. */
 FOPS.Mirror={p:{axis:[0,0,2,1],dir:[1,-1,1,2],atEdge:[1,0,1,1],offset:[0,-5,5,.01],merge:[1,0,1,1],threshold:[.01,0,.5,.005]},fn:(m,p)=>{
  if(!m.v.length)return m;const ax=Math.max(0,Math.min(2,Math.round(p.axis))),dr=p.dir<0?-1:1;let pl=p.offset;
@@ -582,7 +613,7 @@ document.addEventListener('click',e=>{const t=e.target,d=t.dataset,o=objs[sel];
   camSel=-1;selPts.clear();all()}
  else if(d.m!==undefined){mode=+d.m;document.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',b===t));draw()}
  else if(d.add){centerNew(addObj(d.add,0));all()}
- else if(t.id==='del'&&o){objs.splice(sel,1);sel=Math.max(0,sel-1);selPts.clear();all()}
+ else if(t.id==='del'&&o){delObj()}
  else if(t.id==='opadd'&&o){const nn=mk($('#opsel').value),L=o.nodes.length-1;if(o.nodes[L].type==='Edit'){o.nodes.splice(L,0,nn);dirtyFrom(o,L)}else o.nodes.push(nn);all()}
  else if((t.id==='tpt'||t.id==='tfc'||t.id==='tkn'||t.id==='tdg'||t.id==='tlp'||t.id==='tpn')&&o){setTool({tpt:'pt',tfc:'face',tkn:'knife',tdg:'edge',tlp:'loop',tpn:'paint'}[t.id]);all()}
  else if(t.id==='dup'&&o){objs.push({name:o.name+'_copy',pos:[o.pos[0]+1.5,o.pos[1],o.pos[2]],rot:[...o.rot],sc:[...(o.sc||[1,1,1])],hue:0,color:o.color,fc:{...o.fc},nodes:o.nodes.map(n=>({...n,p:{...n.p},off:n.off?JSON.parse(JSON.stringify(n.off)):null,out:null,dirty:true}))});sel=objs.length-1;osel.clear();selPts.clear();all()}
@@ -647,9 +678,10 @@ function axisRot(a,t){const l=Math.hypot(a[0],a[1],a[2])||1,x=a[0]/l,y=a[1]/l,z=
  return[[c+x*x*u,x*y*u-z*s,x*z*u+y*s],[y*x*u+z*s,c+y*y*u,y*z*u-x*s],[z*x*u-y*s,z*y*u+x*s,c+z*z*u]]}
 function eulerOf(M){return[Math.atan2(M[2][1],M[2][2]),-Math.asin(Math.max(-1,Math.min(1,M[2][0]))),Math.atan2(M[1][0],M[0][0])].map(v=>+(v*180/Math.PI).toFixed(2))}
 const axisC=v=>{if(axisK===null)return v;const e=[0,0,0];e[axisK]=v[axisK];return e};
-const add=e=>e.shiftKey||multi;
+/* The Select tool accumulates: every click adds to (or toggles) the selection. With Select turned off (Move, Rotate or Scale active) picking a new point, edge, face or object replaces the selection, so nothing stays selected. Shift always adds. */
+const add=e=>e.shiftKey||(multi&&xf==='select');
 function setXf(t){xf=t;axisK=null;['select','move','rot','scale'].forEach((k,i)=>$('#t'+'qwer'[i]).classList.toggle('on',k===t));draw()}
-function startBox(e,x,y){const cu=e.ctrlKey||e.metaKey,ad=add(e)||cu;if(xf==='select'||ad){box={x0:x,y0:y,x1:x,y1:y,add:ad,sub:cu,sh:e.shiftKey||cu};drag.box=true}else drag.clr=true}
+function startBox(e,x,y){const cu=e.ctrlKey||e.metaKey,ad=add(e)||cu;box={x0:x,y0:y,x1:x,y1:y,add:ad,sub:cu,sh:e.shiftKey||cu};drag.box=true}
 /* crossing selection: anything the box touches is picked, not only things fully inside it */
 function segHitsRect(ax,ay,bx,by,x0,y0,x1,y1){let t0=0,t1=1;const dx=bx-ax,dy=by-ay;
  for(const [pp,qq] of [[-dx,ax-x0],[dx,x1-ax],[-dy,ay-y0],[dy,y1-ay]]){if(pp===0){if(qq<0)return false}else{const r=qq/pp;if(pp<0){if(r>t1)return false;if(r>t0)t0=r}else{if(r<t0)return false;if(r<t1)t1=r}}}return true}
@@ -755,7 +787,28 @@ function invertSel(){const en=editNode(objs[sel]);if(!editMode||!en||!en.rep)ret
  else{const s=new Set(selPts);selPts.clear();en.rep.forEach((r,i)=>r===i&&!s.has(i)&&selPts.add(i))}pruneFront();all()}
 function clearSel(){if(hlMode){hlMode=false;cv.style.cursor='';box=null}tw=false;twSrc=null;selPts.clear();selEdges.clear();axisK=null;kn=null;box=null;panels();draw()}
 function dupObj(){const o=objs[sel];if(!o)return;objs.push({name:o.name+'_copy',pos:[o.pos[0]+1.5,o.pos[1],o.pos[2]],rot:[...o.rot],sc:[...(o.sc||[1,1,1])],hue:0,color:o.color,fc:{...o.fc},nodes:o.nodes.map(n=>({...n,p:{...n.p},off:n.off?JSON.parse(JSON.stringify(n.off)):null,out:null,dirty:true}))});sel=objs.length-1;osel.clear();selPts.clear();all()}
-function delObj(){if(!objs[sel])return;objs.splice(sel,1);sel=Math.max(0,sel-1);setTool(null);all()}
+/* Delete: removes only what is selected, in the mode you are in. Objects: every selected object (and nothing else). Faces: just those polygons. Edges: just those edge lines (the two polygons beside each edge become one). Points: just those points (the polygons around each become one). With Symmetrize on, the mirrored partners go too. */
+function delObj(){const set=new Set(osel);if(objs[sel])set.add(objs[sel]);if(!set.size)return;
+ const first=Math.min(...[...set].map(o=>objs.indexOf(o)).filter(i=>i>=0));let n=0;
+ for(let i=objs.length-1;i>=0;i--)if(set.has(objs[i])){objs.splice(i,1);n++}
+ osel.clear();sel=Math.max(0,Math.min(first-1,objs.length-1));selPts.clear();selEdges.clear();setTool(null);all();
+ toast('Deleted '+n+' object'+(n>1?'s':'')+'. Ctrl+Z brings '+(n>1?'them':'it')+' back.')}
+function remapColors(o,map){const fc={};map.forEach((old,i)=>{if(o.fc&&o.fc[old])fc[i]=o.fc[old]});o.fc=fc}
+function deleteEdges(){const o=objs[sel];if(!inEd()||!selEdges.size)return;const list=[],seen=new Set();
+ const add=(a,b)=>{const k=ek(a,b);if(a===b||seen.has(k))return;seen.add(k);list.push(a,b)};
+ [...selEdges].forEach(k=>{const[a,b]=k.split('_').map(Number);add(a,b);if(symEdit){const ma=mirPt(a),mb=mirPt(b);if(ma!==undefined&&mb!==undefined)add(ma,mb)}});
+ const m=evaluate(o),r=dissolveEdges(m,list);
+ if(!r.done){toast('Nothing deleted: an edge can only be removed where two polygons meet. Edges on the border of the model have no polygon to join.');return}
+ remapColors(o,r.map);const nn=mk('DissolveEdges');nn.fl=list;placeNode(o,nn);selPts.clear();selEdges.clear();ringPrev=null;
+ toast('Deleted '+r.done+' edge'+(r.done>1?'s':'')+' (the polygons beside '+(r.done>1?'each':'it')+' were joined). Ctrl+Z brings '+(r.done>1?'them':'it')+' back.');all()}
+function deletePoints(){const o=objs[sel];if(!inEd()||!selPts.size)return;const list=[],seen=new Set(),add=a=>{if(a===undefined||seen.has(a))return;seen.add(a);list.push(a)};
+ [...selPts].forEach(a=>{add(a);if(symEdit)add(mirPt(a))});
+ const m=evaluate(o),r=dissolveVerts(m,list);
+ if(!r.done){toast('Nothing deleted: those points are not part of any polygon fan that can be joined.');return}
+ remapColors(o,r.map);const nn=mk('DissolveVerts');nn.fl=list;placeNode(o,nn);selPts.clear();selEdges.clear();
+ toast('Deleted '+r.done+' point'+(r.done>1?'s':'')+' (the polygons around '+(r.done>1?'each':'it')+' were joined). Ctrl+Z brings '+(r.done>1?'them':'it')+' back.');all()}
+function smartDelete(){if(!objs[sel]&&!osel.size)return;if(!editMode){delObj();return}
+ if(sub==='face')deleteFaces();else if(sub==='pt')deletePoints();else deleteEdges()}
 function setMode(i){mode=i;document.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',+b.dataset.m===i));draw()}
 const need=()=>!!objs[sel],inEd=()=>editMode&&!!objs[sel],pick=k=>()=>{if(objs[sel]){setTool(k);all()}},addO=t=>()=>{centerNew(addObj(t,0));all()};
 const CMDS=[
@@ -801,8 +854,7 @@ const CMDS=[
  {g:'Object',l:'Freeze (delete history)',k:'Shift+F',en:need,f:freezeObj},
  {g:'Modeling',l:'Weld',en:()=>inEd()&&sub==='pt'&&selPts.size>1,f:weldSel},
  {g:'Modeling',l:'Target weld',en:need,f:targetWeldTool,on:()=>tw},
- {g:'Modeling',l:'Delete selected faces',k:'Delete',k2:'Backspace',en:()=>inEd()&&sub==='face'&&selPts.size>0,f:deleteFaces},
- {g:'Object',l:'Delete object',k:'Delete',en:()=>need()&&!editMode,f:delObj},
+ {g:'Modeling',l:'Delete',k:'Delete',k2:'Backspace',en:need,f:smartDelete},
  {g:'Object',l:'Color',sw:true},
  {g:'Viewport settings',l:'Object wireframe',en:need,f:()=>{const on=objs[sel]&&om(objs[sel])===2;vpSet(on?0:2)},on:()=>!!objs[sel]&&om(objs[sel])===2},
  {g:'Viewport settings',l:'Object shaded',en:need,f:()=>vpSet(0),on:()=>!!objs[sel]&&om(objs[sel])===0},
@@ -857,7 +909,9 @@ const CMDS=[
  {g:'Sculpting',l:'Reset sculpt',en:()=>{const en=editNode(objs[sel]);return !!en&&Object.keys(en.off).length>0},f:resetEdits},
  {g:'File',l:'Undo',k:'Ctrl+Z',k2:'U',f:undo},
  {g:'File',l:'Redo',k:'Ctrl+Shift+Z',k2:'Ctrl+Y',f:redo},
- {g:'File',l:'Save or load scene',k:'Ctrl+O',f:openScene},
+ {g:'File',l:'Save or load scene',k:'Ctrl+Shift+O',f:openScene},
+ {g:'File',l:'Open file',k:'Ctrl+O',f:openFile},
+ {g:'File',l:'Save file as',k:'Ctrl+Shift+S',f:saveAs},
  {g:'File',l:'New file',k:'Shift+N',f:newFile},
  {g:'File',l:'Save file',k:'Ctrl+S',k2:'S',en:()=>!sculptOn,f:saveFile},
  {g:'File',l:'Export file',k:'Shift+X',f:()=>exportFile()},
@@ -896,6 +950,8 @@ function edgeBevel(){const o=objs[sel],en=editNode(o);if(!en||!en.rep||sub!=='ed
  placeNode(o,nn);selPts.clear();selEdges.clear();all()}
 /* ---- undo / redo / scene save and load ---- */
 let lastSnap='',undoSt=[],redoSt=[];
+/* the file this project belongs to: name (shown in the top bar), the file handle when the browser allows silent saving, and the scene as it was when last saved */
+let curFile={name:'',handle:null,saved:null};
 function snap(){return JSON.stringify({v:1,rig:rig.joints,groups:groups,cams:cams,objs:objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name,pos:o.pos,rot:o.rot,sc:o.sc||[1,1,1],color:o.color,fc:o.fc,dm:o.dm,op:o.op,
  nodes:o.nodes.filter(n=>!(n.type==='Edit'&&!Object.keys(n.off).length)).map(n=>({type:n.type,on:n.on,p:n.p,off:n.off,fl:n.fl,edge:n.edge||null,mesh:n.mesh||null}))}))})}
 function restore(s){const sc=JSON.parse(s);if(!sc||!Array.isArray(sc.objs))throw new Error('bad scene');
@@ -903,7 +959,10 @@ function restore(s){const sc=JSON.parse(s);if(!sc||!Array.isArray(sc.objs))throw
   nodes:(o.nodes||[]).filter(n=>TY[n.type]).map(n=>{const k=mk(n.type);Object.assign(k.p,n.p||{});k.on=n.on!==false;if(n.off)k.off=n.off;k.fl=n.fl||null;if(n.edge)k.edge=n.edge;if(n.mesh)k.mesh=n.mesh;return k})}));
  if(!next.every(o=>o.nodes.length&&GEN[o.nodes[0].type]))throw new Error('bad scene');
  objs.length=0;next.forEach(o=>objs.push(o));rig.joints=(sc.rig||[]).map(j=>({name:j.name,p:j.p,parent:j.parent,rot:j.rot||[0,0,0]}));groups=(sc.groups||[]).map(g=>({id:g.id,name:g.name,open:g.open!==false}));gid2=groups.reduce((m,g)=>Math.max(m,g.id),0);cams=(sc.cams||[]).map(c=>({name:c.name||'camera',tgt:c.tgt||[0,0,0],yaw:c.yaw||0,pitch:c.pitch||0,dist:c.dist||9,pan:c.pan||[0,0],f:c.f||35}));if(camSel>=cams.length)camSel=-1;if(camAct>=cams.length){camAct=-1;tgt=[0,0,0]}osel.clear();rigSel=-1;sel=Math.min(sel,Math.max(0,objs.length-1));selPts.clear();selEdges.clear();ringPrev=null;all()}
-function commit(){const s=snap();if(s!==lastSnap){undoSt.push(lastSnap);if(undoSt.length>100)undoSt.shift();redoSt.length=0;lastSnap=s}}
+function commit(){const s=snap();if(s!==lastSnap){undoSt.push(lastSnap);if(undoSt.length>100)undoSt.shift();redoSt.length=0;lastSnap=s}updateFname()}
+function updateFname(){const e=document.getElementById('fname'),n=curFile.name||'Untitled',dirty=!!curFile.name&&lastSnap!==curFile.saved;
+ if(e){e.textContent=n;e.classList.toggle('dirty',dirty);e.title=(curFile.name?'This project is saved as '+curFile.name:'Not saved yet. Use Save As to name the file.')+(dirty?' (changes since the last save)':'')}
+ document.title=n+(dirty?' *':'')+' - Just3D'}
 function undo(){commit();if(!undoSt.length){toast('Nothing to undo');return}redoSt.push(lastSnap);lastSnap=undoSt.pop();restore(lastSnap)}
 function redo(){commit();if(!redoSt.length){toast('Nothing to redo');return}undoSt.push(lastSnap);lastSnap=redoSt.pop();restore(lastSnap)}
 function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>{t.hidden=true},2600)}
@@ -912,11 +971,31 @@ function openScene(){$('#dtx').value=snap();$('#dlg').hidden=false;$('#ddl').hid
 /* ---- files: New clears the scene (undoable), Save writes the scene as .json, Export writes geometry as .obj (default), .stl or .ply ---- */
 let expFmt='obj';
 function newFile(){
- objs.length=0;groups=[];gid2=0;cams=[];camSel=-1;if(camAct>=0){camAct=-1;tgt=[0,0,0]}rig.joints=[];rigSel=-1;osel.clear();sel=0;selPts.clear();selEdges.clear();ringPrev=null;uid=0;addObj('Sphere',0);setTool(null);all();commit();toast('New file with a single sphere. Ctrl+Z brings the old scene back.')}
+ objs.length=0;groups=[];gid2=0;cams=[];camSel=-1;if(camAct>=0){camAct=-1;tgt=[0,0,0]}rig.joints=[];rigSel=-1;osel.clear();sel=0;selPts.clear();selEdges.clear();ringPrev=null;uid=0;addObj('Sphere',0);setTool(null);all();commit();curFile={name:'',handle:null,saved:null};updateFname();toast('New file with a single sphere. Ctrl+Z brings the old scene back.')}
 async function sendFile(name,text){try{const d=await claude.use('downloads');if(!d)throw 0;await d.save({filename:name,data:text});toast('Saved '+name)}
  catch(err){if(err&&err.code==='declined')return;$('#dtx').value=text;$('#dlg').hidden=false;$('#ddl').hidden=true;toast('Downloads are not available here. Copy the text from the box instead.')}}
-/* Save File writes the entire scene as scene.obj (+ scene.mtl for colors). The editable scene is embedded, so loading that .obj brings everything back. */
-function saveFile(){const ms=worldMeshes();if(!ms.length){toast('Nothing to save');return}const[ob,mt]=buildObj(ms,true);sendFile('scene.obj',ob).then(()=>sendFile('scene.mtl',mt))}
+/* Save File writes the whole project (every object, tree, sphere, group, colour and edit history) into the current file with no pop-up. Save As names the file first; the name then shows in the top bar. The project is stored as an .obj whose geometry any program can open; Just3D also finds the editable scene inside it. */
+function projectText(){const ms=worldMeshes(),t=buildObj(ms,true)[0];return t.replace(/^mtllib .*\n/m,'').replace(/^usemtl .*\n/gm,'')}
+function setFile(name,handle){commit();curFile={name,handle:handle||null,saved:lastSnap};updateFname()}
+function markSaved(){commit();curFile.saved=lastSnap;updateFname()}
+function anchorSave(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/octet-stream'}));a.download=name;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+async function writeHandle(h,text){const w=await h.createWritable();await w.write(text);await w.close()}
+function askName(def){return new Promise(res=>{const d=document.createElement('div');d.style.cssText='position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center';
+ d.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;width:min(380px,calc(100vw - 24px));color:var(--tx)"><b>Save As</b><div style="margin:8px 0 4px;color:var(--mut);font-size:12px">File name (saved as .obj)</div><input id="nmIn" type="text" spellcheck="false" style="width:100%;padding:6px 8px"><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="nmOk">Save</button><button id="nmNo">Cancel</button></div></div>';
+ document.body.appendChild(d);const i=d.querySelector('#nmIn');i.value=def;i.focus();i.select();
+ const done=v=>{d.remove();res(v)};d.querySelector('#nmOk').onclick=()=>done(i.value.trim()||null);d.querySelector('#nmNo').onclick=()=>done(null);
+ i.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')done(i.value.trim()||null);else if(e.key==='Escape')done(null)});d.addEventListener('pointerdown',e=>e.stopPropagation())})}
+const objName=n=>{n=n.replace(/[\\/:*?"<>|]+/g,'_').trim();return/\.obj$/i.test(n)?n:n.replace(/\.[A-Za-z0-9]{1,4}$/,'')+'.obj'};
+async function saveAs(){if(!objs.length){toast('Nothing to save');return}const text=projectText(),sug=curFile.name||'model.obj';
+ if(window.showSaveFilePicker){try{const h=await showSaveFilePicker({suggestedName:sug,types:[{description:'Just3D project (.obj)',accept:{'text/plain':['.obj']}}]});await writeHandle(h,text);setFile(h.name,h);toast('Saved as '+h.name);return}
+  catch(e){if(e&&e.name==='AbortError')return}}
+ const nm=await askName(sug);if(!nm)return;const name=objName(nm);anchorSave(name,text);setFile(name,null);toast('Saved as '+name+' (in your downloads folder). Save File now updates it.')}
+async function saveFile(){if(!objs.length){toast('Nothing to save');return}if(!curFile.name){saveAs();return}const text=projectText();
+ if(curFile.handle){try{await writeHandle(curFile.handle,text);markSaved();toast('Saved '+curFile.name);return}
+  catch(e){try{if(await curFile.handle.requestPermission({mode:'readwrite'})==='granted'){await writeHandle(curFile.handle,text);markSaved();toast('Saved '+curFile.name);return}}catch(_){}curFile.handle=null}}
+ anchorSave(curFile.name,text);markSaved();toast('Saved '+curFile.name+' (downloaded again; your browser may add a number to the name)')}
+async function openFile(){if(window.showOpenFilePicker){try{const[h]=await showOpenFilePicker({types:[{description:'Just3D project or OBJ',accept:{'text/plain':['.obj','.json']}}]});const t=await(await h.getFile()).text();if(loadScene(t))setFile(h.name,h);return}catch(e){if(e&&e.name==='AbortError')return}}
+ let i=document.getElementById('openIn');if(!i){i=document.createElement('input');i.type='file';i.id='openIn';i.accept='.obj,.json';i.hidden=true;document.body.appendChild(i);i.onchange=async()=>{const f=i.files[0];i.value='';if(!f)return;try{if(loadScene(await f.text()))setFile(f.name,null)}catch(_){toast('Could not read that file')}}}i.click()}
 function worldMeshes(){return objs.filter(o=>!o.hid).map(o=>{const m=evaluate(o),M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),used=[...new Set(m.f.flat())].sort((a,b)=>a-b),map=new Map(),V=[];
   used.forEach(i=>{const q=mulv(M,m.v[i]);map.set(i,V.length);V.push([q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2]])});
   return{name:(o.name||'Object').replace(/\s+/g,'_'),V,F:m.f.map(f=>f.map(i=>map.get(i))),C:m.f.map((f,fi)=>(o.fc&&o.fc[fi])||o.color||'#888888')}}).filter(m=>m.F.length)}
@@ -939,7 +1018,7 @@ function importObj(t){const V=[],objsF=[];let cur=null;
  const list=objsF.filter(o=>o.F.length);if(!list.length)throw new Error('no faces');
  list.forEach(o=>{const used=[...new Set(o.F.flat())],map=new Map();used.forEach((i,k)=>map.set(i,k));const ob=addObj('Mesh',0);ob.name=o.name;ob.nodes[0].mesh={v:used.map(i=>V[i]),f:o.F.map(f=>f.map(i=>map.get(i)))};ob.nodes[0].dirty=true;ob.color=ob.color});
  all()}
-function loadScene(s){try{const mk0=s.indexOf('#PROTOXSI ');if(mk0>=0)s=s.slice(mk0+10,s.indexOf('\n',mk0)<0?undefined:s.indexOf('\n',mk0));else if(/^\s*(v|f|o)\s/m.test(s)&&!/^\s*\{/.test(s)){importObj(s);commit();$('#dlg').hidden=true;toast('OBJ imported');return}restore(s);commit();$('#dlg').hidden=true;toast('Scene loaded')}catch(_){toast('That text is not a valid scene')}}
+function loadScene(s){try{const mk0=s.indexOf('#PROTOXSI ');if(mk0>=0)s=s.slice(mk0+10,s.indexOf('\n',mk0)<0?undefined:s.indexOf('\n',mk0));else if(/^\s*(v|f|o)\s/m.test(s)&&!/^\s*\{/.test(s)){importObj(s);commit();$('#dlg').hidden=true;toast('OBJ imported');return true}restore(s);commit();$('#dlg').hidden=true;toast('Scene loaded');return true}catch(_){toast('That text is not a valid scene');return false}}
 /* ---- projection toggle and view cube ---- */
 const VC=[{n:'Front',c:[0,0,-1],u:[1,0,0],v:[0,1,0],y:0,p:0},{n:'Back',c:[0,0,1],u:[-1,0,0],v:[0,1,0],y:Math.PI,p:0},
  {n:'Right',c:[1,0,0],u:[0,0,1],v:[0,1,0],y:Math.PI/2,p:0},{n:'Left',c:[-1,0,0],u:[0,0,1],v:[0,1,0],y:-Math.PI/2,p:0},
@@ -1025,10 +1104,10 @@ let shelfIdx=0;const BR=['#e5484d','#f2b01e','#3fb950','#2dc4ad','#4a7fd1','#b55
 const SHELVES=[
  {n:'Basic Modeling Tools',rows:[
   {n:'Primitives',items:[{c:'Add cube',t:'Cube',ic:'cube'},{c:'Add sphere',t:'Sphere',ic:'sphere'},{c:'Add torus',t:'Torus',ic:'torus'},{c:'Add trapezoid',t:'Trapezoid',ic:'trap'},{c:'Add teapot',t:'Teapot',ic:'teapot'},{c:'Add tree',t:'Tree',ic:'tree'}]},
-  {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid'},{sp:1},{gl:'Component'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{gl:'Pivot'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X'},{c:'Lock to Y axis',t:'Y'},{c:'Lock to Z axis',t:'Z'},{sp:1},{gl:'Scene'},{c:'Object mode',t:'Object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save or load scene',t:'Save / load'}]},
-  {n:'Modeling tools',items:[{c:'Loop cut'},{c:'Loop cut selected edges',t:'Cut'},{c:'Knife',ic:'knife'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object changes',t:'Symmetrize Object Changes'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Duplicate',ic:'dup'},{c:'Group selected',t:'Group'},{c:'Delete object',t:'Delete'}]},
+  {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid'},{sp:1},{gl:'Component'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{gl:'Pivot'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X',ic:'axX'},{c:'Lock to Y axis',t:'Y',ic:'axY'},{c:'Lock to Z axis',t:'Z',ic:'axZ'},{sp:1},{gl:'Scene'},{c:'Object mode',t:'Object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save or load scene',t:'Save / load'}]},
+  {n:'Modeling tools',items:[{c:'Loop cut'},{c:'Loop cut selected edges',t:'Cut'},{c:'Knife',ic:'knife'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object changes',t:'Symmetrize Object Changes'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Duplicate',ic:'dup'},{c:'Group selected',t:'Group'},{c:'Delete',t:'Delete'}]},
   {n:'Rotoscope',items:[{c:'Rotoscope: load image',t:'Load image…'},{c:'Rotoscope: move and scale',t:'Move / Scale'},{c:'Rotoscope: show or hide',t:'Visible'},{c:'Rotoscope: remove image',t:'Remove'},{roto:'op'},{roto:'size'},{roto:'x'},{roto:'y'},{rname:1}]},
-  {n:'File',items:[{c:'New file',t:'New File'},{c:'Save file',t:'Save File'},{c:'Export file',t:'Export File'},{fmt:1},{c:'Export and save to this computer',t:'Save to Computer'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Perspective view',t:'Perspective View'},{c:'Orthographic view',t:'Orthographic View'},{sp:1},{gl:'Selected object'},{c:'Object wireframe',t:'Wireframe'},{c:'Object shaded',t:'Shaded'},{vp:'op'},{sp:1},{c:'Affect front vertices',t:'Affect Front Vertices'}]}]},
+  {n:'File',items:[{c:'New file',t:'New File'},{c:'Open file',t:'Open File'},{c:'Save file',t:'Save File'},{c:'Save file as',t:'Save As'},{fname:1},{c:'Export file',t:'Export File'},{fmt:1},{c:'Export and save to this computer',t:'Save to Computer'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Perspective view',t:'Perspective View'},{c:'Orthographic view',t:'Orthographic View'},{sp:1},{gl:'Selected object'},{c:'Object wireframe',t:'Wireframe'},{c:'Object shaded',t:'Shaded'},{vp:'op'},{sp:1},{c:'Affect front vertices',t:'Affect Front Vertices'}]}]},
  {n:'Coloring and Rendering',rows:[
   {n:'Coloring',items:[{gl:'Paint'},{c:'Paint tool (click or drag faces)',t:'Paint'},{c:'Paint selected faces',t:'Paint selected'},{c:'Clear face paint',t:'Clear paint'},{sp:1},{gl:'Brush'},{brush:1},{sw:'brush'},{sp:1},{gl:'Object'},{objc:1},{sw:'obj'},{sp:1},{gl:'Display'},{c:'Shaded'},{c:'Shaded + wire'},{c:'Wire'}]},
   {n:'Render 2K',items:[{gl:'Aspect'},{rsel:'asp'},{gl:'Quality'},{rsel:'q'},{sp:1},{c:'Highlight to render',t:'Highlight to Render'},{c:'Render 2K (GPU)',t:'Render 2K · GPU'},{c:'Ray trace 2K (CPU)',t:'Ray Trace 2K · CPU'},{sp:1},{c:'Show last render',t:'Show Render'},{c:'Save last render',t:'Save Render'}]}]},
@@ -1050,6 +1129,9 @@ const ICONS={
  torus:'<path fill-rule="evenodd" d="M2 12a10 6.6 0 1 0 20 0a10 6.6 0 1 0-20 0zM7.6 12a4.4 2.5 0 1 0 8.8 0a4.4 2.5 0 1 0-8.8 0z" fill="#d98a4e" stroke="#6b3a14" stroke-width=".9"/><path d="M5 10Q12 4.6 19 10" fill="none" stroke="#fff" stroke-width="1.3" opacity=".45" stroke-linecap="round"/>',
  trap:'<polygon points="7,5 17,5 22,19 2,19" fill="#d98a4e" stroke="#6b3a14" stroke-width=".9" stroke-linejoin="round"/><polygon points="7,5 17,5 16.2,8.4 7.8,8.4" fill="#f0b27f"/><polygon points="17,5 22,19 18.5,19 14.8,8.4" fill="#a8602a" opacity=".55"/>',
  teapot:'<path d="M4.4 10.5C.8 10.3.6 16 4.8 17.4" fill="none" stroke="#6b3a14" stroke-width="2.2" stroke-linecap="round"/><path d="M17.2 12.2c2.8-.4 4.2-3 4.6-5.6l-1.5-.2c-.5 2.2-1.6 3.8-3.6 4z" fill="#d98a4e" stroke="#6b3a14" stroke-width=".8"/><ellipse cx="11" cy="14.2" rx="7.6" ry="6" fill="#d98a4e" stroke="#6b3a14" stroke-width=".9"/><ellipse cx="11" cy="8.9" rx="4.2" ry="1.7" fill="#f0b27f" stroke="#6b3a14" stroke-width=".8"/><circle cx="11" cy="6.7" r="1.2" fill="#a8602a" stroke="#6b3a14" stroke-width=".7"/>',
+ axX:'<path d="M12 21V5M5.6 11.4L12 4.4l6.4 7" fill="none" stroke="#e5484d" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
+ axY:'<path d="M3 12H21M7.4 6.8L2.8 12l4.6 5.2M16.6 6.8L21.2 12l-4.6 5.2" fill="none" stroke="#f2b01e" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
+ axZ:'<polygon points="11.2,8 12.8,8 14.8,16.2 9.2,16.2" fill="#4c8dff"/><polygon points="9.4,8.6 12,1.8 14.6,8.6" fill="#4c8dff" stroke="#4c8dff" stroke-width=".8" stroke-linejoin="round"/><polygon points="6,15.6 12,22.6 18,15.6" fill="#4c8dff" stroke="#4c8dff" stroke-width=".8" stroke-linejoin="round"/>',
  points:'<path d="'+STAR(9,10.5,7.6,3.2)+'" fill="currentColor"/><path d="'+STAR(18.4,17.6,4.4,1.9)+'" fill="currentColor"/>',
  edges:'<path d="M2 8Q4.75 3 7.5 8T13 8T18.5 8T22 8M2 16Q4.75 11 7.5 16T13 16T18.5 16T22 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
  faces:'<rect x="2" y="7" width="20" height="10" rx="1.2" fill="currentColor" fill-opacity=".22" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
@@ -1072,6 +1154,7 @@ function renderShelf(){const S=SHELVES[shelfIdx];
  const itemHtml=itemHtmlG=(it,i,si)=>{if(it.gl)return'<span class="gl" data-k="'+it.gl+'"'+(shelfIdx>=2?' role="button" tabindex="0" aria-expanded="true" title="Click to minimize or expand"':'')+'>'+it.gl+'</span>';if(it.sp)return'<span class="vs"></span>';
    if(it.rsel){const O=it.rsel==='asp'?[['16:9','2K 16:9 (2048×1152)'],['1:1','2K square (2048×2048)'],['4:3','2K 4:3 (2048×1536)'],['21:9','2K wide (2048×878)']]:[['draft','Draft (4 samples)'],['good','Good (16 samples)'],['best','Best (48 samples)']],cur=it.rsel==='asp'?rOpt.asp:rOpt.q;
     return'<select id="s_r'+it.rsel+'" aria-label="Render '+(it.rsel==='asp'?'size':'quality')+'" title="'+(it.rsel==='asp'?'Image size. All sizes are 2K (2048 pixels wide).':'Ray trace quality: more samples give a cleaner image but take longer')+'">'+O.map(([v,l])=>'<option value="'+v+'"'+(v===cur?' selected':'')+'>'+l+'</option>').join('')+'</select>'}
+   if(it.fname)return'<span id="fname" class="fname"></span>';
    if(it.fmt)return'<select id="s_fmt" aria-label="Export format" title="Export format (default OBJ)"><option value="obj"'+(expFmt==='obj'?' selected':'')+'>.obj</option><option value="stl"'+(expFmt==='stl'?' selected':'')+'>.stl</option><option value="ply"'+(expFmt==='ply'?' selected':'')+'>.ply</option></select>';
    if(it.rng==='res')return'<input type="number" id="s_res" min="0" max="16" step="1" value="'+sRes+'" style="width:54px" aria-label="Sculpt resolution" title="Edges across the brush. Clay and Inflate add detail until the surface has this many. 0 = off">';
    if(it.rng)return'<input type="range" id="s_'+it.rng+'" min="'+(it.rng==='size'?10:it.rng==='hard'?0:5)+'" max="'+(it.rng==='size'?200:it.rng==='hard'?90:100)+'" step="1" value="'+(it.rng==='size'?sSize:it.rng==='hard'?Math.round(sHard*100):Math.round(sStr*100))+'" style="width:90px" aria-label="Brush '+it.rng+'" title="Brush '+it.rng+'">';
@@ -1130,6 +1213,7 @@ function vpSet(m){vpTargets().forEach(o=>{o.dm=m});syncShelf();draw();commit()}
 document.addEventListener('input',e=>{const t=e.target;if(!t||!t.dataset||t.dataset.vp!=='op')return;const v=Math.max(.05,Math.min(1,parseFloat(t.value)/100));if(!isFinite(v))return;vpTargets().forEach(o=>{o.op=v>=1?undefined:v});draw()});
 document.addEventListener('change',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.vp==='op')commit()});
 function syncShelf(){
+ updateFname();
  document.querySelectorAll('[data-vp="op"]').forEach(e=>{e.disabled=!objs[sel];if(+e.value!==vpOp())e.value=vpOp()});
  document.querySelectorAll('#shelf [data-sh],#fileBar [data-sh],.fpal [data-sh]').forEach(b=>{const c=CMDS.find(x=>x.l===SHELVES[+b.dataset.ss].items[+b.dataset.sh].c);if(!c)return;b.classList.toggle('on',!!(c.on&&c.on()));b.disabled=!!(c.en&&!c.en())});
  const sb=$('#s_brush'),pc=$('#pcol');if(sb&&pc&&sb.value!==pc.value)sb.value=pc.value;const so=$('#s_obj');if(so&&objs[sel]&&so.value!==objs[sel].color)so.value=objs[sel].color;const ss=$('#s_size');if(ss&&+ss.value!==sSize)ss.value=sSize}
