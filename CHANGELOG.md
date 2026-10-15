@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v109 — Polygon modeling subshelf removed
+- The now-empty Polygon modeling subshelf (just a second Move / Rotate / Scale) is gone from Basic Modeling Tools. The Move, Rotate and Scale buttons in Transform and scene are unchanged.
+
 ## v108 — Shelf: component and pivot buttons moved
 - Points, Edges and Faces now sit in Transform and scene, beneath Grid. Center Pivot and Center to Object follow them. The Polygon modeling row keeps its Move, Rotate and Scale buttons.
 
