@@ -635,7 +635,7 @@ document.addEventListener('click',e=>{const t=e.target,d=t.dataset,o=objs[sel];
  else if(d.be&&sub==='edge'&&selPts.size){edgeBevel()}
  else if(d.sl&&sub==='edge'&&selPts.size){edgeSel(d.sl)}
  else if(d.ex&&sub==='face'&&selPts.size){const nn=mk(d.ex),L=o.nodes.length-1;nn.fl=[...selPts];if(d.ex==='Extrude'){exNode=nn;exSel=new Set(selPts)}placeNode(o,nn);all()}
- else if(t.id==='tq')setXf('select');
+ else if(t.id==='tq')setXf(xf==='select'?selXf:'select');
  else if(t.id==='tw')setXf('move');
  else if(t.id==='te')setXf('rot');
  else if(t.id==='tr')setXf('scale');
@@ -823,7 +823,7 @@ function smartDelete(){if(!objs[sel]&&!osel.size)return;if(!editMode){delObj();r
 function setMode(i){mode=i;document.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',+b.dataset.m===i));draw()}
 const need=()=>!!objs[sel],inEd=()=>editMode&&!!objs[sel],pick=k=>()=>{if(objs[sel]){setTool(k);all()}},addO=t=>()=>{centerNew(addObj(t,0));all()};
 const CMDS=[
- {g:'Tools',l:'Select',k:'Q',f:()=>setXf('select'),on:()=>xf==='select'},
+ {g:'Tools',l:'Select',k:'Q',f:()=>setXf(xf==='select'?selXf:'select'),on:()=>xf==='select'},
  {g:'Tools',l:'Move',k:'W',f:()=>setXf('move'),on:()=>xf==='move'},
  {g:'Tools',l:'Rotate',k:'H',f:()=>setXf('rot'),on:()=>xf==='rot'},
  {g:'Tools',l:'Scale',k:'R',f:()=>setXf('scale'),on:()=>xf==='scale'},
@@ -1116,7 +1116,7 @@ let shelfIdx=0;const BR=['#e5484d','#f2b01e','#3fb950','#2dc4ad','#4a7fd1','#b55
 const SHELVES=[
  {n:'Basic Modeling Tools',rows:[
   {n:'Primitives',items:[{c:'Add cube',t:'Cube',ic:'cube'},{c:'Add sphere',t:'Sphere',ic:'sphere'},{c:'Add torus',t:'Torus',ic:'torus'},{c:'Add trapezoid',t:'Trapezoid',ic:'trap'},{c:'Add teapot',t:'Teapot',ic:'teapot'},{c:'Add tree',t:'Tree',ic:'tree'}]},
-  {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid'},{sp:1},{gl:'Component'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{gl:'Pivot'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X',ic:'axX'},{c:'Lock to Y axis',t:'Y',ic:'axY'},{c:'Lock to Z axis',t:'Z',ic:'axZ'},{c:'World (free move)',t:'World',ic:'world'},{sp:1},{gl:'Scene'},{c:'Object mode',t:'Object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save or load scene',t:'Save / load'}]},
+  {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid',ic:'grid'},{sp:1},{gl:'Component'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{gl:'Pivot'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X',ic:'axX'},{c:'Lock to Y axis',t:'Y',ic:'axY'},{c:'Lock to Z axis',t:'Z',ic:'axZ'},{c:'World (free move)',t:'World',ic:'world'},{sp:1},{gl:'Scene'},{c:'Object mode',t:'Object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save or load scene',t:'Save / load'}]},
   {n:'Modeling tools',items:[{c:'Loop cut'},{c:'Loop cut selected edges',t:'Cut'},{c:'Knife',ic:'knife'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object changes',t:'Symmetrize Object Changes'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Duplicate',ic:'dup'},{c:'Group selected',t:'Group'},{c:'Delete',t:'Delete'}]},
   {n:'Rotoscope',items:[{c:'Rotoscope: load image',t:'Load image…'},{c:'Rotoscope: move and scale',t:'Move / Scale'},{c:'Rotoscope: show or hide',t:'Visible'},{c:'Rotoscope: remove image',t:'Remove'},{roto:'op'},{roto:'size'},{roto:'x'},{roto:'y'},{rname:1}]},
   {n:'File',items:[{c:'New file',t:'New File'},{c:'Open file',t:'Open File'},{c:'Save file',t:'Save File'},{c:'Save file as',t:'Save As'},{fname:1},{c:'Export file',t:'Export File'},{fmt:1},{c:'Export and save to this computer',t:'Save to Computer'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Perspective view',t:'Perspective View'},{c:'Orthographic view',t:'Orthographic View'},{sp:1},{gl:'Selected object'},{c:'Object wireframe',t:'Wireframe'},{c:'Object shaded',t:'Shaded'},{vp:'op'},{sp:1},{c:'Affect front vertices',t:'Affect Front Vertices'}]}]},
@@ -1141,6 +1141,7 @@ const ICONS={
  torus:'<path fill-rule="evenodd" d="M2 12a10 6.6 0 1 0 20 0a10 6.6 0 1 0-20 0zM7.6 12a4.4 2.5 0 1 0 8.8 0a4.4 2.5 0 1 0-8.8 0z" fill="#d98a4e" stroke="#6b3a14" stroke-width=".9"/><path d="M5 10Q12 4.6 19 10" fill="none" stroke="#fff" stroke-width="1.3" opacity=".45" stroke-linecap="round"/>',
  trap:'<polygon points="7,5 17,5 22,19 2,19" fill="#d98a4e" stroke="#6b3a14" stroke-width=".9" stroke-linejoin="round"/><polygon points="7,5 17,5 16.2,8.4 7.8,8.4" fill="#f0b27f"/><polygon points="17,5 22,19 18.5,19 14.8,8.4" fill="#a8602a" opacity=".55"/>',
  teapot:'<path d="M4.4 10.5C.8 10.3.6 16 4.8 17.4" fill="none" stroke="#6b3a14" stroke-width="2.2" stroke-linecap="round"/><path d="M17.2 12.2c2.8-.4 4.2-3 4.6-5.6l-1.5-.2c-.5 2.2-1.6 3.8-3.6 4z" fill="#d98a4e" stroke="#6b3a14" stroke-width=".8"/><ellipse cx="11" cy="14.2" rx="7.6" ry="6" fill="#d98a4e" stroke="#6b3a14" stroke-width=".9"/><ellipse cx="11" cy="8.9" rx="4.2" ry="1.7" fill="#f0b27f" stroke="#6b3a14" stroke-width=".8"/><circle cx="11" cy="6.7" r="1.2" fill="#a8602a" stroke="#6b3a14" stroke-width=".7"/>',
+ grid:'<path d="M8.4 2.6V21.4M15.6 2.6V21.4M2.6 8.4H21.4M2.6 15.6H21.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
  world:'<circle cx="12" cy="12" r="9.4" fill="none" stroke="#3fb950" stroke-width="1.8"/><ellipse cx="12" cy="12" rx="4.2" ry="9.4" fill="none" stroke="#3fb950" stroke-width="1.5"/><path d="M2.6 12H21.4M4.2 7.2H19.8M4.2 16.8H19.8" fill="none" stroke="#3fb950" stroke-width="1.5"/>',
  axX:'<path d="M12 21V5M5.6 11.4L12 4.4l6.4 7" fill="none" stroke="#e5484d" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
  axY:'<path d="M3 12H21M7.4 6.8L2.8 12l4.6 5.2M16.6 6.8L21.2 12l-4.6 5.2" fill="none" stroke="#f2b01e" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',

@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v115 — Select can be switched off; Grid icon
+- The **Select** button (and the Q key) is now a switch: click it again to turn it off and go back to the transform tool you used last (Move, Rotate or Scale). Before, it could only be turned on.
+- The **Grid** button now has a tic-tac-toe style empty-field icon.
+
 ## v114 — Vertex delete like Maya; Select keeps transforms; World button
 - **Delete on points** now follows Maya's Delete Vertex: a point is only deleted when it sits on a single line (exactly two edges pass through it). Its two edges become one and every polygon keeps its shape. Points where three or more edges meet are structure and are left alone (a message says so). To remove such a point, delete its edges first, then delete the point. This is the clean-up for the points left over after edges are deleted. (v113 joined all polygons around the point instead.)
 - **Select** no longer locks you out of editing: it keeps the transform tool you used last (Move to start with), so the gizmo and dragging still move, rotate or scale the object, points, edges and faces while Select adds to the selection. Pick Rotate or Scale, then Select, and that gizmo stays.
