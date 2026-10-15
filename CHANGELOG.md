@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v106 — Mirror Geometry removed
+- The Mirror Geometry button is gone from Modeling tools, and its right-click menu entry and Shift+Y shortcut are removed, along with the separate-copy mirror command. Mirror Polygons (Alt+X) and Symmetrize are unchanged. Scenes that already contain a Mirror operator still load.
+
 ## v105 — Loop cut follows the shape; Mirror Polygons covers the modeling tools
 - Loop cut (and Cut selected edges) now places the new points on the object's own curve, so a loop cut on a sphere stays round and on a torus stays on the tube, and a cube keeps its flat faces and sharp edges. No fixing-up of the new points is needed. (Sharp corners over 55 degrees and points with no straight continuation, such as poles, use a straight line.)
 - With **Mirror Polygons** on (Alt+X, plane chosen with X / Y / Z), these tools now also act on the opposite side: Loop cut, Cut selected edges, Extrude, Bevel (faces), Weld, Target Weld, Knife and Delete faces, in addition to moving, rotating and scaling points. A loop that already crosses the mirror plane is cut once. Edge Bevel is not mirrored yet.
