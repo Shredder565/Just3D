@@ -4,6 +4,12 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v93 — Rotoscope
+- New **Rotoscope** subshelf under Modeling tools. **Load image…** opens your computer's own file dialog (This PC, every drive and folder) and the picture appears in the orthographic window, behind the model.
+- **Move / Scale**: drag the image to move it, drag a yellow corner to scale it. Sliders for Opacity, Size, Left / right and Up / down; **Visible** and **Remove** buttons.
+- The image is fixed in the model's world, so zooming and panning scale and move it with the object. One image per plane (Front / Back, Right / Left, Top / Bottom); the Back, Left and Bottom views show the same image as seen from behind. The perspective view does not show it.
+- Rotoscope images are not saved in scene files yet.
+
 ## v92 — View buttons; orthographic view stays flat
 - Two new buttons beside **Create New Model**: **Perspective View** and **Orthographic View**. Each shows that view full size; click the active one again (or press `Space`) to return to split view.
 - The orthographic view can no longer be rotated into 3D. It only sits on the six straight-on views (Front, Back, Right, Left, Top, Bottom), chosen with the view-cube arrows or cube faces; Alt-drag, right-drag and dragging the cube no longer orbit it. The perspective view is unchanged.
