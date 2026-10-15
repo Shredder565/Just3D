@@ -63,6 +63,7 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 .fpal .fb{display:flex;flex-wrap:wrap;align-items:center;gap:3px;padding:5px;max-width:250px}.fpal .fb button.sb{padding:4px 10px;white-space:nowrap}.fpal .fb button:disabled{opacity:.35}
 .pop{margin-left:4px;cursor:grab;touch-action:none}
 #shelf .gl,#fileBar .gl{color:var(--mut);font-size:11px;margin-left:2px;white-space:nowrap}#shelf .vs,#fileBar .vs{width:1px;height:22px;background:var(--line);margin:0 6px}
+#fileBar .rs{display:flex;align-items:center;gap:6px;flex:none}#fileBar .rs span{font-size:11px;color:var(--mut)}#fileBar .rs input{width:90px}
 #shelf .rs,.fpal .rs{display:flex;align-items:center;gap:8px;flex:1 1 100%;min-width:0}#shelf .rs span,.fpal .rs span{width:78px;flex:none;font-size:11px;color:var(--mut)}#shelf .rs input,.fpal .rs input{flex:1;width:auto;min-width:0}#shelf .rn,.fpal .rn{flex:1 1 100%;margin:2px 0 0;white-space:normal}
 #shelf.one .tools{display:grid;grid-template-columns:1fr 24px;grid-auto-flow:row dense;gap:3px 6px;width:100%}#shelf.one .tools>*{grid-column:1/-1}#shelf.one .tools>.sb{grid-column:1}#shelf.one .tools>.pop{grid-column:2;margin:0;justify-self:end}#shelf.one .tools .sb{width:100%;display:flex;align-items:center;gap:8px;text-align:left;min-height:30px}#shelf .sb .ic{flex:none}.fpal .sb .ic{vertical-align:-5px;margin-right:6px}
 #shelf .gl.rl,#shelf.nav .tools .gl{cursor:pointer;user-select:none}#shelf .gl.rl::before,#shelf.nav .tools .gl::before{content:"\25BE";margin-right:7px;font-size:11px;opacity:.9}#shelf .srow.collapsed .gl.rl::before,#shelf.nav .tools .gl.cl::before{content:"\25B8"}#shelf .srow.collapsed>.tools{display:none}#shelf .hid{display:none!important}#shelf.nav .tools .gl{justify-content:flex-start}#shelf.nav .tools .gl .pop{margin-left:auto}#shelf .gl.rl:focus-visible,#shelf.nav .tools .gl:focus-visible{outline:2px solid #f2b01e;outline-offset:1px}
@@ -639,9 +640,9 @@ function polyHitsRect(pts,x0,y0,x1,y1){for(const q of pts)if(q[0]>=x0&&q[0]<=x1&
  return inPoly(x0,y0,pts)}
 function boxSelect(){if(!box)return;const x0=Math.min(box.x0,box.x1),x1=Math.max(box.x0,box.x1),y0=Math.min(box.y0,box.y1),y1=Math.max(box.y0,box.y1);
  if(!box.add||(!box.sh&&x1-x0<3&&y1-y0<3)){selPts.clear();selEdges.clear()}if(x1-x0<3&&y1-y0<3)return;
- if(sub==='face')draw.polys.forEach(p=>{if(p.oi!==sel||!polyHitsRect(p.pts,x0,y0,x1,y1))return;const cx=p.pts.reduce((s,q)=>s+q[0],0)/p.pts.length,cy=p.pts.reduce((s,q)=>s+q[1],0)/p.pts.length;if(vis(cx,cy,p.z)||p.pts.some((q,i)=>vis(q[0],q[1],p.zs[i])))(box.sub?selPts.delete(p.fi):selPts.add(p.fi))});
+ if(sub==='face')draw.polys.forEach(p=>{if(p.oi!==sel||!polyHitsRect(p.pts,x0,y0,x1,y1))return;const cx=p.pts.reduce((s,q)=>s+q[0],0)/p.pts.length,cy=p.pts.reduce((s,q)=>s+q[1],0)/p.pts.length;if(vis(cx,cy,p.z)||(!frontOnly&&p.pts.some((q,i)=>vis(q[0],q[1],p.zs[i]))))(box.sub?selPts.delete(p.fi):selPts.add(p.fi))});
  else if(sub==='edge'){if(!selPts.size)selEdges.clear();(draw.edges||[]).forEach(e=>{if(segHitsRect(e.x1,e.y1,e.x2,e.y2,x0,y0,x1,y1))box.sub?selEdges.delete(e.k):selEdges.add(e.k)});syncEdges()}
- else (draw.allPts||[]).forEach(p=>{if(p.x>=x0&&p.x<=x1&&p.y>=y0&&p.y<=y1)box.sub?selPts.delete(p.i):selPts.add(p.i)})}
+ else ((frontOnly?draw.pts:draw.allPts)||[]).forEach(p=>{if(p.x>=x0&&p.x<=x1&&p.y>=y0&&p.y<=y1)box.sub?selPts.delete(p.i):selPts.add(p.i)})}
 /* rotate the selected points/faces about their centroid; the result is stored as point offsets in the Edit operator */
 function rotPts0(dx,dy){const so=objs[sel],en=editNode(so);if(!en||!en.out||!en.rep)return;
  const reps=[...(sub==='face'?facePts(en):selPts)];if(!reps.length)return;
@@ -701,14 +702,22 @@ function twDo(a,b){if(a===b)return;addNode('TargetWeld',[a,b]);selPts.clear();tw
 function loopSelected(){[...selEdges].slice(0,8).forEach(k=>{const[a,b]=k.split('_').map(Number);loopInsert({a,b})});all()}
 function paintFaces(clear){const o=objs[sel];if(!o)return;if(clear){o.fc={};draw();return}const c=($('#fpaint')||{}).value||'#e5484d';symFaces(o,selPts).forEach(i=>{o.fc[i]=c});draw()}
 function resetEdits(){const o=objs[sel],en=editNode(o);if(!en)return;en.off={};dirtyFrom(o,o.nodes.indexOf(en));all()}
+/* Affect Front Vertices: while on, selecting points or faces only picks what faces the camera (what is visible, not hidden behind other surfaces) */
+let frontOnly=false;
+function pruneFront(){if(!frontOnly||!editMode)return;
+ if(sub==='pt'){const v=new Set((draw.pts||[]).map(p=>p.i));[...selPts].forEach(i=>{if(!v.has(i))selPts.delete(i)})}
+ else if(sub==='face'){const v=new Set();(draw.polys||[]).forEach(p=>{if(p.oi!==sel)return;const cx=p.pts.reduce((a,q)=>a+q[0],0)/p.pts.length,cy=p.pts.reduce((a,q)=>a+q[1],0)/p.pts.length;if(vis(cx,cy,p.z))v.add(p.fi)});[...selPts].forEach(i=>{if(!v.has(i))selPts.delete(i)})}
+ else if(sub==='edge'&&draw.edges){const v=new Set(draw.edges.map(e=>e.k));[...selEdges].forEach(k=>{if(!v.has(k))selEdges.delete(k)});syncEdges()}}
+function toggleFront(){frontOnly=!frontOnly;const n=selPts.size+selEdges.size;pruneFront();const d=n-(selPts.size+selEdges.size);syncShelf();draw();
+ toast(frontOnly?'Affect Front Vertices on: only points and faces facing the camera can be selected'+(d>0?' ('+d+' hidden one'+(d>1?'s':'')+' removed from the selection)':''):'Affect Front Vertices off: selections can reach points and faces behind the model')}
 function selectAll(){const en=editNode(objs[sel]);if(!editMode||!en||!en.rep)return;selPts.clear();
  if(sub==='face')en.out.f.forEach((_,i)=>selPts.add(i));
  else if(sub==='edge'){selEdges.clear();(draw.edges||[]).forEach(e=>selEdges.add(e.k));syncEdges()}
- else en.rep.forEach((r,i)=>r===i&&selPts.add(i));all()}
+ else en.rep.forEach((r,i)=>r===i&&selPts.add(i));pruneFront();all()}
 function invertSel(){const en=editNode(objs[sel]);if(!editMode||!en||!en.rep)return;
  if(sub==='face'){const s=new Set(selPts);selPts.clear();en.out.f.forEach((_,i)=>s.has(i)||selPts.add(i))}
  else if(sub==='edge'){if(!selPts.size)selEdges.clear();const s=new Set(selEdges);selEdges.clear();(draw.edges||[]).forEach(e=>s.has(e.k)||selEdges.add(e.k));syncEdges()}
- else{const s=new Set(selPts);selPts.clear();en.rep.forEach((r,i)=>r===i&&!s.has(i)&&selPts.add(i))}all()}
+ else{const s=new Set(selPts);selPts.clear();en.rep.forEach((r,i)=>r===i&&!s.has(i)&&selPts.add(i))}pruneFront();all()}
 function clearSel(){if(hlMode){hlMode=false;cv.style.cursor='';box=null}tw=false;twSrc=null;selPts.clear();selEdges.clear();axisK=null;kn=null;box=null;panels();draw()}
 function dupObj(){const o=objs[sel];if(!o)return;objs.push({name:o.name+'_copy',pos:[o.pos[0]+1.5,o.pos[1],o.pos[2]],rot:[...o.rot],sc:[...(o.sc||[1,1,1])],hue:0,color:o.color,fc:{...o.fc},nodes:o.nodes.map(n=>({...n,p:{...n.p},off:n.off?JSON.parse(JSON.stringify(n.off)):null,out:null,dirty:true}))});sel=objs.length-1;osel.clear();selPts.clear();all()}
 function delObj(){if(!objs[sel])return;objs.splice(sel,1);sel=Math.max(0,sel-1);setTool(null);all()}
@@ -729,6 +738,7 @@ const CMDS=[
  {g:'Selection',l:'Select all',k:'Ctrl+A',en:()=>inEd()&&sub!=='loop',f:selectAll},
  {g:'Selection',l:'Invert selection',k:'Shift+I',en:()=>inEd()&&sub!=='loop',f:invertSel},
  {g:'Selection',l:'Clear selection',k:'Esc',f:clearSel},
+ {g:'Selection',l:'Affect front vertices',f:toggleFront,on:()=>frontOnly},
  {g:'Selection',l:'Select edge loop',k:'L',en:()=>inEd()&&sub==='edge'&&selPts.size>0,f:()=>edgeSel('loop')},
  {g:'Selection',l:'Select edge ring',k:'T',en:()=>inEd()&&sub==='edge'&&selPts.size>0,f:()=>edgeSel('ring')},
  {g:'Modeling',l:'Extrude faces',k:'Shift+E',en:()=>inEd()&&sub==='face'&&selPts.size>0,f:()=>faceOp('Extrude')},
@@ -983,11 +993,10 @@ const SHELVES=[
  {n:'Basic Modeling Tools',rows:[
   {n:'Primitives',items:[{c:'Add cube',t:'Cube',ic:'cube'},{c:'Add sphere',t:'Sphere',ic:'sphere'},{c:'Add torus',t:'Torus',ic:'torus'},{c:'Add trapezoid',t:'Trapezoid',ic:'trap'},{c:'Add teapot',t:'Teapot',ic:'teapot'},{c:'Add tree',t:'Tree',ic:'tree'}]},
   {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X'},{c:'Lock to Y axis',t:'Y'},{c:'Lock to Z axis',t:'Z'},{sp:1},{gl:'Scene'},{c:'Object mode',t:'Object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save or load scene',t:'Save / load'}]},
-  {n:'Viewport settings',items:[{gl:'Selected object'},{c:'Object wireframe',t:'Wireframe'},{c:'Object shaded',t:'Shaded'},{vp:'op'}]},
-  {n:'Polygon modeling',items:[{gl:'Component'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{c:'Weld'},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{sp:1},{c:'Duplicate',ic:'dup'},{c:'Group selected',t:'Group'},{c:'Delete object',t:'Delete'}]},
-  {n:'Modeling tools',items:[{c:'Loop cut'},{c:'Loop cut selected edges',t:'Cut'},{c:'Knife',ic:'knife'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Mirror geometry',t:'Mirror Geometry',ic:'mirror'},{c:'Mirror polygons',t:'Mirror Polygons'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object changes',t:'Symmetrize Object Changes'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'}]},
+  {n:'Polygon modeling',items:[{gl:'Component'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'}]},
+  {n:'Modeling tools',items:[{c:'Loop cut'},{c:'Loop cut selected edges',t:'Cut'},{c:'Knife',ic:'knife'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Mirror geometry',t:'Mirror Geometry',ic:'mirror'},{c:'Mirror polygons',t:'Mirror Polygons'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object changes',t:'Symmetrize Object Changes'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Duplicate',ic:'dup'},{c:'Group selected',t:'Group'},{c:'Delete object',t:'Delete'}]},
   {n:'Rotoscope',items:[{c:'Rotoscope: load image',t:'Load image…'},{c:'Rotoscope: move and scale',t:'Move / Scale'},{c:'Rotoscope: show or hide',t:'Visible'},{c:'Rotoscope: remove image',t:'Remove'},{roto:'op'},{roto:'size'},{roto:'x'},{roto:'y'},{rname:1}]},
-  {n:'File',items:[{c:'New file',t:'New File'},{c:'Save file',t:'Save File'},{c:'Export file',t:'Export File'},{fmt:1},{c:'Export and save to this computer',t:'Save to Computer'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Perspective view',t:'Perspective View'},{c:'Orthographic view',t:'Orthographic View'}]}]},
+  {n:'File',items:[{c:'New file',t:'New File'},{c:'Save file',t:'Save File'},{c:'Export file',t:'Export File'},{fmt:1},{c:'Export and save to this computer',t:'Save to Computer'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Perspective view',t:'Perspective View'},{c:'Orthographic view',t:'Orthographic View'},{sp:1},{gl:'Selected object'},{c:'Object wireframe',t:'Wireframe'},{c:'Object shaded',t:'Shaded'},{vp:'op'},{sp:1},{c:'Affect front vertices',t:'Affect Front Vertices'}]}]},
  {n:'Coloring and Rendering',rows:[
   {n:'Coloring',items:[{gl:'Paint'},{c:'Paint tool (click or drag faces)',t:'Paint'},{c:'Paint selected faces',t:'Paint selected'},{c:'Clear face paint',t:'Clear paint'},{sp:1},{gl:'Brush'},{brush:1},{sw:'brush'},{sp:1},{gl:'Object'},{objc:1},{sw:'obj'},{sp:1},{gl:'Display'},{c:'Shaded'},{c:'Shaded + wire'},{c:'Wire'}]},
   {n:'Render 2K',items:[{gl:'Aspect'},{rsel:'asp'},{gl:'Quality'},{rsel:'q'},{sp:1},{c:'Highlight to render',t:'Highlight to Render'},{c:'Render 2K (GPU)',t:'Render 2K · GPU'},{c:'Ray trace 2K (CPU)',t:'Ray Trace 2K · CPU'},{sp:1},{c:'Show last render',t:'Show Render'},{c:'Save last render',t:'Save Render'}]}]},
@@ -1601,7 +1610,7 @@ addEventListener('keydown',e=>{if(e.target.matches&&e.target.matches('input:not(
  const combo=(e.ctrlKey||e.metaKey?'Ctrl+':'')+(e.shiftKey?'Shift+':'')+(e.altKey?'Alt+':'')+(e.key.length===1?e.key.toUpperCase():e.key==='Escape'?'Esc':e.key);
  const ms=CMDS.filter(c=>c.k===combo||c.k2===combo),c=ms.find(c=>!c.en||c.en())||ms[0];if(!c)return;e.preventDefault();if(!c.en||c.en())c.f();commit()});
 addEventListener('keydown',e=>{return;const k=e.key.toLowerCase();
- if(e.ctrlKey||e.metaKey){if(k==='a'&&editMode){e.preventDefault();const en=editNode(objs[sel]);if(en&&en.rep){selPts.clear();if(sub==='face')en.out.f.forEach((_,i)=>selPts.add(i));else en.rep.forEach((r,i)=>r===i&&selPts.add(i));panels();draw()}}return}
+ if(e.ctrlKey||e.metaKey){if(k==='a'&&editMode){e.preventDefault();const en=editNode(objs[sel]);if(en&&en.rep){selPts.clear();if(sub==='face')en.out.f.forEach((_,i)=>selPts.add(i));else en.rep.forEach((r,i)=>r===i&&selPts.add(i));pruneFront();panels();draw()}}return}
  if(k==='q')setXf('select');else if(k==='w')setXf('move');else if(k==='e')setXf('rot');
  else if(k==='x'||k==='y'||k==='z'){const i='xyz'.indexOf(k);axisK=axisK===i?null:i;draw()}
  else if(k==='escape'){axisK=null;kn=null;box=null;selPts.clear();panels();draw()}});

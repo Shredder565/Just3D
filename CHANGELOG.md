@@ -4,6 +4,13 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v102 — Affect Front Vertices
+- New **Affect Front Vertices** button in the top bar (next to Opacity). While it is on, selecting points or faces only picks what faces the camera: box selection, Select all (Ctrl+A) and Invert selection skip anything hidden behind the model. Pressing it also removes already-selected hidden points, faces or edges from the selection. Press it again to select through the model as before.
+
+## v101 — Shelf rearranged
+- Viewport settings (Wireframe, Shaded, Opacity) moved from the left shelf to the top bar, next to Orthographic View. The Viewport settings subshelf is gone.
+- Target Weld, Duplicate, Group and Delete moved into Modeling tools. The plain Weld button is removed from the shelf (the Weld command is still on the right-click menu).
+
 ## v100 — Unlimited orbit, right-drag direction fixed
 - Orbiting the perspective view is no longer limited to about 160 degrees up and down: you can go over the top and keep turning (right-drag, left-drag orbit and the view cube).
 - Right-drag left/right now matches up/down: the surface nearest you follows the mouse (drag right and it moves right, drag down and it moves down), including when the view is upside down.
