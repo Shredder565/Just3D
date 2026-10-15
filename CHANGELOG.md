@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v108 — Shelf: component and pivot buttons moved
+- Points, Edges and Faces now sit in Transform and scene, beneath Grid. Center Pivot and Center to Object follow them. The Polygon modeling row keeps its Move, Rotate and Scale buttons.
+
 ## v107 — Symmetrize copies cuts, not just point edits
 - **Symmetrize** and **Symmetrize Object Changes** now work out which side of the plane you modelled by comparing every point with its mirror image. Loop cuts, knife cuts, extrusions and other shape changes on one side are kept and copied to the other side, whichever side you worked on. Before, Symmetrize always kept the positive side, so changes made on the negative (left) side were thrown away, and the "changes" version only looked at moved points. If there are no cuts, it uses the side with the larger point edits, and with no differences it keeps the positive side. A toast tells you which side was kept.
 
