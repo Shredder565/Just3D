@@ -1469,7 +1469,7 @@ cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,
  if(drag.hl){const r=cv.getBoundingClientRect();box.x1=e.clientX-r.left;box.y1=e.clientY-r.top;draw();return}
  if(drag.ro){rotoDrag(e);return}
  if(drag.sc){sculptMove(e);return}
- if(drag.rc||drag.orb){if(ortho){drag.x=e.clientX;drag.y=e.clientY;return}yaw+=dx*.008;pitch=Math.max(-1.4,Math.min(1.4,pitch+dy*.008));drag.x=e.clientX;drag.y=e.clientY;draw();return}
+ if(drag.rc||drag.orb){if(ortho){drag.x=e.clientX;drag.y=e.clientY;return}yaw+=dx*.008;pitch=Math.max(-1.4,Math.min(1.4,pitch+dy*.008*(drag.rc?-1:1)));drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.zm){dist=Math.max(3,Math.min(24,dist*Math.exp((dy-dx)*.008)));drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.exm&&exNode&&draw.exm){const m=draw.exm,s2=((e.clientX-drag.x)*m.ux+(e.clientY-drag.y)*m.uy)/m.pxu/drag.exm.ks;exNode.p.dist=Math.max(-5,Math.min(5,+(drag.exm.d0+s2).toFixed(3)));const so=objs[sel],i=so.nodes.indexOf(exNode);dirtyFrom(so,i);evaluate(so);draw();return}
  if(drag.jn)return;

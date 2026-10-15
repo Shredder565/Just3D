@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v94 — Right-drag up/down reversed
+- Dragging with the right mouse button now tilts the perspective view the opposite way vertically (drag down lowers the view, drag up raises it). Left/right and Alt-drag are unchanged.
+
 ## v93 — Rotoscope
 - New **Rotoscope** subshelf under Modeling tools. **Load image…** opens your computer's own file dialog (This PC, every drive and folder) and the picture appears in the orthographic window, behind the model.
 - **Move / Scale**: drag the image to move it, drag a yellow corner to scale it. Sliders for Opacity, Size, Left / right and Up / down; **Visible** and **Remove** buttons.
