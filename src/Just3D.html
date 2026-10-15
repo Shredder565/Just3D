@@ -217,7 +217,17 @@ function ringOf(m,ia,ib){const c=canonOf(m),ca=c[ia],cb=c[ib];if(ca<0||cb<0||ca=
 /* LoopCut: inserts 1-6 evenly spaced loops through the ring of the stored edge. Original vertices keep their indices, new ones are appended. */
 FOPS.LoopCut={p:{cuts:[1,1,6,1],pos:[.5,.05,.95,.01]},fn:(m,p,n)=>{if(!n.edge)return m;const r=ringOf(m,n.edge[0],n.edge[1]);if(!r)return m;
  const{c,R}=r,V=m.v.map(v=>v.slice()),F=m.f.slice(),extra=[],xs=[],N=Math.round(p.cuts),ts=N===1?[p.pos]:Array.from({length:N},(_,i)=>(i+1)/(N+1)),nv=new Map();
- R.forEach(([s,e],k)=>{const A=m.v[s],B=m.v[e],ids=ts.map(t=>{V.push([A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t,A[2]+(B[2]-A[2])*t]);return V.length-1});nv.set(k,{s,ids})});
+ /* New points follow the shape: along each ring edge the position comes from a cubic curve whose end directions are taken from the edges that continue straight through the neighbouring points, so a sphere stays round and a flat face stays flat. Sharp corners (more than 55 degrees) and points without a straight continuation use a plain straight line, so a cube keeps its edges. */
+ const nbr=new Map(),fcs=new Map();
+ m.f.forEach(f=>{const cf=f.map(i=>c[i]),L=cf.length;for(let k=0;k<L;k++){const v=cf[k],pp=cf[(k+L-1)%L],nn=cf[(k+1)%L];if(v<0||v===pp||v===nn)continue;let S=nbr.get(v);if(!S){S=new Set();nbr.set(v,S);fcs.set(v,[])}S.add(pp);S.add(nn);fcs.get(v).push({p:pp,n:nn,q:L===4})}});
+ const cont=(u,v)=>{const S=nbr.get(v);if(!S||S.size!==4)return -1;const Fv=fcs.get(v);if(Fv.some(x=>!x.q))return -1;const au=new Set([u]);Fv.forEach(x=>{if(x.p===u)au.add(x.n);else if(x.n===u)au.add(x.p)});let r=-1,cnt=0;S.forEach(w=>{if(!au.has(w)){r=w;cnt++}});if(cnt!==1)return -1;
+  const P=m.v[u],Q=m.v[v],X=m.v[r],d1=[Q[0]-P[0],Q[1]-P[1],Q[2]-P[2]],d2=[X[0]-Q[0],X[1]-Q[1],X[2]-Q[2]],l1=Math.hypot(...d1),l2=Math.hypot(...d2);if(!l1||!l2)return -1;
+  return (d1[0]*d2[0]+d1[1]*d2[1]+d1[2]*d2[2])/(l1*l2)>Math.cos(55*Math.PI/180)?r:-1};
+ const curvePt=(s,e,t)=>{const A=m.v[s],B=m.v[e],D=[B[0]-A[0],B[1]-A[1],B[2]-A[2]],L=Math.hypot(...D);if(!L)return A.slice();
+  const un=(a,b)=>{const d=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],l=Math.hypot(...d)||1;return[d[0]/l*L,d[1]/l*L,d[2]/l*L]};
+  const xs=cont(e,s),xe=cont(s,e),m0=xs>=0?un(m.v[xs],B):un(A,B),m1=xe>=0?un(A,m.v[xe]):un(A,B),t2=t*t,t3=t2*t,h00=2*t3-3*t2+1,h10=t3-2*t2+t,h01=-2*t3+3*t2,h11=t3-t2;
+  return[0,1,2].map(k=>h00*A[k]+h10*m0[k]+h01*B[k]+h11*m1[k])};
+ R.forEach(([s,e],k)=>{const ids=ts.map(t=>{V.push(curvePt(s,e,t));return V.length-1});nv.set(k,{s,ids})});
  const along=(a,b,from)=>{const o=nv.get(ek(a,b));return o.s===from?o.ids:o.ids.slice().reverse()};
  m.f.forEach((f,fi)=>{const L=f.length;
   if(L===4){for(let k=0;k<2;k++){const a=c[f[k]],b=c[f[k+1]],cc=c[f[k+2]],d=c[f[(k+3)%4]];
@@ -619,7 +629,10 @@ function knifeCut(){const o=objs[sel];if(!o||!kn||Math.hypot(kn.x1-kn.x0,kn.y1-k
   n=ortho?[b[1]-a[1],-(b[0]-a[0]),0]:[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],w=unview(n[0],n[1],n[2]),l=Math.hypot(w[0],w[1],w[2])||1,N=w.map(v=>v/l),C=ortho?unview(a[0],a[1],0):unview(0,0,-dist),
   d=N[0]*(C[0]-o.pos[0])+N[1]*(C[1]-o.pos[1])+N[2]*(C[2]-o.pos[2]),nn=mk('Slice');
  const NL=mulvT(rotMat(o.rot),N);Object.assign(nn.p,{nx:+NL[0].toFixed(4),ny:+NL[1].toFixed(4),nz:+NL[2].toFixed(4),d:+d.toFixed(4)});
- insertNodeKeepColors(o,nn);selPts.clear()}
+insertNodeKeepColors(o,nn);
+ if(symEdit){const ax=symAxis(),M=NL.slice();M[ax]=-M[ax];const same=Math.abs(M[0]-NL[0])+Math.abs(M[1]-NL[1])+Math.abs(M[2]-NL[2])<1e-4||(Math.abs(M[0]+NL[0])+Math.abs(M[1]+NL[1])+Math.abs(M[2]+NL[2])<1e-4&&Math.abs(d)<1e-4);
+  if(!same){const n2=mk('Slice');Object.assign(n2.p,{nx:+M[0].toFixed(4),ny:+M[1].toFixed(4),nz:+M[2].toFixed(4),d:+d.toFixed(4)});insertNodeKeepColors(o,n2)}}
+ selPts.clear()}
 /* ---- transforms, tools, multi-select ---- */
 const XF={select:'Select (Q)',move:'Move (W)',rot:'Rotate (E)',scale:'Scale (R)'},I3=[[1,0,0],[0,1,0],[0,0,1]];
 function rotMat(r){const[a,b,c]=r.map(v=>v*Math.PI/180),ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b),cc=Math.cos(c),sc=Math.sin(c);
@@ -681,14 +694,25 @@ function gizmoDrag(e){const g=draw.gz,h=drag.gz,so=objs[sel];if(!g||!so)return;
 const SW=['#3aa393','#c9783a','#4a7fd1','#c9a93a','#b5559c','#d9d9d9','#e5484d','#5b6572'],hexRgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
 function nearEdge(x,y){let best=null,bd=8;(draw.edges||[]).forEach(e=>{const vx=e.x2-e.x1,vy=e.y2-e.y1,l2=vx*vx+vy*vy||1,t=Math.max(0,Math.min(1,((x-e.x1)*vx+(y-e.y1)*vy)/l2)),d=Math.hypot(x-(e.x1+vx*t),y-(e.y1+vy*t));if(d<bd){bd=d;best=e}});return best}
 function syncEdges(){selPts.clear();selEdges.forEach(k=>{const[a,b]=k.split('_');selPts.add(+a);selPts.add(+b)})}
-function loopInsert(h){const o=objs[sel],nn=mk('LoopCut');nn.edge=[h.a,h.b];
- insertNodeKeepColors(o,nn);selPts.clear();selEdges.clear();ringPrev=null;hoverK=null}
+/* Mirror Polygons for tools that change the shape: finds the point on the other side of the plane (same place mirrored, measured on the shape before manual point edits) */
+function baseMesh(o){const en=editNode(o),i=en?o.nodes.indexOf(en):-1;return i>0?o.nodes[i-1].out:null}
+function symMirrorIdx(m,ax){const key=v=>v.map(t=>Math.round(t*1e4)).join(','),c=canonOf(m),K=new Map();m.v.forEach((v,i)=>{if(c[i]===i)K.set(key(v),i)});
+ return i=>{const v=m.v[i];if(!v)return undefined;const w=v.slice();w[ax]=-w[ax];return K.get(key(w))}}
+function mirPt(i){const o=objs[sel],en=editNode(o);if(!symEdit||!en||!en.out||!en.rep)return undefined;const ax=symAxis(),V=en.out.v,off=en.off,key=a=>a.map(t=>Math.round(t*1e4)).join(','),base=j=>{const q=off[j]||[0,0,0],v=V[j];return[v[0]-q[0],v[1]-q[1],v[2]-q[2]]};
+ const b=base(i);b[ax]=-b[ax];const t=key(b);for(let j=0;j<V.length;j++)if(en.rep[j]===j&&key(base(j))===t)return j;return undefined}
+function loopInsert(h){const o=objs[sel],nn=mk('LoopCut');nn.edge=[h.a,h.b];let mirror=null;
+ if(symEdit){const m=baseMesh(o);if(m){const mi=symMirrorIdx(m,symAxis()),a2=mi(h.a),b2=mi(h.b);
+  if(a2!==undefined&&b2!==undefined&&a2!==b2){const r=ringOf(m,h.a,h.b),c=r&&r.c;if(c&&ek(c[a2],c[b2])!==ek(c[h.a],c[h.b])&&!r.R.has(ek(c[a2],c[b2])))mirror=[a2,b2]}
+  else toast('Mirror Polygons: no matching edge on the other side, so only this side was cut')}}
+ insertNodeKeepColors(o,nn);
+ if(mirror){const n2=mk('LoopCut');n2.edge=mirror;insertNodeKeepColors(o,n2)}
+ selPts.clear();selEdges.clear();ringPrev=null;hoverK=null}
 function ringKeys(h){const o=objs[sel],en=editNode(o),i=o.nodes.indexOf(en);if(!en||i<1||!o.nodes[i-1].out)return null;const m=o.nodes[i-1].out,r=ringOf(m,h.a,h.b);if(!r)return null;const segs=[];
  m.f.forEach(f=>{if(f.length!==4)return;const ks=[];for(let k=0;k<4;k++){const a=r.c[f[k]],b=r.c[f[(k+1)%4]];if(a!==b&&r.R.has(ek(a,b)))ks.push(ek(a,b))}if(ks.length===2)segs.push(ks)});
  return{keys:new Set(r.R.keys()),segs}}
 /* ---- commands shared by the keyboard and the right-click menu ---- */
-function faceOp(name){const o=objs[sel];if(!o||sub!=='face'||!selPts.size)return;const nn=mk(name),L=o.nodes.length-1;nn.fl=[...selPts];
- placeNode(o,nn);if(name==='Extrude'){exNode=nn;exSel=new Set(selPts)}all()}
+function faceOp(name){const o=objs[sel];if(!o||sub!=='face'||!selPts.size)return;const nn=mk(name),L=o.nodes.length-1;nn.fl=[...symFaces(o,selPts)];
+ placeNode(o,nn);if(name==='Extrude'){exNode=nn;exSel=new Set(nn.fl)}all()}
 /* Mirror Polygons for faces: adds the face on the opposite side (same place mirrored across the plane) to a set, so deleting and painting are repeated there */
 function symFaces(o,set){if(!symEdit||!o)return set;const m=evaluate(o),en=editNode(o),ax=symAxis(),key=c=>c.map(t=>Math.round(t*1e4)).join(',');
  const bp=i=>{const v=m.v[i],q=en&&en.rep&&en.off[en.rep[i]];return q?[v[0]-q[0],v[1]-q[1],v[2]-q[2]]:v},cen=f=>{const c=[0,0,0];f.forEach(i=>{const b=bp(i);c[0]+=b[0]/f.length;c[1]+=b[1]/f.length;c[2]+=b[2]/f.length});return c};
@@ -701,10 +725,13 @@ function deleteFaces(){const o=objs[sel];if(!o||sub!=='face'||!selPts.size)retur
 let tw=false,twSrc=null;
 function addNode(name,fl){const o=objs[sel],nn=mk(name),L=o.nodes.length-1;nn.fl=fl;placeNode(o,nn);return nn}
 function weldSel(){const o=objs[sel];if(!inEd()||sub!=='pt'||selPts.size<2){toast('Select two or more points first (Points mode), then Weld');return}
- const n=selPts.size;addNode('Weld',[...selPts]);const m=evaluate(o);selPts.clear();toast('Welded '+n+' points to their center. Use the Weld card in the properties panel to set a distance.');all()}
+ const n=selPts.size,mp=[...selPts].map(mirPt),hasMir=symEdit&&mp.length>=2&&mp.every(x=>x!==undefined)&&mp.some(x=>!selPts.has(x));addNode('Weld',[...selPts]);if(hasMir)addNode('Weld',mp);const m=evaluate(o);selPts.clear();toast('Welded '+n+' points to their center. Use the Weld card in the properties panel to set a distance.');all()}
 function targetWeldTool(){if(!objs[sel])return;tw=!tw;twSrc=null;if(tw){if(!(editMode&&sub==='pt'))setTool('pt');selPts.clear();toast('Target Weld: click a point, then click the point to weld it onto. Dragging one point onto another works too. Esc to finish.')}else toast('Target Weld off');all()}
-function twDo(a,b){if(a===b)return;addNode('TargetWeld',[a,b]);selPts.clear();twSrc=null;toast('Welded point onto target');all()}
-function loopSelected(){[...selEdges].slice(0,8).forEach(k=>{const[a,b]=k.split('_').map(Number);loopInsert({a,b})});all()}
+function twDo(a,b){if(a===b)return;const ma=mirPt(a),mb=mirPt(b);addNode('TargetWeld',[a,b]);if(symEdit&&ma!==undefined&&mb!==undefined&&ma!==mb&&!(ma===a&&mb===b)&&!(ma===b&&mb===a))addNode('TargetWeld',[ma,mb]);selPts.clear();twSrc=null;toast('Welded point onto target');all()}
+function loopSelected(){const o=objs[sel],m=symEdit?baseMesh(o):null,done=new Set();
+ [...selEdges].slice(0,8).forEach(k=>{const[a,b]=k.split('_').map(Number);
+  if(m){const r=ringOf(m,a,b);if(r){const kk=ek(r.c[a],r.c[b]);if(done.has(kk))return;r.R.forEach((_,x)=>done.add(x));const mi=symMirrorIdx(m,symAxis()),a2=mi(a),b2=mi(b);if(a2!==undefined&&b2!==undefined&&a2!==b2){const r2=ringOf(m,a2,b2);if(r2)r2.R.forEach((_,x)=>done.add(x))}}}
+  loopInsert({a,b})});all()}
 function paintFaces(clear){const o=objs[sel];if(!o)return;if(clear){o.fc={};draw();return}const c=($('#fpaint')||{}).value||'#e5484d';symFaces(o,selPts).forEach(i=>{o.fc[i]=c});draw()}
 function resetEdits(){const o=objs[sel],en=editNode(o);if(!en)return;en.off={};dirtyFrom(o,o.nodes.indexOf(en));all()}
 /* Affect Front Vertices: while on, selecting points or faces only picks what faces the camera (what is visible, not hidden behind other surfaces) */
@@ -1140,7 +1167,7 @@ function rotPts(dx,dy){const P=symPrep();rotPts0(dx,dy);symApply(P)}
 function movePts(w){const P=symPrep();movePts0(w);symApply(P)}
 function scalePts(k,f){const P=symPrep();scalePts0(k,f);symApply(P)}
 function mirrorPolys(){if(!objs[sel])return;symEdit=!symEdit;if(symEdit&&!editMode)setTool('face');
- all();toast(symEdit?'Mirror Polygons on: edits to points or faces are repeated on the opposite side ('+'XYZ'[symAxis()]+' plane). Press X, Y or Z first to change the plane.':'Mirror Polygons off')}
+ all();toast(symEdit?'Mirror Polygons on: moving points or faces, and loop cut, extrude, bevel, weld, target weld, knife and delete, are repeated on the opposite side ('+'XYZ'[symAxis()]+' plane). Press X, Y or Z first to change the plane.':'Mirror Polygons off')}
 function mirrorObj(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK:0;dupObj();const c=objs[sel];c.name=o.name+'_mirror';
  c.pos=o.pos.slice();c.pos[ax]=-c.pos[ax];c.rot=o.rot.slice();for(let k=0;k<3;k++)if(k!==ax)c.rot[k]=-c.rot[k];
  const nn=mk('Reflect');nn.p.axis=ax;c.nodes.push(nn);dirtyFrom(c,c.nodes.length-1);selPts.clear();selEdges.clear();
