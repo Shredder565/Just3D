@@ -37,7 +37,7 @@ Polygon modeling, a non-destructive history stack, symmetry tools and sculpting 
 
 The exe is a tiny launcher (about 2 MB) that opens Just3D in its own window using Microsoft Edge (included with Windows 11) or Google Chrome. Nothing is installed; settings live in `%LOCALAPPDATA%\Just3D`.
 
-> **SmartScreen note:** the exe is not code-signed, so Windows may show "Windows protected your PC" the first time. Choose **More info → Run anyway**, or use the Unblock step above. You can also read the code in this repo and [build it yourself](#build-from-source).
+> **SmartScreen note:** the exe is not code-signed, so Windows may show "Windows protected your PC" the first time. Choose **More info → Run anyway**, or use the Unblock step above. You can also read the code in this repo and [build it yourself](#build-from-source) for your own use.
 
 ### Any platform
 Open the [web version](https://shredder565.github.io/Just3D/src/Just3D.html) in a modern browser, or download `src/Just3D.html` and open it locally — it is one self-contained file.
@@ -69,3 +69,6 @@ See [CHANGELOG.md](CHANGELOG.md).
 
 ## Download counter
 The badge above and the counter on the [project page](https://shredder565.github.io/Just3D/) show the total number of release-asset downloads reported by GitHub. It counts downloads, not unique people.
+
+## License
+Copyright © 2026 Packing Protons. **All rights reserved.** You may download and run Just3D for personal, non-commercial use and read the source here, but you may not copy, modify, redistribute or sell it without written permission. See [LICENSE](LICENSE).
