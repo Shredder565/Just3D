@@ -1172,16 +1172,20 @@ function mirrorObj(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK:
  all();toast('Mirrored copy "'+c.name+'" made across the world '+'XYZ'[ax]+' plane'+(Math.abs(o.pos[ax])<1e-6?'. The object sits on that plane, so move the original to see both.':'. Press X, Y or Z first to choose another plane.'))}
 function mirrorGeo(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK:0;const nn=addNode('Mirror',null);nn.p.axis=ax;dirtyFrom(o,o.nodes.indexOf(nn));
  selPts.clear();selEdges.clear();ringPrev=null;all();toast('Mirrored across the '+'XYZ'[ax]+' side. Change axis, direction, merge and offset in the Mirror card (right panel). Press X, Y or Z first to pick the axis.')}
-function symmetrize(){const o=objs[sel];if(!o)return;const nn=mk('Symmetrize'),ax=axisK!==null?axisK:0,last=o.nodes[o.nodes.length-1];nn.p.axis=ax;
+/* Which side of the plane was modelled? Compares every point with its mirror image (measured on the shape before manual point edits): the side with more points that have no partner on the other side got the loop cuts, knife cuts or extrusions, so that side is kept and cloned. If the topology is the same on both sides, the side with the larger point edits wins; with no information the positive side is kept. Returns {dir, why}. */
+function symSide(o,ax){const m=evaluate(o),last=o.nodes[o.nodes.length-1],en=last&&last.type==='Edit'?last:null,off=en&&en.off||{},rep=en&&en.rep,used=new Set(m.f.flat()),key=v=>v.map(t=>Math.round(t*1e3)).join(',');
+ const base=i=>{const v=m.v[i],q=off[rep?rep[i]:i];return q?[v[0]-q[0],v[1]-q[1],v[2]-q[2]]:v},K=new Set(),P=[];
+ used.forEach(i=>{const b=base(i);K.add(key(b));P.push(b)});let neg=0,pos=0;
+ P.forEach(b=>{const x=b[ax];if(Math.abs(x)<1e-6)return;const w=b.slice();w[ax]=-w[ax];if(!K.has(key(w)))x<0?neg++:pos++});
+ if(neg!==pos)return{dir:pos>neg?1:-1,why:'topology',neg,pos};
+ let en2=0,ep=0;Object.keys(off).forEach(k=>{const i=+k,d=off[k],v=m.v[i];if(!v)return;const mag=Math.hypot(d[0],d[1],d[2]),bx=v[ax]-d[ax];if(bx<-1e-6)en2+=mag;else if(bx>1e-6)ep+=mag});
+ if(en2!==ep)return{dir:ep>en2?1:-1,why:'edits',neg:en2,pos:ep};return{dir:1,why:'none',neg:0,pos:0}}
+const symWhy=(r,ax)=>r.why==='none'?'No differences between the sides were found, so the positive side was kept and cloned. ':'Your '+(r.why==='topology'?'cuts and shape changes':'point edits')+' were on the '+(r.dir<0?'negative (left in the front view)':'positive (right in the front view)')+' '+'XYZ'[ax]+' side; it was cloned to the other side. ';
+function symmetrize(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK:0,r=symSide(o,ax),nn=mk('Symmetrize');nn.p.axis=ax;nn.p.dir=r.dir;
  insertNodeKeepColors(o,nn);dirtyFrom(o,o.nodes.indexOf(nn));
- selPts.clear();selEdges.clear();ringPrev=null;all();toast('Symmetrized across the '+'XYZ'[ax]+' plane, positive side kept. Change axis, dir and offset in the stack.')}
-/* Symmetrize object changes: finds the side of the object (across the X plane, or Y/Z if an axis is locked) where the point edits were made, then appends a Symmetrize node that keeps that side and clones it to the other. Every earlier node and edit stays in the stack, so nothing is lost; delete the Symmetrize node to go back. */
-function symmetrizeChanges(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK:0;evaluate(o);let neg=0,pos=0;
- o.nodes.forEach(n=>{if(n.type!=='Edit'||!n.out||!n.rep)return;Object.keys(n.off||{}).forEach(k=>{const i=+k,d=n.off[k],v=n.out.v[i];if(!v)return;const mag=Math.hypot(d[0],d[1],d[2]),bx=v[ax]-d[ax];if(bx<-1e-6)neg+=mag;else if(bx>1e-6)pos+=mag})});
- const dir=pos>neg?1:-1,nn=mk('Symmetrize'),last=o.nodes[o.nodes.length-1];nn.p.axis=ax;nn.p.dir=dir;
- insertNodeKeepColors(o,nn);dirtyFrom(o,o.nodes.indexOf(nn));
- selPts.clear();selEdges.clear();ringPrev=null;all();
- toast((neg===0&&pos===0?'No point edits found, so the '+'negative'+' side was cloned. ':'Your changes were on the '+(dir<0?'negative (left in the front view)':'positive (right in the front view)')+' '+'XYZ'[ax]+' side; it was cloned to the other side. ')+'The modeling history is kept. Delete the Symmetrize card to undo.')}
+ selPts.clear();selEdges.clear();ringPrev=null;all();toast(symWhy(r,ax)+'Change axis, dir and offset in the Symmetrize card; delete the card to undo.')}
+/* Symmetrize object changes: same detection, kept as its own command. Every earlier node and edit stays in the stack, so nothing is lost; delete the Symmetrize node to go back. */
+function symmetrizeChanges(){symmetrize()}
 /* Merge: joins the selected objects (select two or more with Shift+click) into one object. Each object's final shape, position, rotation and scale are baked in and face colours are kept. Where objects overlap, the faces of each that lie inside the other are deleted and the nearest points along the open seam are welded together. The originals are replaced by the merged object (Ctrl+Z undoes it). */
 function insideMesh(P,M,bb){if(P[0]<bb[0][0]||P[0]>bb[1][0]||P[1]<bb[0][1]||P[1]>bb[1][1]||P[2]<bb[0][2]||P[2]>bb[1][2])return false;
  const D=[[.5774,.6101,.5422],[-.4432,.7311,-.5189],[.2977,-.5513,.7799]];let votes=0;

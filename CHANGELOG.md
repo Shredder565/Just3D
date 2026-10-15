@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v107 — Symmetrize copies cuts, not just point edits
+- **Symmetrize** and **Symmetrize Object Changes** now work out which side of the plane you modelled by comparing every point with its mirror image. Loop cuts, knife cuts, extrusions and other shape changes on one side are kept and copied to the other side, whichever side you worked on. Before, Symmetrize always kept the positive side, so changes made on the negative (left) side were thrown away, and the "changes" version only looked at moved points. If there are no cuts, it uses the side with the larger point edits, and with no differences it keeps the positive side. A toast tells you which side was kept.
+
 ## v106 — Mirror Geometry removed
 - The Mirror Geometry button is gone from Modeling tools, and its right-click menu entry and Shift+Y shortcut are removed, along with the separate-copy mirror command. Mirror Polygons (Alt+X) and Symmetrize are unchanged. Scenes that already contain a Mirror operator still load.
 
