@@ -4,6 +4,13 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v121 — Object Draw, Duplicate and Group icons
+- New **Object Draw** button in the Draw row, under World Draw. It works like World Draw, but instead of drawing on a flat plane it follows the surface of the object under the cursor: **drag** for a freehand curve, **click** for corners, and the line bends around the object. Start or end on a vertex or an edge and it snaps there (a yellow ring shows the snap).
+- **Right-click** (or Enter) closes the outline and cuts it into the mesh as real edges and points, joined to the existing geometry. The mesh stays watertight, the surface shape does not change, and the new lines are flat like all the others: edit them in Points / Edges mode, move, bevel, loop cut, and so on.
+- The faces inside the new outline are selected in Faces mode, so **Extrude** works right away. Backspace removes the last stroke and Esc cancels.
+- The cut is saved in the history as an **Imprint** step and comes back when a project is saved and reopened.
+- The **Duplicate** button now has an icon of three separate, unjoined spheres. The old joined three-sphere icon moved to **Group**.
+
 ## v120 — World Draw (new Draw shelf)
 - New dark blue **Draw** row under Modeling tools, with one button: **World Draw** (also the N key).
 - Draw an outline straight into the scene: **drag** to draw a freehand curve (an arch, the profile of a sphere) and **click** to add straight corners. Strokes can be mixed and continued as often as you like.
