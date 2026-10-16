@@ -859,7 +859,7 @@ function imprint(m,path){
  return{v:NV,f:OF,src,loop,broken}}
 /* ---- screen and ray helpers ---- */
 function pixRay(x,y){const r=cv.getBoundingClientRect(),W=r.width,H=r.height,F=draw.F;let o,d;
- if(ortho){const s=F/dist;o=unview((x-W/2-panX)/s,-(y-H/2-panY)/s,0);d=unview(0,0,1)}else{o=unview(0,0,-dist);d=unview((x-W/2-panX)/F,-(y-H/2-panY)/F,1)}
+ if(ortho){const s=F/dist;o=unview((x-W/2-panX)/s,-(y-H/2-panY)/s,-1e4);d=unview(0,0,1)}else{o=unview(0,0,-dist);d=unview((x-W/2-panX)/F,-(y-H/2-panY)/F,1)}
  return{o:[o[0]+tgt[0],o[1]+tgt[1],o[2]+tgt[2]],d}}
 function w2s(P){const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch),x=P[0]-tgt[0],y=P[1]-tgt[1],z=P[2]-tgt[2],x1=x*cy+z*sy,z1=-x*sy+z*cy,v=[x1,y*cp-z1*sp,y*sp+z1*cp],d=ortho?dist:v[2]+dist;
  return[draw.W/2+panX+draw.F*v[0]/d,draw.H/2+panY-draw.F*v[1]/d]}

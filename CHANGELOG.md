@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v122 — Object Draw always draws on the side facing you
+- Fix: in the Orthographic view, Object Draw picked the far side of the object (the back of a sphere seen from the front). It now always lands on the surface that faces the camera, in the Orthographic and Perspective views.
+
 ## v121 — Object Draw, Duplicate and Group icons
 - New **Object Draw** button in the Draw row, under World Draw. It works like World Draw, but instead of drawing on a flat plane it follows the surface of the object under the cursor: **drag** for a freehand curve, **click** for corners, and the line bends around the object. Start or end on a vertex or an edge and it snaps there (a yellow ring shows the snap).
 - **Right-click** (or Enter) closes the outline and cuts it into the mesh as real edges and points, joined to the existing geometry. The mesh stays watertight, the surface shape does not change, and the new lines are flat like all the others: edit them in Points / Edges mode, move, bevel, loop cut, and so on.
