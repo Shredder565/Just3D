@@ -4,6 +4,15 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v120 — World Draw (new Draw shelf)
+- New dark blue **Draw** row under Modeling tools, with one button: **World Draw** (also the N key).
+- Draw an outline straight into the scene: **drag** to draw a freehand curve (an arch, the profile of a sphere) and **click** to add straight corners. Strokes can be mixed and continued as often as you like.
+- **Right-click** (or press Enter) closes the outline: the end joins the start and the shape becomes one solid, flat polygon face. It is selected in Faces mode, so Extrude works straight away, and every point can be edited (Points mode, move, bevel, loop cut and so on).
+- Drawing happens on the world plane (XY, XZ or YZ) that faces the camera most squarely, so the Front, Right and Top views draw flat on the matching plane. The plane is shown as a faint grid, and the outline is previewed in both views while you draw.
+- Freehand strokes are smoothed and thinned automatically, so a circle becomes a few dozen points rather than hundreds. Backspace (or Ctrl+Z) removes the last stroke, Esc cancels the outline.
+- The new face faces the camera that drew it, so Extrude pushes toward you.
+- Fix: polygons with a concave outline (a drawn arch, for example) now fill correctly on screen, in the ray trace and in STL export; before, only convex polygons were cut into triangles properly.
+
 ## v119 — View cube arrows
 - The arrows around the orthographic view cube now turn to the side that is on that side of the cube: from Front, left goes to Left and right goes to Right; from Back, left goes to Right and right goes to Left (the face drawn on that side); then round the four sides. Up is Top, down is Bottom.
 
