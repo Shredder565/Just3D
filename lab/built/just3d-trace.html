@@ -1,0 +1,1292 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Just3D Trace</title>
+<style>
+:root{--bg:#10151c;--panel:#18202b;--panel2:#202a37;--line:#2c3a4b;--tx:#dce6f0;--mut:#8fa1b4;--acc:#2dc4ad;--acc2:#14375e;--warn:#f2b01e;--bad:#e5484d}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(--acc2);border-bottom:1px solid #0b2340}
+header h1{font-size:15px;margin:0;font-weight:650;letter-spacing:.2px}header .tag{font-size:11px;background:var(--acc);color:#04201c;border-radius:10px;padding:1px 8px;font-weight:650}
+header span.sub{color:#b9cbe0;font-size:12px}
+main{flex:1;display:grid;grid-template-columns:340px 1fr 1fr;min-height:0}
+aside{background:var(--panel);border-right:1px solid var(--line);overflow:auto;padding:8px 10px 24px}
+section.pn{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:var(--panel2)}
+section.pn>h2{margin:0;padding:7px 10px;font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:#cfe3f7;background:var(--acc2);border-radius:7px 7px 0 0;cursor:pointer;user-select:none}
+section.pn>h2:before{content:"▾ "}section.pn.c>h2:before{content:"▸ "}section.pn.c>.bd{display:none}
+.bd{padding:8px 10px}
+.row{display:flex;gap:6px;align-items:center;margin:5px 0;flex-wrap:wrap}
+label.f{display:flex;flex-direction:column;gap:2px;width:100%;color:var(--mut);font-size:12px}
+label.f span b{color:var(--tx);font-weight:600}
+input[type=range]{width:100%;accent-color:var(--acc)}
+input[type=text],input[type=password],input[type=number],select{width:100%;background:#0e141b;color:var(--tx);border:1px solid var(--line);border-radius:6px;padding:5px 7px;font:inherit}
+input[type=color]{width:40px;height:26px;padding:0;border:1px solid var(--line);background:none;border-radius:5px}
+button{background:#2a3748;color:var(--tx);border:1px solid #3a4b61;border-radius:6px;padding:6px 10px;font:inherit;cursor:pointer}
+button:hover{background:#344459}button:disabled{opacity:.45;cursor:default}
+button.go{background:var(--acc);border-color:var(--acc);color:#04201c;font-weight:650;width:100%;padding:8px}button.go:hover{background:#40d6bf}
+button.sm{padding:3px 8px;font-size:12px}
+.chk{display:flex;gap:6px;align-items:center;color:var(--tx);margin:4px 0}
+.hint{color:var(--mut);font-size:12px;margin:4px 0}
+#log{margin:8px 2px 0;padding:6px 8px;border-radius:6px;background:#0e141b;border:1px solid var(--line);color:var(--mut);min-height:34px;white-space:pre-wrap;font-size:12px}#log.err{color:#ffb4b6;border-color:#6b2a2c}
+footer#sb{display:flex;align-items:center;gap:12px;padding:6px 14px;background:#0b1118;border-top:1px solid var(--line);font-size:12px;min-height:34px}
+footer#sb #sbStage{flex:0 1 46%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tx)}
+footer#sb #sbBar{flex:1;height:12px;background:#1a2430;border:1px solid var(--line);border-radius:7px;overflow:hidden;position:relative}
+footer#sb #sbBar i{display:block;height:100%;width:0;background:var(--acc);border-radius:6px;transition:width .25s ease}
+footer#sb.idle #sbBar i{width:0!important}
+footer#sb.ind #sbBar i{width:30%!important;position:absolute;animation:slide 1.1s ease-in-out infinite alternate;transition:none}
+@keyframes slide{from{left:0}to{left:70%}}
+footer#sb.ok #sbBar i{background:#3fb950}footer#sb.err #sbBar i{background:var(--bad)}
+footer#sb #sbPct{width:40px;text-align:right;color:var(--mut);font-variant-numeric:tabular-nums}
+footer#sb #sbTime{width:58px;text-align:right;color:var(--mut);font-variant-numeric:tabular-nums}
+.pane{position:relative;min-width:0;min-height:0;border-right:1px solid var(--line);background:#0b0f14}
+.pane canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.bar{position:absolute;left:8px;right:8px;top:8px;display:flex;gap:6px;flex-wrap:wrap;z-index:2;pointer-events:none}.bar>*{pointer-events:auto}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}.tabs button{padding:3px 8px;font-size:12px}.tabs button.on{background:var(--acc);color:#04201c;border-color:var(--acc)}
+.seg{display:flex}.seg button{border-radius:0;padding:4px 9px;font-size:12px}.seg button:first-child{border-radius:6px 0 0 6px}.seg button:last-child{border-radius:0 6px 6px 0}.seg button.on{background:var(--acc);color:#04201c;border-color:var(--acc)}
+.stat{position:absolute;left:10px;bottom:8px;color:var(--mut);font-size:12px;z-index:2;text-shadow:0 1px 2px #000}
+@media(max-width:1000px){body{overflow:auto}main{grid-template-columns:1fr;grid-auto-rows:minmax(420px,auto)}.pane{height:70vh}}
+</style></head>
+<body class="trace">
+<header><h1>Just3D Trace</h1><span class="tag">experiment</span><span class="sub">Model sheet outlines to a quad model. Works fully offline in this page.</span></header>
+<main>
+<aside>
+<section class="pn"><h2>1 · Model sheet</h2><div class="bd">
+ <div class="row"><button id="addImg">Add image(s)…</button><input type="file" id="fileIn" accept="image/*" multiple hidden></div>
+ <div class="hint">Drop or paste images anywhere. Put a box around each view (drag on the sheet), then say which view it is.</div>
+ <div class="tabs" id="sheetTabs"></div>
+ <div class="row"><button id="autoFind" class="sm">Auto-find views</button><button id="delBox" class="sm">Delete box</button><button id="delSheet" class="sm">Remove image</button></div>
+ <label class="f"><span>Selected box is the…</span><select id="role"><option value="front">Front view</option><option value="side">Side view</option><option value="back">Back view</option><option value="top">Top view</option><option value="part">Part of the front view (head, arm, leg…)</option><option value="skip">Ignore (not used)</option></select></label>
+ <div id="partRow" hidden>
+  <label class="f"><span>Part name</span><input type="text" id="partName" placeholder="head, torso, left arm…" spellcheck="false"></label>
+  <label class="f"><span>Depth comes from…</span><select id="partDepth"><option value="auto">Automatic (arms, hands, tails: round; the rest: side view)</option><option value="side">The side / top view</option><option value="round">A round tube (no side view needed)</option></select></label>
+ </div>
+ <label class="f"><span>In the side view the character faces…</span><select id="sideDir"><option value="1">Right</option><option value="0">Left</option></select></label>
+ <label class="f"><span>In the top view the character's front is at the…</span><select id="topDir"><option value="1">Top of the picture</option><option value="0">Bottom of the picture</option></select></label>
+</div></section>
+<section class="pn"><h2>2 · Outline</h2><div class="bd">
+ <div class="row"><span style="color:var(--mut)">Background colour</span><input type="color" id="bgc" value="#ffffff"><button id="bgAuto" class="sm">Auto</button></div>
+ <label class="f"><span>Tolerance <b id="tolV">30</b></span><input type="range" id="tol" min="4" max="120" value="30"></label>
+ <label class="chk"><input type="checkbox" id="holes" checked> Fill enclosed holes (white clothes, inner detail)</label>
+ <label class="f"><span>Ignore specks smaller than <b id="spkV">2</b>% of the figure</span><input type="range" id="spk" min="0" max="5" step="0.1" value="2"></label>
+ <label class="chk"><input type="checkbox" id="useA" checked> Use transparency if the image has it</label>
+ <label class="chk"><input type="checkbox" id="showO" checked> Show the detected outline on the sheet</label>
+</div></section>
+<section class="pn"><h2>2b · Parts (optional)</h2><div class="bd">
+ <div class="hint">Better detail: split the figure into parts and build each one on its own. Draw a box over a part on the <b>front</b> view and set it to “Part of the front view”, or let Auto-split do a standing figure.</div>
+ <div class="row"><button id="autoParts" class="sm">Auto-split front into parts</button><button id="clearParts" class="sm">Clear parts</button></div>
+ <label class="chk"><input type="checkbox" id="useParts" checked> Build from the parts when there are any</label>
+<label class="chk"><input type="checkbox" id="tThin" checked> Thin pieces (a tail, ribbon, ear) and bits outside every box become round tubes</label>
+ <label class="f"><span>Blend between parts <b id="tJnV">4</b>%</span><input type="range" id="tJn" min="0" max="15" step="1" value="4"></label>
+ <label class="f"><span>Cross-section of the body parts <b id="tCsV">70</b>% (0 = square, 100 = oval)</span><input type="range" id="tCs" min="0" max="100" step="5" value="70"></label>
+ <div id="partList" class="hint"></div>
+</div></section>
+
+<section class="pn"><h2>3 · Build quad model</h2><div class="bd">
+ <label class="f"><span>Model height (units) <b id="tHv">4</b></span><input type="range" id="tH" min="1" max="10" step="0.5" value="4"></label>
+ <label class="f"><span>Detail (quads along the longest side) <b id="tResV">64</b></span><input type="range" id="tRes" min="24" max="128" step="4" value="64"></label>
+ <label class="f"><span>Smoothness <b id="tSmV">1</b></span><input type="range" id="tSm" min="0" max="4" step="1" value="1"></label>
+ <label class="f"><span>Roundness <b id="tRdV">30</b>%</span><input type="range" id="tRd" min="0" max="100" step="5" value="30"></label>
+ <label class="f"><span>Relax passes <b id="tRxV">1</b></span><input type="range" id="tRx" min="0" max="6" step="1" value="1"></label>
+ <div class="hint">Roundness softens the hard corners where the views meet, so a ball drawn as circles comes out ball-shaped instead of boxy.</div>
+ <button class="go" id="goTrace">Build quad model from outlines</button>
+</div></section>
+
+
+<section class="pn"><h2>Import a mesh and make it pure quads</h2><div class="bd">
+ <div class="row"><button id="impMesh" class="sm">Import a mesh file…</button><input type="file" id="meshIn" accept=".glb,.obj,.stl,.ply" hidden><span class="hint" style="margin:0">.glb .obj .stl .ply, triangles or quads</span></div>
+ <div class="hint">Any mesh works: a scan, an AI result, something you modelled. It is rebuilt as <b>all quads</b> and every point is snapped back onto the original surface, so shape and detail are kept as far as the quad count allows.</div>
+ <label class="f"><span>Number of quads</span><input type="number" id="aQ" min="200" max="400000" step="100" value="5000"></label>
+ <div class="row"><button class="sm" data-q="1000">1k</button><button class="sm" data-q="2500">2.5k</button><button class="sm" data-q="5000">5k</button><button class="sm" data-q="10000">10k</button><button class="sm" data-q="25000">25k</button><button class="sm" data-q="50000">50k</button></div>
+ <label class="f"><span>Edge flow</span><select id="aFlow"><option value="field">Follow the shape (edges run along and around the form)</option><option value="grid">Regular grid (older, faster)</option></select></label>
+ <label class="chk"><input type="checkbox" id="aSnap" checked> Keep the detail (snap every point onto the original surface)</label>
+ <label class="f"><span>Model height (units) <b id="aHv">4</b></span><input type="range" id="aH" min="1" max="10" step="0.5" value="4"></label>
+ <label class="chk"><input type="checkbox" id="aKeep" checked> Keep sharp edges and corners sharp</label>
+ <label class="chk"><input type="checkbox" id="aTopo" checked> Clean up the quad layout (fewer irregular points)</label>
+ <label class="f"><span>Squaring passes <b id="aRxV">90</b> (more = squarer quads)</span><input type="range" id="aRx" min="0" max="240" step="6" value="90"></label>
+ <label class="f"><span>Pre-smoothing <b id="aSmV">0</b> (0 = keep every detail)</span><input type="range" id="aSm" min="0" max="4" step="1" value="0"></label>
+ <label class="f"><span>The mesh's up direction is…</span><select id="aUp"><option value="y">Y (most tools)</option><option value="z">Z</option></select></label>
+ <label class="f"><span>Turn it around the up axis</span><select id="aRot"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label>
+ <button class="go" id="goRemesh" disabled>Make it quads</button>
+ <div class="row"><span style="color:var(--mut)">Show</span><div class="seg"><button id="showRaw" class="on">Original mesh</button><button id="showQuad">Quad mesh</button></div></div>
+</div></section>
+<section class="pn"><h2>Result</h2><div class="bd">
+ <div id="stats" class="hint">No model yet.</div>
+ <button class="go" id="exp" disabled>Save as OBJ (quads)</button>
+ <div class="hint">Open the .obj in Just3D with Save / load → Load file, or in any 3D program.</div>
+ <div id="log">Add a model sheet to start.</div>
+</div></section>
+</aside>
+<div class="pane" id="paneSheet"><canvas id="sheetCv"></canvas><div class="stat" id="sheetStat"></div></div>
+<div class="pane" id="paneView"><canvas id="viewCv"></canvas>
+ <div class="bar"><div class="seg"><button data-v="shaded" class="on">Shaded</button><button data-v="both">Shaded + wire</button><button data-v="wire">Wire</button></div>
+ <div class="seg"><button data-cam="front">Front</button><button data-cam="side">Side</button><button data-cam="top">Top</button><button data-cam="persp">3/4</button></div></div>
+ <div class="stat" id="viewStat">Drag to orbit, wheel to zoom, double-click to reset.</div></div>
+</main>
+<footer id="sb" class="idle"><span id="sbStage">Ready</span><div id="sbBar"><i></i></div><span id="sbPct"></span><span id="sbTime"></span><button id="sbCancel" class="sm" hidden>Cancel</button></footer>
+<script>
+'use strict';
+const MODE=document.body.classList.contains('ai')?'ai':'trace';
+const $=id=>document.getElementById(id);
+const tick=()=>new Promise(r=>setTimeout(r,0));
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const ROLES=['front','side','back','top'];
+const RCOL={front:'#2dc4ad',side:'#f2994a',back:'#b57cf0',top:'#f2d14b',part:'#ff6fa8',skip:'#7b8794'};
+
+/* ---------- status bar ---------- */
+const Status={t0:0,timer:0,cancel:null,from:0,to:0,creep:false,pct:0,active:false,
+ start(label,cancel){this.t0=performance.now();this.cancel=cancel||null;this.active=true;$('sbCancel').hidden=!cancel;
+  $('sb').className='';clearInterval(this.timer);this.timer=setInterval(()=>this.onTick(),200);this.creep=false;this.set(0,label);this.onTick()},
+ onTick(){$('sbTime').textContent=((performance.now()-this.t0)/1000).toFixed(1)+' s';
+  if(this.creep){this.pct+=(this.to-this.pct)*0.02;this.paint()}},
+ paint(){const p=clamp(this.pct,0,1);$('sbBar').firstElementChild.style.width=(p*100).toFixed(1)+'%';$('sbPct').textContent=Math.round(p*100)+'%'},
+ set(f,label){this.creep=false;if(f===null){$('sb').classList.add('ind');$('sbPct').textContent=''}else{$('sb').classList.remove('ind');this.pct=f;this.paint()}
+  if(label!==undefined)$('sbStage').textContent=label},
+ waitFor(from,to,label){this.pct=Math.max(this.pct,from);this.to=to;this.creep=true;$('sb').classList.remove('ind');if(label!==undefined)$('sbStage').textContent=label;this.paint()},
+ label(t){$('sbStage').textContent=t},
+ end(cls,msg){clearInterval(this.timer);this.creep=false;this.active=false;this.cancel=null;$('sbCancel').hidden=true;
+  $('sb').className=cls;if(cls==='ok'){this.pct=1;this.paint()}this.onTick();$('sbStage').textContent=msg},
+ done(msg){this.end('ok',msg)},fail(msg){this.end('err',msg)},idle(msg){this.end('idle',msg||'Ready')}};
+$('sbCancel').onclick=()=>{if(Status.cancel)Status.cancel()};
+let JOB=null;const newJob=()=>{JOB={cancelled:false,abort:null};return JOB};
+const stepCheck=async(job)=>{await tick();if(job&&job.cancelled)throw new Error('cancelled')};
+function log(msg,err){const l=$('log');l.textContent=msg;l.className=err?'err':''}
+async function saveFile(name,blob){
+ try{if(window.claude&&window.claude.use){const d=await window.claude.use('downloads');await d.save({filename:name,data:blob});return}}catch(e){}
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(a.href)},2000)}
+function sizeCanvas(c){const r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;const w=Math.max(1,Math.round(r.width*d)),h=Math.max(1,Math.round(r.height*d));if(c.width!==w||c.height!==h){c.width=w;c.height=h}return d}
+
+/* ---------- collapsible panels ---------- */
+document.querySelectorAll('section.pn>h2').forEach(h=>h.onclick=()=>h.parentElement.classList.toggle('c'));
+
+/* ---------- sheets ---------- */
+const sheets=[];let cur=-1;
+const sc=$('sheetCv'),sx=sc.getContext('2d');let fitV={s:1,ox:0,oy:0,d:1};
+const P={tol:30,holes:true,spk:2,useA:true,showO:true,bg:[255,255,255]};
+const maskCache=new Map();
+function guessRole(name){const n=name.toLowerCase();for(const r of ROLES)if(n.includes(r))return r;if(/\b(left|right|profile)\b/.test(n))return 'side';return null}
+function nextRole(){const used={};for(const sh of sheets)for(const b of sh.boxes)used[b.role]=1;for(const r of ROLES)if(!used[r])return r;return 'part'}
+function curSheet(){return sheets[cur]||null}
+function curBox(){const s=curSheet();return s&&s.sel>=0?s.boxes[s.sel]:null}
+
+function addImageFile(file){return new Promise((res)=>{
+ const url=URL.createObjectURL(file),im=new Image();
+ im.onload=()=>{
+  const cv=document.createElement('canvas');cv.width=im.naturalWidth;cv.height=im.naturalHeight;
+  const c=cv.getContext('2d',{willReadFrequently:true});c.drawImage(im,0,0);
+  const px=c.getImageData(0,0,cv.width,cv.height);let hasA=false;const d=px.data;
+  for(let i=3;i<d.length;i+=4*97)if(d[i]<250){hasA=true;break}
+  const sh={name:file.name||'pasted image',img:im,w:cv.width,h:cv.height,cv,px,hasAlpha:hasA,boxes:[],sel:-1};
+  sheets.push(sh);cur=sheets.length-1;
+  if(autoBg(sh))syncBgInput();
+  maskCache.clear();
+  const gr=guessRole(sh.name);autoFind(sh,gr);
+  renderTabs();syncRole();drawSheet();res(sh)};
+ im.onerror=()=>{log('Could not read '+(file.name||'that image')+' as a picture.',true);res(null)};
+ im.src=url})}
+async function addFiles(files){for(const f of files){if(f.type.startsWith('image/')||/\.(png|jpe?g|webp|bmp|gif)$/i.test(f.name))await addImageFile(f)}
+ if(sheets.length)log('Check each box has the right view name, then build. Drag on the sheet to add or change a box.')}
+
+function renderTabs(){const t=$('sheetTabs');t.innerHTML='';sheets.forEach((s,i)=>{const b=document.createElement('button');b.textContent=(i+1)+' · '+(s.name.length>16?s.name.slice(0,15)+'…':s.name);if(i===cur)b.className='on';b.onclick=()=>{cur=i;renderTabs();syncRole();drawSheet()};t.appendChild(b)})}
+function syncRole(){const b=curBox();$('role').value=b?b.role:'front';$('role').disabled=!b;
+ const pr=$('partRow');if(pr){pr.hidden=!(b&&b.role==='part');if(b&&b.role==='part'){$('partName').value=b.name||'';$('partDepth').value=b.depth||'auto'}}
+ if(typeof renderParts==='function')renderParts()}
+function allParts(){const o=[];for(const sh of sheets)for(const b of sh.boxes)if(b.role==='part')o.push({sh,b});return o}
+function renderParts(){const l=$('partList');if(!l)return;const p=allParts();l.textContent=p.length?('Parts: '+p.map(q=>q.b.name||'unnamed').join(', ')):'No parts yet.'}
+
+/* background colour: median of the sheet's border pixels */
+function autoBg(sh){const d=sh.px.data,W=sh.w,H=sh.h,rs=[],gs=[],bs=[];const add=(x,y)=>{const p=(y*W+x)*4;if(d[p+3]>40){rs.push(d[p]);gs.push(d[p+1]);bs.push(d[p+2])}};
+ const stepx=Math.max(1,W>>7),stepy=Math.max(1,H>>7);
+ for(let x=0;x<W;x+=stepx){add(x,0);add(x,H-1)}for(let y=0;y<H;y+=stepy){add(0,y);add(W-1,y)}
+ if(!rs.length)return false;const med=a=>{a.sort((p,q)=>p-q);return a[a.length>>1]};
+ P.bg=[med(rs),med(gs),med(bs)];return true}
+const hex2=v=>v.toString(16).padStart(2,'0');
+function syncBgInput(){$('bgc').value='#'+P.bg.map(hex2).join('')}
+
+/* ---------- outline (mask) of one box ---------- */
+function labelMask(m,w,h,minKeep){ /* 4-connected components; returns {lab,count,sizes} */
+ const lab=new Int32Array(w*h),sizes=[0],st=new Int32Array(w*h);let n=0;
+ for(let s=0;s<w*h;s++){if(!m[s]||lab[s])continue;n++;let sp=0,sz=0;st[sp++]=s;lab[s]=n;
+  while(sp){const p=st[--sp];sz++;const x=p%w,y=(p-x)/w;
+   if(x>0&&m[p-1]&&!lab[p-1]){lab[p-1]=n;st[sp++]=p-1}
+   if(x<w-1&&m[p+1]&&!lab[p+1]){lab[p+1]=n;st[sp++]=p+1}
+   if(y>0&&m[p-w]&&!lab[p-w]){lab[p-w]=n;st[sp++]=p-w}
+   if(y<h-1&&m[p+w]&&!lab[p+w]){lab[p+w]=n;st[sp++]=p+w}}
+  sizes.push(sz)}
+ return {lab,count:n,sizes}}
+function rawMask(d,W,x0,y0,w,h,o){ /* d = RGBA data of a W-wide image */
+ const m=new Uint8Array(w*h),bg=o.bg,t2=o.tol*o.tol,useA=o.useA;
+ for(let j=0;j<h;j++){let p=((y0+j)*W+x0)*4,q=j*w;for(let i=0;i<w;i++,p+=4,q++){
+  if(useA){m[q]=d[p+3]>40?1:0;continue}
+  if(d[p+3]<40){m[q]=0;continue}
+  const a=d[p]-bg[0],b=d[p+1]-bg[1],c=d[p+2]-bg[2];m[q]=(a*a+b*b+c*c)>t2?1:0}}
+ if(o.holes){ /* background = zeros reachable from the border; the rest becomes figure */
+  const reach=new Uint8Array(w*h),st=new Int32Array(w*h);let sp=0;
+  const push=p=>{if(!m[p]&&!reach[p]){reach[p]=1;st[sp++]=p}};
+  for(let i=0;i<w;i++){push(i);push((h-1)*w+i)}for(let j=0;j<h;j++){push(j*w);push(j*w+w-1)}
+  while(sp){const p=st[--sp],x=p%w;if(x>0)push(p-1);if(x<w-1)push(p+1);if(p>=w)push(p-w);if(p<w*(h-1))push(p+w)}
+  for(let p=0;p<w*h;p++)if(!reach[p])m[p]=1}
+ if(o.spk>0){const L=labelMask(m,w,h);let tot=0,big=0;for(let k=1;k<=L.count;k++){tot+=L.sizes[k];if(L.sizes[k]>L.sizes[big||1])big=k}
+  const lim=tot*o.spk/100;for(let p=0;p<w*h;p++){const k=L.lab[p];if(k&&k!==big&&L.sizes[k]<lim)m[p]=0}}
+ return m}
+function getMask(sh,b){
+ const key=b;let r=maskCache.get(key);if(r)return r;
+ const x=Math.max(0,Math.round(b.x)),y=Math.max(0,Math.round(b.y)),w=Math.min(sh.w-x,Math.round(b.w)),h=Math.min(sh.h-y,Math.round(b.h));
+ const m=rawMask(sh.px.data,sh.w,x,y,w,h,{bg:P.bg,tol:P.tol,useA:P.useA&&sh.hasAlpha,holes:P.holes,spk:P.spk});
+ let x0=w,y0=h,x1=-1,y1=-1,n=0;for(let j=0;j<h;j++)for(let i=0;i<w;i++)if(m[j*w+i]){n++;if(i<x0)x0=i;if(i>x1)x1=i;if(j<y0)y0=j;if(j>y1)y1=j}
+ r={x,y,w,h,m,n,bb:n?{x0,y0,x1,y1}:null,ov:null};
+ if(n){const oc=document.createElement('canvas');oc.width=w;oc.height=h;const oi=oc.getContext('2d').createImageData(w,h);const c=RCOL[b.role]||'#2dc4ad';
+  const cr=parseInt(c.slice(1,3),16),cg=parseInt(c.slice(3,5),16),cb=parseInt(c.slice(5,7),16);
+  for(let p=0;p<w*h;p++)if(m[p]){oi.data[p*4]=cr;oi.data[p*4+1]=cg;oi.data[p*4+2]=cb;oi.data[p*4+3]=110}
+  oc.getContext('2d').putImageData(oi,0,0);r.ov=oc}
+ maskCache.set(key,r);return r}
+
+/* ---------- auto-find the views on a sheet ---------- */
+function autoFind(sh,forceRole){
+ const mx=480,sc2=Math.min(1,mx/Math.max(sh.w,sh.h)),w=Math.max(8,Math.round(sh.w*sc2)),h=Math.max(8,Math.round(sh.h*sc2));
+ const cv=document.createElement('canvas');cv.width=w;cv.height=h;const c=cv.getContext('2d',{willReadFrequently:true});c.drawImage(sh.cv,0,0,w,h);
+ const d=c.getImageData(0,0,w,h).data;
+ const m=rawMask(d,w,0,0,w,h,{bg:P.bg,tol:P.tol,useA:P.useA&&sh.hasAlpha,holes:false,spk:0});
+ const r=Math.max(2,Math.round(0.025*Math.max(w,h)));
+ const dil=new Uint8Array(w*h),tmp=new Uint8Array(w*h);
+ for(let j=0;j<h;j++){let run=-1e9;for(let i=0;i<w;i++){if(m[j*w+i])run=i;tmp[j*w+i]=(i-run<=r)?1:0}run=1e9;for(let i=w-1;i>=0;i--){if(m[j*w+i])run=i;if(run-i<=r)tmp[j*w+i]=1}}
+ for(let i=0;i<w;i++){let run=-1e9;for(let j=0;j<h;j++){if(tmp[j*w+i])run=j;dil[j*w+i]=(j-run<=r)?1:0}run=1e9;for(let j=h-1;j>=0;j--){if(tmp[j*w+i])run=j;if(run-j<=r)dil[j*w+i]=1}}
+ const L=labelMask(dil,w,h),bbs=[];
+ for(let k=0;k<L.count;k++)bbs.push({x0:w,y0:h,x1:-1,y1:-1,n:0});
+ for(let j=0;j<h;j++)for(let i=0;i<w;i++){const p=j*w+i;if(m[p]){const k=L.lab[p]-1,q=bbs[k];q.n++;if(i<q.x0)q.x0=i;if(i>q.x1)q.x1=i;if(j<q.y0)q.y0=j;if(j>q.y1)q.y1=j}}
+ let list=bbs.filter(q=>q.n>=0.004*w*h);list.sort((a,b)=>a.x0-b.x0);
+ sh.boxes=[];sh.sel=-1;maskCache.clear();
+ const used={};for(const o of sheets)if(o!==sh)for(const b of o.boxes)used[b.role]=1;
+ list.forEach((q,i)=>{const mg=Math.round(0.01*Math.max(w,h))+1;const x=Math.max(0,q.x0-mg)/sc2,y=Math.max(0,q.y0-mg)/sc2,x2=Math.min(w,q.x1+1+mg)/sc2,y2=Math.min(h,q.y1+1+mg)/sc2;
+  let role;if(forceRole&&list.length===1)role=forceRole;else{role=ROLES.find(rr=>!used[rr])||'skip';used[role]=1}
+  sh.boxes.push({x,y,w:x2-x,h:y2-y,role})});
+ if(sh.boxes.length)sh.sel=0;
+ return sh.boxes.length}
+
+/* ---------- sheet canvas ---------- */
+let dragBox=null;
+function drawSheet(){
+ const d=sizeCanvas(sc);sx.setTransform(1,0,0,1,0,0);sx.fillStyle='#0b0f14';sx.fillRect(0,0,sc.width,sc.height);
+ const sh=curSheet();
+ if(!sh){sx.fillStyle='#5f7186';sx.font=(14*d)+'px system-ui';sx.textAlign='center';sx.fillText('Drop, paste or add your model sheet here',sc.width/2,sc.height/2);$('sheetStat').textContent='';return}
+ const W=sc.width,H=sc.height,s=Math.min((W-24*d)/sh.w,(H-70*d)/sh.h);fitV={s,ox:(W-sh.w*s)/2,oy:(H-sh.h*s)/2+18*d,d};
+ sx.fillStyle='#1b2430';sx.fillRect(fitV.ox,fitV.oy,sh.w*s,sh.h*s);
+ sx.imageSmoothingEnabled=true;sx.drawImage(sh.cv,fitV.ox,fitV.oy,sh.w*s,sh.h*s);
+ sh.boxes.forEach((b,i)=>{
+  if(P.showO&&b.role!=='skip'&&b.role!=='part'){const mk=getMask(sh,b);if(mk.ov)sx.drawImage(mk.ov,fitV.ox+mk.x*s,fitV.oy+mk.y*s,mk.w*s,mk.h*s)}
+  sx.lineWidth=(i===sh.sel?3:1.5)*d;sx.strokeStyle=RCOL[b.role]||'#fff';sx.strokeRect(fitV.ox+b.x*s,fitV.oy+b.y*s,b.w*s,b.h*s);
+  sx.font=(12*d)+'px system-ui';sx.textAlign='left';const t=b.role==='skip'?'ignored':b.role==='part'?(b.name||'part'):b.role;const tw=sx.measureText(t).width+8*d;
+  sx.fillStyle=RCOL[b.role]||'#fff';sx.fillRect(fitV.ox+b.x*s,fitV.oy+b.y*s-16*d,tw,16*d);sx.fillStyle='#04120f';sx.fillText(t,fitV.ox+b.x*s+4*d,fitV.oy+b.y*s-4*d)});
+ if(dragBox){sx.setLineDash([6*d,4*d]);sx.strokeStyle='#fff';sx.lineWidth=1.5*d;
+  sx.strokeRect(fitV.ox+dragBox.x*s,fitV.oy+dragBox.y*s,dragBox.w*s,dragBox.h*s);sx.setLineDash([])}
+ const b=curBox();let info=sh.name+' · '+sh.w+'×'+sh.h;
+ if(b&&b.role!=='skip'){const mk=getMask(sh,b);info+=mk.bb?' · figure '+(mk.bb.x1-mk.bb.x0+1)+'×'+(mk.bb.y1-mk.bb.y0+1)+' px':' · no figure found (adjust background colour / tolerance)'}
+ $('sheetStat').textContent=info}
+function imgPt(e){const r=sc.getBoundingClientRect(),d=fitV.d;return {x:((e.clientX-r.left)*d-fitV.ox)/fitV.s,y:((e.clientY-r.top)*d-fitV.oy)/fitV.s}}
+let down=null;
+sc.addEventListener('pointerdown',e=>{const sh=curSheet();if(!sh)return;sc.setPointerCapture(e.pointerId);const p=imgPt(e);down={p,sx:e.clientX,sy:e.clientY,moved:false}});
+sc.addEventListener('pointermove',e=>{if(!down)return;const sh=curSheet();const p=imgPt(e);
+ if(Math.hypot(e.clientX-down.sx,e.clientY-down.sy)>4)down.moved=true;
+ if(down.moved){const x0=clamp(Math.min(down.p.x,p.x),0,sh.w),y0=clamp(Math.min(down.p.y,p.y),0,sh.h),x1=clamp(Math.max(down.p.x,p.x),0,sh.w),y1=clamp(Math.max(down.p.y,p.y),0,sh.h);dragBox={x:x0,y:y0,w:x1-x0,h:y1-y0};drawSheet()}});
+sc.addEventListener('pointerup',e=>{const sh=curSheet();if(!down||!sh){down=null;return}
+ if(down.moved&&dragBox&&dragBox.w>8&&dragBox.h>8){sh.boxes.push({x:dragBox.x,y:dragBox.y,w:dragBox.w,h:dragBox.h,role:nextRole()});sh.sel=sh.boxes.length-1;syncRole()}
+ else if(!down.moved){const p=down.p;let hit=-1;for(let i=sh.boxes.length-1;i>=0;i--){const b=sh.boxes[i];if(p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h){hit=i;break}}sh.sel=hit;syncRole()}
+ dragBox=null;down=null;drawSheet()});
+window.addEventListener('resize',()=>{drawSheet();needDraw()});
+
+/* ---------- sidebar wiring (sheet + outline panels) ---------- */
+$('addImg').onclick=()=>$('fileIn').click();
+$('fileIn').onchange=e=>{addFiles([...e.target.files]);e.target.value=''};
+window.addEventListener('dragover',e=>e.preventDefault());
+window.addEventListener('drop',e=>{e.preventDefault();addFiles([...e.dataTransfer.files])});
+window.addEventListener('paste',e=>{const fs=[];for(const it of e.clipboardData.items)if(it.type.startsWith('image/')){const f=it.getAsFile();if(f)fs.push(f)}if(fs.length)addFiles(fs)});
+$('autoFind').onclick=()=>{const sh=curSheet();if(!sh)return;const n=autoFind(sh);syncRole();drawSheet();log(n?('Found '+n+' view'+(n>1?'s':'')+'. Check the names, drag a new box for anything missed.'):'No figures found. Try the Auto button for the background colour, or a different tolerance.',!n)};
+$('delBox').onclick=()=>{const sh=curSheet();if(sh&&sh.sel>=0){sh.boxes.splice(sh.sel,1);sh.sel=-1;syncRole();drawSheet()}};
+$('delSheet').onclick=()=>{if(cur<0)return;sheets.splice(cur,1);cur=sheets.length?Math.min(cur,sheets.length-1):-1;maskCache.clear();renderTabs();syncRole();drawSheet()};
+$('role').onchange=()=>{const b=curBox();if(b){b.role=$('role').value;if(b.role==='part'&&!b.name)b.name='part '+(allParts().length);maskCache.delete(b);syncRole();drawSheet()}};
+$('partName').oninput=e=>{const b=curBox();if(b){b.name=e.target.value;renderParts();drawSheet()}};
+$('partDepth').onchange=e=>{const b=curBox();if(b)b.depth=e.target.value};
+$('clearParts').onclick=()=>{for(const sh of sheets){sh.boxes=sh.boxes.filter(b=>b.role!=='part');sh.sel=-1}syncRole();drawSheet();log('Parts cleared.')};
+const upd=()=>{maskCache.clear();drawSheet()};
+$('bgc').oninput=e=>{const v=e.target.value;P.bg=[1,3,5].map(i=>parseInt(v.slice(i,i+2),16));upd()};
+$('bgAuto').onclick=()=>{const sh=curSheet();if(sh&&autoBg(sh)){syncBgInput();upd()}};
+$('tol').oninput=e=>{P.tol=+e.target.value;$('tolV').textContent=P.tol;upd()};
+$('spk').oninput=e=>{P.spk=+e.target.value;$('spkV').textContent=P.spk;upd()};
+$('holes').onchange=e=>{P.holes=e.target.checked;upd()};
+$('useA').onchange=e=>{P.useA=e.target.checked;upd()};
+$('showO').onchange=e=>{P.showO=e.target.checked;drawSheet()};
+function bindRange(id,lab){const el=$(id);if(!el)return;el.addEventListener('input',()=>$(lab).textContent=el.value)}
+['tJn:tJnV','tCs:tCsV','tH:tHv','tRes:tResV','tSm:tSmV','tRd:tRdV','tRx:tRxV','aH:aHv','aRes:aResV','aSm:aSmV','aRx:aRxV'].forEach(s=>{const [a,b]=s.split(':');bindRange(a,b)});
+
+/* ---------- 2-D signed distance of a mask ---------- */
+function dt1(f,n,d,v,z){let k=0;v[0]=0;z[0]=-1e30;z[1]=1e30;
+ for(let q=1;q<n;q++){let s=((f[q]+q*q)-(f[v[k]]+v[k]*v[k]))/(2*q-2*v[k]);
+  while(s<=z[k]){k--;s=((f[q]+q*q)-(f[v[k]]+v[k]*v[k]))/(2*q-2*v[k])}
+  k++;v[k]=q;z[k]=s;z[k+1]=1e30}
+ k=0;for(let q=0;q<n;q++){while(z[k+1]<q)k++;const p=v[k];d[q]=(q-p)*(q-p)+f[p]}}
+function edt2(src,w,h){ /* src: 1 where the source is; returns distance (pixels) to the nearest source pixel */
+ const INF=1e12,n=Math.max(w,h),f=new Float64Array(n),d=new Float64Array(n),v=new Int32Array(n),z=new Float64Array(n+1),out=new Float64Array(w*h);
+ for(let x=0;x<w;x++){for(let y=0;y<h;y++)f[y]=src[y*w+x]?0:INF;dt1(f,h,d,v,z);for(let y=0;y<h;y++)out[y*w+x]=d[y]}
+ for(let y=0;y<h;y++){for(let x=0;x<w;x++)f[x]=out[y*w+x];dt1(f,w,d,v,z);for(let x=0;x<w;x++)out[y*w+x]=Math.sqrt(d[x])}
+ return out}
+function makeView(mk){ /* crop to the figure plus a 3 px margin, then signed distance (negative inside) */
+ const bb=mk.bb,PAD=3,bw=bb.x1-bb.x0+1,bh=bb.y1-bb.y0+1,w=bw+2*PAD,h=bh+2*PAD,fg=new Uint8Array(w*h),bgm=new Uint8Array(w*h);
+ for(let j=0;j<bh;j++)for(let i=0;i<bw;i++)if(mk.m[(bb.y0+j)*mk.w+bb.x0+i])fg[(j+PAD)*w+i+PAD]=1;
+ for(let p=0;p<w*h;p++)bgm[p]=fg[p]?0:1;
+ const dOut=edt2(fg,w,h),dIn=edt2(bgm,w,h),d=new Float32Array(w*h);
+ for(let p=0;p<w*h;p++)d[p]=fg[p]?-(dIn[p]-0.5):(dOut[p]-0.5);
+ return {w,h,d,bw,bh,PAD}}
+function sampV(S,u,v){const cu=clamp(u,0,S.w-1),cv=clamp(v,0,S.h-1),ex=u-cu,ey=v-cv;
+ const i=Math.min(S.w-2,Math.floor(cu)),j=Math.min(S.h-2,Math.floor(cv)),fx=cu-i,fy=cv-j,w=S.w,D=S.d,p=j*w+i;
+ let r=(D[p]*(1-fx)+D[p+1]*fx)*(1-fy)+(D[p+w]*(1-fx)+D[p+w+1]*fx)*fy;
+ if(ex||ey)r+=Math.sqrt(ex*ex+ey*ey);return r}
+
+
+/* ---------- grid field -> quad mesh (naive surface nets) ---------- */
+function blurField(F,nx,ny,nz,passes){
+ const T=new Float32Array(F.length);
+ for(let p=0;p<passes;p++){
+  for(let k=0;k<nz;k++)for(let j=0;j<ny;j++){const o=(k*ny+j)*nx;for(let i=0;i<nx;i++){const a=F[o+Math.max(0,i-1)],b=F[o+i],c=F[o+Math.min(nx-1,i+1)];T[o+i]=(a+b+c)/3}}
+  for(let k=0;k<nz;k++)for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const a=T[(k*ny+Math.max(0,j-1))*nx+i],b=T[(k*ny+j)*nx+i],c=T[(k*ny+Math.min(ny-1,j+1))*nx+i];F[(k*ny+j)*nx+i]=(a+b+c)/3}
+  for(let k=0;k<nz;k++)for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const a=F[(Math.max(0,k-1)*ny+j)*nx+i],b=F[(k*ny+j)*nx+i],c=F[(Math.min(nz-1,k+1)*ny+j)*nx+i];T[(k*ny+j)*nx+i]=(a+b+c)/3}
+  F.set(T)}}
+const CORN=[[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]];
+const CEDGE=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
+function surfaceNets(F,nx,ny,nz,h,ox,oy,oz){
+ const cx=nx-1,cy=ny-1,cz=nz-1,cid=new Int32Array(cx*cy*cz).fill(-1),verts=[];
+ const N=(i,j,k)=>i+nx*(j+ny*k),v8=new Float32Array(8);
+ for(let k=0;k<cz;k++)for(let j=0;j<cy;j++)for(let i=0;i<cx;i++){
+  let mask=0;for(let c=0;c<8;c++){const q=CORN[c],f=F[N(i+q[0],j+q[1],k+q[2])];v8[c]=f;if(f<0)mask|=1<<c}
+  if(mask===0||mask===255)continue;
+  let sx_=0,sy=0,sz=0,n=0;
+  for(let e=0;e<12;e++){const a=CEDGE[e][0],b=CEDGE[e][1];if(((mask>>a)&1)===((mask>>b)&1))continue;
+   const t=v8[a]/(v8[a]-v8[b]),pa=CORN[a],pb=CORN[b];sx_+=pa[0]+(pb[0]-pa[0])*t;sy+=pa[1]+(pb[1]-pa[1])*t;sz+=pa[2]+(pb[2]-pa[2])*t;n++}
+  cid[(k*cy+j)*cx+i]=verts.length/3;
+  verts.push(ox+(i+sx_/n)*h,oy+(j+sy/n)*h,oz+(k+sz/n)*h)}
+ const quads=[],C=(i,j,k)=>cid[(k*cy+j)*cx+i];
+ const emit=(a,b,c,d,ax,flip)=>{ /* outward = +axis when the start node is inside */
+  const V=verts;const p=(q)=>[V[q*3],V[q*3+1],V[q*3+2]];
+  const A=p(a),B=p(b),Cc=p(c),D=p(d);
+  const d1=[Cc[0]-A[0],Cc[1]-A[1],Cc[2]-A[2]],d2=[D[0]-B[0],D[1]-B[1],D[2]-B[2]];
+  const nrm=[d1[1]*d2[2]-d1[2]*d2[1],d1[2]*d2[0]-d1[0]*d2[2],d1[0]*d2[1]-d1[1]*d2[0]];
+  const out=flip?-1:1;
+  if(nrm[ax]*out>=0)quads.push(a,b,c,d);else quads.push(a,d,c,b)};
+ for(let k=0;k<nz;k++)for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
+  const f0=F[N(i,j,k)]<0;
+  if(i<nx-1&&j>0&&k>0&&j<ny-1&&k<nz-1){const f1=F[N(i+1,j,k)]<0;if(f0!==f1){ /* x edge: cells (i,j-1..j,k-1..k) */
+   const a=C(i,j-1,k-1),b=C(i,j,k-1),c=C(i,j,k),d=C(i,j-1,k);if(a>=0&&b>=0&&c>=0&&d>=0)emit(a,b,c,d,0,!f0)}}
+  if(j<ny-1&&i>0&&k>0&&i<nx-1&&k<nz-1){const f1=F[N(i,j+1,k)]<0;if(f0!==f1){
+   const a=C(i-1,j,k-1),b=C(i,j,k-1),c=C(i,j,k),d=C(i-1,j,k);if(a>=0&&b>=0&&c>=0&&d>=0)emit(a,b,c,d,1,!f0)}}
+  if(k<nz-1&&i>0&&j>0&&i<nx-1&&j<ny-1){const f1=F[N(i,j,k+1)]<0;if(f0!==f1){
+   const a=C(i-1,j-1,k),b=C(i,j-1,k),c=C(i,j,k),d=C(i-1,j,k);if(a>=0&&b>=0&&c>=0&&d>=0)emit(a,b,c,d,2,!f0)}}}
+ return {V:new Float32Array(verts),Q:new Int32Array(quads)}}
+function relaxQuads(M,passes){
+ const n=M.V.length/3,m=M.Q.length/4;if(!passes||!m)return;
+ const deg=new Int32Array(n+1);for(let q=0;q<m;q++)for(let c=0;c<4;c++)deg[M.Q[q*4+c]+1]+=2;
+ for(let i=0;i<n;i++)deg[i+1]+=deg[i];
+ const adj=new Int32Array(deg[n]),fill=new Int32Array(n);
+ for(let q=0;q<m;q++)for(let c=0;c<4;c++){const a=M.Q[q*4+c],b=M.Q[q*4+(c+1)%4];adj[deg[a]+fill[a]++]=b;adj[deg[b]+fill[b]++]=a}
+ const V=M.V,T=new Float32Array(V.length);
+ const step=(lam)=>{for(let i=0;i<n;i++){const s=deg[i],e=deg[i+1];if(e===s){T[i*3]=V[i*3];T[i*3+1]=V[i*3+1];T[i*3+2]=V[i*3+2];continue}
+  let ax=0,ay=0,az=0;for(let t=s;t<e;t++){const b=adj[t];ax+=V[b*3];ay+=V[b*3+1];az+=V[b*3+2]}const c=e-s;
+  T[i*3]=V[i*3]+lam*(ax/c-V[i*3]);T[i*3+1]=V[i*3+1]+lam*(ay/c-V[i*3+1]);T[i*3+2]=V[i*3+2]+lam*(az/c-V[i*3+2])}V.set(T)};
+ for(let p=0;p<passes;p++){step(0.5);step(-0.53)}}
+function meshStats(M){const n=M.V.length/3,m=M.Q.length/4;let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9,z0=1e9,z1=-1e9;
+ for(let i=0;i<n;i++){const x=M.V[i*3],y=M.V[i*3+1],z=M.V[i*3+2];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;if(z<z0)z0=z;if(z>z1)z1=z}
+ return {n,m,x0,x1,y0,y1,z0,z1}}
+function smax(a,b,k){if(k<=0)return Math.max(a,b);const h=Math.max(k-Math.abs(a-b),0)/k;return Math.max(a,b)+h*h*k*0.25}
+
+/* cut thin pieces off a part's front outline: what an opening (erode then dilate) with radius r removes. Each piece comes back with a strip of the
+   body it hangs from, so its tube does not pinch to nothing where it joins. Returns {body, pieces:[mask...]} */
+function splitThin(m,w,h,r,minA){
+ const bg=new Uint8Array(w*h);for(let p=0;p<w*h;p++)bg[p]=m[p]?0:1;
+ const dIn=edt2(bg,w,h),core=new Uint8Array(w*h);let nc=0;for(let p=0;p<w*h;p++)if(m[p]&&dIn[p]>=r){core[p]=1;nc++}
+ if(!nc)return{body:m,pieces:[]};
+ const dC=edt2(core,w,h),thin=new Uint8Array(w*h);let nt=0;for(let p=0;p<w*h;p++)if(m[p]&&dC[p]>r+0.75){thin[p]=1;nt++}
+ if(!nt)return{body:m,pieces:[]};
+ const comps=maskComponents(thin,w,h,minA),body=Uint8Array.from(m),pieces=[];
+ for(const c of comps){ /* a piece must be long, not a sliver shaved off a corner */
+  let a0=1e9,a1=-1,c0=1e9,c1=-1;for(const p of c){const x=p%w,y=(p-x)/w;if(x<a0)a0=x;if(x>a1)a1=x;if(y<c0)c0=y;if(y>c1)c1=y}
+  const len=Math.max(a1-a0,c1-c0)+1;if(len<1.3*r)continue;
+  const inC=new Uint8Array(w*h);for(const p of c)inC[p]=1;
+  if(!sticksOut(c,inC,m,w,h,len))continue; /* a strip along the side, or a stray bit of another part: leave it where it is */
+  const pm=new Uint8Array(w*h);for(const p of c){pm[p]=1;body[p]=0}
+  const dP=edt2(pm,w,h);for(let p=0;p<w*h;p++)if(m[p]&&!pm[p]&&dP[p]<=r)pm[p]=1;
+  pieces.push(pm)}
+ return{body,pieces}}
+/* does this piece stick out of the body (a tail, an ear, a hanging arm) rather than run along it (a strip of the side)?
+   It sticks out when it reaches away from the rest of the outline by at least 1.5 times its own thickness. */
+function sticksOut(c,inC,m,w,h,len){
+ const rest=new Uint8Array(w*h);let any=0;for(let p=0;p<w*h;p++)if(m[p]&&!inC[p]){rest[p]=1;any=1}if(!any)return false;
+ const dR=edt2(rest,w,h);let reach=0,touch=false;for(const p of c){if(dR[p]>reach)reach=dR[p];if(dR[p]<1.5)touch=true}
+ if(!touch)return false; /* not joined to the body at all: a stray bit of another part */
+ const bg=new Uint8Array(w*h);for(let p=0;p<w*h;p++)bg[p]=inC[p]?0:1;const d=edt2(bg,w,h);let R=0;for(const p of c)if(d[p]>R)R=d[p];
+ return reach>=1.5*2*R}
+function maskComponents(mk,w,h,minA){const seen=new Uint8Array(w*h),out=[];
+ for(let s=0;s<w*h;s++){if(!mk[s]||seen[s])continue;const st=[s],c=[];seen[s]=1;
+  while(st.length){const p=st.pop();c.push(p);const x=p%w,y=(p-x)/w;
+   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X=x+dx,Y=y+dy;if(X<0||Y<0||X>=w||Y>=h)continue;const q=Y*w+X;if(mk[q]&&!seen[q]){seen[q]=1;st.push(q)}}}
+  if(c.length>=minA)out.push(c)}
+ return out}
+/* turns the part boxes into things the solid builder can use: a cut-out silhouette per part, its 3-D box, and for round parts the tube radius.
+   Thin pieces inside a body part (a headband tail, an ear, a hanging arm) and bits of the outline that no box covers are built as extra round parts. */
+async function prepParts(job,S,views,sf,sS,sideSign){
+ const out=[],fr=views.front;out.notes=[];if(!fr)return out;
+ const mkF=S.front.mk,bbF=mkF.bb,bwF=S.front.bw,bhF=S.front.bh,W=mkF.w,Hh=mkF.h;
+ const list=[];for(const sh of sheets)if(sh===fr.sh)for(const b of sh.boxes)if(b.role==='part')list.push(b);
+ const thinOn=!$('tThin')||$('tThin').checked,covered=new Uint8Array(W*Hh),minA=Math.max(30,Math.round(mkF.n*0.0015));
+ const partFromMask=(name,m,mode)=>{let n=0,a0=1e9,a1=-1,c0=1e9,c1=-1;
+  for(let y=0;y<Hh;y++)for(let x=0;x<W;x++)if(m[y*W+x]){n++;if(x<a0)a0=x;if(x>a1)a1=x;if(y<c0)c0=y;if(y>c1)c1=y}
+  if(n<40)return null;
+  const bb={x0:a0,y0:c0,x1:a1,y1:c1},v=makeView({bb,m,w:mkF.w,h:mkF.h});
+   let R=0;for(let i=0;i<v.d.length;i++)if(-v.d[i]>R)R=-v.d[i];
+   /* where the body is in depth at the part's rows, so a round arm sits in the middle of the shoulder rather than at the figure's centre */
+   let zc=0;
+   if(mode==='round'&&S.side){const sm=S.side.mk,sb=sm.bb;let sum=0,cnt=0;
+    for(let my=c0;my<=c1;my+=2){const yy=(bbF.y0+bhF-1-my)*sf,r=Math.round(sb.y0+(S.side.bh-1)-yy/sS);if(r<sb.y0||r>sb.y1)continue;
+     let l=1e9,rr=-1;for(let i=sb.x0;i<=sb.x1;i++)if(sm.m[r*sm.w+i]){if(i<l)l=i;if(i>rr)rr=i}
+     if(rr>=0){sum+=((l+rr)/2-sb.x0-(S.side.bw-1)/2)*sS*sideSign;cnt++}}
+    if(cnt)zc=sum/cnt}
+   /* per-row middle and half-width in the front mask and in the side view, for the oval cross-section */
+   let rows=null;
+   if(mode==='side'&&S.side){const sm=S.side.mk,sb=sm.bb,nr=c1-c0+1;rows={c0,xc:new Float32Array(nr),hx:new Float32Array(nr),zc:new Float32Array(nr),hz:new Float32Array(nr)};
+    for(let my=c0;my<=c1;my++){const q=my-c0;let l=1e9,r=-1;for(let x=a0;x<=a1;x++)if(m[my*mkF.w+x]){if(x<l)l=x;if(x>r)r=x}
+     if(r>=0){rows.xc[q]=((l+r)/2-bbF.x0-(bwF-1)/2)*sf;rows.hx[q]=(r-l+1)/2*sf}
+     const yy=(bbF.y0+bhF-1-my)*sf,rr=Math.round(sb.y0+(S.side.bh-1)-yy/sS);
+     if(rr>=sb.y0&&rr<=sb.y1){let ls=1e9,rs=-1;for(let i=sb.x0;i<=sb.x1;i++)if(sm.m[rr*sm.w+i]){if(i<ls)ls=i;if(i>rs)rs=i}
+      if(rs>=0){rows.zc[q]=((ls+rs)/2-sb.x0-(S.side.bw-1)/2)*sS*sideSign;rows.hz[q]=(rs-ls+1)/2*sS}}}}
+   out.push({name,round:mode==='round',R,v,bb,bbF,zc,rows,
+    x0:(a0-bbF.x0-(bwF-1)/2-1)*sf,x1:(a1+1-bbF.x0-(bwF-1)/2)*sf,y0:(bbF.y0+bhF-1-c1-1)*sf,y1:(bbF.y0+bhF-1-c0+1)*sf});
+  return out[out.length-1]};
+ const owner=new Int16Array(W*Hh).fill(-1),boxM=[];
+ list.forEach((b,bi)=>{const x0=clamp(Math.round(b.x-mkF.x),0,W),x1=clamp(Math.round(b.x+b.w-mkF.x),0,W),y0=clamp(Math.round(b.y-mkF.y),0,Hh),y1=clamp(Math.round(b.y+b.h-mkF.y),0,Hh);
+  const m=new Uint8Array(W*Hh);for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){covered[y*W+x]=1;if(mkF.m[y*W+x]){m[y*W+x]=1;if(owner[y*W+x]<0)owner[y*W+x]=bi}}boxM.push(m)});
+ /* the outline outside every part box: a strip along a part joins that part; a piece that sticks out becomes its own round tube */
+ const tubes=[];
+ if(thinOn&&list.length){const left=new Uint8Array(W*Hh);let nl=0;for(let p=0;p<W*Hh;p++)if(mkF.m[p]&&!covered[p]){left[p]=1;nl++}
+  if(nl)for(const c of maskComponents(left,W,Hh,minA)){let a0=1e9,a1=-1,c0=1e9,c1=-1;for(const p of c){const x=p%W,y=(p-x)/W;if(x<a0)a0=x;if(x>a1)a1=x;if(y<c0)c0=y;if(y>c1)c1=y}
+   const inC=new Uint8Array(W*Hh);for(const p of c)inC[p]=1;
+   if(sticksOut(c,inC,mkF.m,W,Hh,Math.max(a1-a0,c1-c0)+1))tubes.push(c);
+   else{const votes=new Map();for(const p of c){const x=p%W,y=(p-x)/W;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const X=x+dx,Y=y+dy;if(X<0||Y<0||X>=W||Y>=Hh)continue;const o=owner[Y*W+X];if(o>=0)votes.set(o,(votes.get(o)||0)+1)}}
+    let bo=-1,bv=0;for(const [o,v] of votes)if(v>bv){bv=v;bo=o}
+    if(bo>=0){for(const p of c)boxM[bo][p]=1;out.notes.merged=(out.notes.merged||0)+1}}}}
+ for(let bi=0;bi<list.length;bi++){const b=list[bi],m=boxM[bi];let n=0;for(let p=0;p<W*Hh;p++)if(m[p])n++;
+  if(n<40)continue;
+  const name=b.name||'part';let mode=b.depth||'auto';
+  if(mode==='auto')mode=/arm|hand|finger|tail|ear|horn|wing|antenna|rope|cable|hair/i.test(name)?'round':'side';
+  if(mode==='side'&&!S.side&&!S.top)mode='round';
+  let body=m;
+  if(thinOn&&mode==='side'){let R=0;{const bg=new Uint8Array(W*Hh);for(let p=0;p<W*Hh;p++)bg[p]=m[p]?0:1;const d=edt2(bg,W,Hh);for(let p=0;p<W*Hh;p++)if(m[p]&&d[p]>R)R=d[p]}
+   const sp=splitThin(m,W,Hh,Math.max(3,0.4*R),minA);body=sp.body;
+   sp.pieces.forEach((pm,k)=>{if(partFromMask(name+' piece '+(k+1),pm,'round'))out.notes.push('a thin piece of “'+name+'”')})}
+  partFromMask(name,body,mode);await stepCheck(job)}
+ if(tubes.length){let k=0;
+  for(const c of tubes){const pm=new Uint8Array(W*Hh);for(const p of c)pm[p]=1;
+   const bg=new Uint8Array(W*Hh);for(let p=0;p<W*Hh;p++)bg[p]=pm[p]?0:1;const dI=edt2(bg,W,Hh);let R=0;for(const p of c)if(dI[p]>R)R=dI[p];
+   const dP=edt2(pm,W,Hh),grow=Math.max(4,2*R);for(let p=0;p<W*Hh;p++)if(mkF.m[p]&&!pm[p]&&dP[p]<=grow)pm[p]=1; /* reach into the part it touches */
+   if(partFromMask('extra '+(++k),pm,'round'))await stepCheck(job)}
+  if(k)out.notes.push(k+' piece'+(k>1?'s':'')+' sticking out of the part boxes')}
+ window.lastParts=out; /* for tests */
+ return out}
+/* ---------- Trace: outlines -> quad model ---------- */
+async function buildTrace(){
+ const job=newJob();
+ const views={};for(const sh of sheets)for(const b of sh.boxes){if(b.role!=='skip'&&!views[b.role])views[b.role]={sh,b}}
+ if(!views.front||(!views.side&&!views.top)){log('Needs at least a front view and a side view (or a top view). Give each box a view name.',true);return}
+ const H=+$('tH').value,res=+$('tRes').value,sm=+$('tSm').value,rd=+$('tRd').value,rx=+$('tRx').value;
+ Status.start('Reading outlines',()=>{job.cancelled=true});$('goTrace').disabled=true;
+ try{
+  const S={};let any=false;
+  for(const r of ROLES){const v=views[r];if(!v)continue;const mk=getMask(v.sh,v.b);
+   if(!mk.bb)throw new Error('No figure found in the '+r+' view. Adjust the background colour or tolerance.');
+   S[r]=makeView(mk);S[r].mk=mk;any=true;await stepCheck(job)}
+  Status.set(0.08,'Aligning views');
+  const sf=H/S.front.bh,sB=S.back?H/S.back.bh:0,sS=S.side?H/S.side.bh:0;
+  const sT=S.top?(S.front.bw*sf)/S.top.bw:0;
+  const sideSign=$('sideDir').value==='1'?1:-1,topSign=$('topDir').value==='1'?1:-1;
+  let hx=S.front.bw*sf/2,hz=0;
+  if(S.back)hx=Math.max(hx,S.back.bw*sB/2);
+  if(S.top){hx=Math.max(hx,S.top.bw*sT/2);hz=Math.max(hz,S.top.bh*sT/2)}
+  if(S.side)hz=Math.max(hz,S.side.bw*sS/2);
+  const cell=Math.max(2*hx,H,2*hz)/res,pad=3;
+  const nx=Math.ceil(2*hx/cell)+2*pad+1,ny=Math.ceil(H/cell)+2*pad+1,nz=Math.ceil(2*hz/cell)+2*pad+1;
+  const ox=-hx-pad*cell,oy=-pad*cell,oz=-hz-pad*cell;
+  const k_=(rd/100)*0.35*Math.min(2*hx,2*hz||2*hx);
+  const F=new Float32Array(nx*ny*nz),Fr=S.front,Bk=S.back,Sd=S.side,Tp=S.top;
+  const fU=Fr.PAD+(Fr.bw-1)/2,fV=Fr.PAD+(Fr.bh-1);
+  const parts=$('useParts')&&$('useParts').checked?await prepParts(job,S,views,sf,sS,sideSign):[];
+  if(parts.length){
+   const csV=(+$('tCs').value)/100,csN=csV>0?2+(1-csV)*6:0;F.fill(1e9);const kJ=(+$('tJn').value/100)*H,sminf=(a,b,k)=>-smax(-a,-b,k);
+   for(let pi=0;pi<parts.length;pi++){const P=parts[pi],mg=3*cell+kJ+cell;
+    const i0=Math.max(0,Math.floor((P.x0-mg-ox)/cell)),i1=Math.min(nx-1,Math.ceil((P.x1+mg-ox)/cell)),j0=Math.max(0,Math.floor((P.y0-mg-oy)/cell)),j1=Math.min(ny-1,Math.ceil((P.y1+mg-oy)/cell));
+    for(let k=0;k<nz;k++){const z=oz+k*cell;
+     for(let j=j0;j<=j1;j++){const y=oy+j*cell;
+      for(let i=i0;i<=i1;i++){const x=ox+i*cell;
+       const mx=P.bbF.x0+(Fr.bw-1)/2+x/sf-P.bbF.x0+P.bbF.x0,my=P.bbF.y0+(Fr.bh-1)-y/sf; /* pixel in the front mask */
+       const dP=sampV(P.v,P.v.PAD+(mx-P.bb.x0),P.v.PAD+(my-P.bb.y0))*sf;let d;
+       if(P.round){const din=-dP/sf,hh=din>0?Math.sqrt(Math.max(0,Math.min(din,P.R)*(2*P.R-Math.min(din,P.R)))):0;d=smax(dP,Math.abs(z-P.zc)-hh*sf,k_*.5)}
+       else{d=dP;
+        if(Bk)d=smax(d,sampV(Bk,Bk.PAD+(Bk.bw-1)/2-x/sB,Bk.PAD+(Bk.bh-1)-y/sB)*sB,k_);
+        if(Sd)d=smax(d,sampV(Sd,Sd.PAD+(Sd.bw-1)/2+sideSign*z/sS,Sd.PAD+(Sd.bh-1)-y/sS)*sS,k_);
+        if(Tp)d=smax(d,sampV(Tp,Tp.PAD+(Tp.bw-1)/2+x/sT,Tp.PAD+(Tp.bh-1)/2-topSign*z/sT)*sT,k_);
+        if(csN&&P.rows){const R_=P.rows,q2=clamp(Math.round(my)-R_.c0,0,R_.hx.length-1),hx=R_.hx[q2],hz=R_.hz[q2];
+         if(hx>0&&hz>0){const aa=Math.abs((x-R_.xc[q2])/hx),bb2=Math.abs((z-R_.zc[q2])/hz),sq=Math.pow(Math.pow(aa,csN)+Math.pow(bb2,csN),1/csN);d=smax(d,(sq-1)*Math.min(hx,hz),k_)}}}
+       const q=i+nx*(j+ny*k);F[q]=F[q]>=1e8?d:sminf(F[q],d,kJ)}}}
+    Status.set(0.1+0.6*(pi+1)/parts.length,'Building part '+(pi+1)+' of '+parts.length+': '+P.name);await stepCheck(job)}
+  }else{
+  for(let k=0;k<nz;k++){
+   const z=oz+k*cell;
+   for(let j=0;j<ny;j++){const y=oy+j*cell;
+    for(let i=0;i<nx;i++){const x=ox+i*cell;
+     let d=sampV(Fr,fU+x/sf,fV-y/sf)*sf;
+     if(Bk)d=smax(d,sampV(Bk,Bk.PAD+(Bk.bw-1)/2-x/sB,Bk.PAD+(Bk.bh-1)-y/sB)*sB,k_);
+     if(Sd)d=smax(d,sampV(Sd,Sd.PAD+(Sd.bw-1)/2+sideSign*z/sS,Sd.PAD+(Sd.bh-1)-y/sS)*sS,k_);
+     if(Tp)d=smax(d,sampV(Tp,Tp.PAD+(Tp.bw-1)/2+x/sT,Tp.PAD+(Tp.bh-1)/2-topSign*z/sT)*sT,k_);
+     F[i+nx*(j+ny*k)]=d}}
+   if((k&3)===3){Status.set(0.1+0.6*k/nz,'Combining the views into a solid ('+Math.round(100*k/nz)+'%)');await stepCheck(job)}}}
+  Status.set(0.72,'Smoothing');await stepCheck(job);
+  if(sm>0)blurField(F,nx,ny,nz,sm);
+  Status.set(0.8,'Building the quad surface');await stepCheck(job);
+  const M=surfaceNets(F,nx,ny,nz,cell,ox,oy,oz);
+  if(!M.Q.length)throw new Error('The views do not overlap, so no solid was produced. Check the view names and the side/top directions.');
+  Status.set(0.92,'Relaxing the mesh');await stepCheck(job);
+  relaxQuads(M,rx);
+  setMesh('quad',M);const st=meshStats(M);
+  $('stats').textContent=st.m.toLocaleString()+' quads · '+st.n.toLocaleString()+' points · size '+(st.x1-st.x0).toFixed(2)+' × '+(st.y1-st.y0).toFixed(2)+' × '+(st.z1-st.z0).toFixed(2);
+  $('exp').disabled=false;
+  Status.done('Done: '+st.m.toLocaleString()+' quads');log('Built a quad model from '+Object.keys(S).join(', ')+' views'+(parts.length?' and '+parts.length+' parts':'')+'.'+(parts.notes&&parts.notes.length?' Built as extra round tubes: '+parts.notes.join(', ')+'.':'')+' Change a slider and build again to compare.')
+ }catch(e){if(e.message==='cancelled'){Status.idle('Cancelled');log('Cancelled.')}else{Status.fail('Failed');log(e.message,true);console.error(e)}}
+ finally{$('goTrace').disabled=false;JOB=null}}
+if($('goTrace'))$('goTrace').onclick=buildTrace;
+
+/* ---------- OBJ export ---------- */
+function exportObj(M,name){const n=M.V.length/3,m=M.Q.length/4,out=['# Just3D '+MODE+' test export, all quads','o '+name];
+ for(let i=0;i<n;i++)out.push('v '+M.V[i*3].toFixed(5)+' '+M.V[i*3+1].toFixed(5)+' '+M.V[i*3+2].toFixed(5));
+ for(let q=0;q<m;q++)out.push('f '+(M.Q[q*4]+1)+' '+(M.Q[q*4+1]+1)+' '+(M.Q[q*4+2]+1)+' '+(M.Q[q*4+3]+1));
+ return new Blob([out.join('\n')+'\n'],{type:'text/plain'})}
+$('exp').onclick=()=>{if(!meshes.quad)return;saveFile('just3d-'+MODE+'-model.obj',exportObj(meshes.quad,'just3d_'+MODE));log('Saved just3d-'+MODE+'-model.obj')};
+
+
+/* ================= parts: split the figure into pieces and build each one on its own ================= */
+/* Auto-split (standing figure, front view): head, torso, arms (T-pose only), legs. The boxes it makes can be dragged and renamed like any others. */
+function autoParts(){
+ const fr=(()=>{for(const sh of sheets)for(const b of sh.boxes)if(b.role==='front')return{sh,b};return null})();
+ if(!fr){log('Auto-split needs a box named “Front view” first.',true);return 0}
+ const mk=getMask(fr.sh,fr.b);if(!mk.bb){log('No figure found in the front view.',true);return 0}
+ const {m,w,h,bb}=mk,bw=bb.x1-bb.x0+1,bh=bb.y1-bb.y0+1;
+ const rowL=new Int32Array(bh).fill(1e9),rowR=new Int32Array(bh).fill(-1),rowN=new Int32Array(bh);
+ for(let j=0;j<bh;j++){const y=bb.y0+j;for(let i=bb.x0;i<=bb.x1;i++)if(m[y*w+i]){if(i<rowL[j])rowL[j]=i;if(i>rowR[j])rowR[j]=i;rowN[j]++}}
+ const at=t=>clamp(Math.round(t*(bh-1)),0,bh-1);
+ /* body width and centre from the belt rows */
+ let sx=0,sn=0,l0=1e9,r0=-1;for(let j=at(.42);j<=at(.52);j++){for(let i=rowL[j];i<=rowR[j];i++)if(m[(bb.y0+j)*w+i]){sx+=i;sn++}if(rowL[j]<l0)l0=rowL[j];if(rowR[j]>r0)r0=rowR[j]}
+ const widths=[];for(let j=at(.42);j<=at(.52);j++)widths.push(rowN[j]);widths.sort((p,q)=>p-q);const medW=widths[widths.length>>1]||bw*.2;
+ const cx=sn?sx/sn:(bb.x0+bb.x1)/2,hw=Math.max(8,Math.min((r0-l0+1)/2,medW*0.75));
+ /* T-pose when the rows around the shoulders are far wider than the body */
+ let rA=-1,rB=-1,maxW=0;for(let j=at(.08);j<=at(.36);j++){const ww=rowR[j]-rowL[j]+1;if(ww>maxW)maxW=ww;if(ww>2*hw*1.7){if(rA<0)rA=j;rB=j}}
+ const tpose=rA>=0&&maxW>bw*.7;
+ /* neck: the narrowest row near the top of the figure; the crotch: where the middle column first turns to background below the belt */
+ let nk=at(.17),mn=1e9;for(let j=at(.09);j<=at(.26);j++){const ww=tpose&&j>=rA&&j<=rB?1e9:rowN[j];if(ww<mn){mn=ww;nk=j}}
+ if(tpose&&rA>=0)nk=Math.min(nk,rA);
+ let cr=at(.55);for(let j=at(.45);j<=at(.75);j++){const i=Math.round(cx);if(!m[(bb.y0+j)*w+i]){cr=j;break}}
+ const P=[];const add=(name,x0,x1,j0,j1,depth)=>{if(x1-x0<4||j1-j0<4)return;P.push({x:mk.x+x0,y:mk.y+bb.y0+j0,w:x1-x0+1,h:j1-j0+1,role:'part',name,depth:depth||'auto'})};
+ let hx0=1e9,hx1=-1;for(let j=0;j<=nk;j++){if(rowL[j]<hx0)hx0=rowL[j];if(rowR[j]>hx1)hx1=rowR[j]}
+ add('head',hx0,hx1,0,nk,'side');
+ if(tpose){const a0=Math.max(0,rA-Math.round(bh*.015)),a1=Math.min(bh-1,rB+Math.round(bh*.04));
+  const tl=Math.round(cx-hw*.95),tr=Math.round(cx+hw*.95);
+  add('left arm',bb.x0,tl,a0,a1,'round');add('right arm',tr,bb.x1,a0,a1,'round');
+  add('torso',tl,tr,nk+1,cr,'side')}
+ else add('torso',bb.x0,bb.x1,nk+1,cr,'side');
+ let lx0=1e9,lx1=-1;for(let j=cr;j<bh;j++){if(rowL[j]<lx0)lx0=rowL[j];if(rowR[j]>lx1)lx1=rowR[j]}
+ const mid=Math.round(cx);add('left leg',lx0,mid,cr,bh-1,'side');add('right leg',mid+1,lx1,cr,bh-1,'side');
+ fr.sh.boxes=fr.sh.boxes.filter(b=>b.role!=='part');P.forEach(b=>fr.sh.boxes.push(b));fr.sh.sel=fr.sh.boxes.length-1;
+ return {n:P.length,tpose}}
+$('autoParts').onclick=()=>{const r=autoParts();if(!r)return;const sh=curSheet();syncRole();drawSheet();
+ log('Made '+r.n+' parts'+(r.tpose?' (T-pose: the arms are separate round parts)':' (arms hanging by the body stay with the torso; draw a box over an arm and set it to a part if you want it built on its own)')+'. Drag a box to the right place, rename it, or delete it, then build.')};
+
+
+/* ================= shared by both programs: mesh readers, import, triangles -> pure quads at a chosen quad count ================= */
+
+/* ---------- mesh readers: every reader returns {V:Float32Array xyz, T:Int32Array triangles} ---------- */
+function triFan(idx,T){for(let k=1;k<idx.length-1;k++)T.push(idx[0],idx[k],idx[k+1])}
+function parseOBJ(text){const V=[],T=[];
+ for(const line of text.split(/\r?\n/)){const c=line.charCodeAt(0);
+  if(c===118&&line.charCodeAt(1)===32){const w=line.trim().split(/\s+/);V.push(+w[1],+w[2],+w[3])}
+  else if(c===102&&line.charCodeAt(1)===32){const w=line.trim().split(/\s+/).slice(1),n=V.length/3;
+   const idx=w.map(s=>{const i=parseInt(s,10);return i<0?n+i:i-1}).filter(i=>i>=0&&i<n);if(idx.length>=3)triFan(idx,T)}}
+ return{V:new Float32Array(V),T:new Int32Array(T)}}
+function weldTris(P){ /* P = flat xyz per triangle corner; merge equal corners */
+ const map=new Map(),V=[],T=[];
+ for(let i=0;i<P.length;i+=3){const k=Math.round(P[i]*1e5)+','+Math.round(P[i+1]*1e5)+','+Math.round(P[i+2]*1e5);let id=map.get(k);
+  if(id===undefined){id=V.length/3;map.set(k,id);V.push(P[i],P[i+1],P[i+2])}T.push(id)}
+ return{V:new Float32Array(V),T:new Int32Array(T)}}
+function parseSTL(buf){
+ const dv=new DataView(buf);let binary=false;
+ if(buf.byteLength>=84){const n=dv.getUint32(80,true);if(84+50*n===buf.byteLength)binary=true}
+ const P=[];
+ if(binary){const n=dv.getUint32(80,true);for(let t=0;t<n;t++){const o=84+t*50+12;for(let c=0;c<3;c++)for(let a=0;a<3;a++)P.push(dv.getFloat32(o+c*12+a*4,true))}}
+ else{const txt=new TextDecoder().decode(buf),re=/vertex\s+(\S+)\s+(\S+)\s+(\S+)/g;let m;while((m=re.exec(txt)))P.push(+m[1],+m[2],+m[3])}
+ return weldTris(P)}
+const PLYT={char:['getInt8',1],int8:['getInt8',1],uchar:['getUint8',1],uint8:['getUint8',1],short:['getInt16',2],int16:['getInt16',2],ushort:['getUint16',2],uint16:['getUint16',2],int:['getInt32',4],int32:['getInt32',4],uint:['getUint32',4],uint32:['getUint32',4],float:['getFloat32',4],float32:['getFloat32',4],double:['getFloat64',8],float64:['getFloat64',8]};
+function parsePLY(buf){
+ const u8=new Uint8Array(buf);let he=-1;const key=[101,110,100,95,104,101,97,100,101,114]; /* end_header */
+ for(let i=0;i<Math.min(u8.length,20000);i++){let ok=true;for(let k=0;k<10;k++)if(u8[i+k]!==key[k]){ok=false;break}if(ok){he=i+10;break}}
+ if(he<0)throw new Error('This PLY file has no header.');
+ let pos=he;while(u8[pos]!==10&&pos<u8.length)pos++;pos++;
+ const head=new TextDecoder().decode(u8.subarray(0,he)).split(/\r?\n/);let fmt='ascii';const els=[];
+ for(const l of head){const w=l.trim().split(/\s+/);
+  if(w[0]==='format')fmt=w[1];
+  else if(w[0]==='element')els.push({name:w[1],n:+w[2],props:[]});
+  else if(w[0]==='property'&&els.length){if(w[1]==='list')els[els.length-1].props.push({list:true,ct:w[2],it:w[3],name:w[4]});else els[els.length-1].props.push({t:w[1],name:w[2]})}}
+ const V=[],T=[];
+ if(fmt==='ascii'){const toks=new TextDecoder().decode(u8.subarray(pos)).split(/\s+/).filter(s=>s.length);let q=0;
+  for(const el of els)for(let r=0;r<el.n;r++){const row={};
+   for(const p of el.props){if(p.list){const c=+toks[q++],a=[];for(let k=0;k<c;k++)a.push(+toks[q++]);row[p.name]=a}else row[p.name]=+toks[q++]}
+   if(el.name==='vertex')V.push(row.x,row.y,row.z);else if(el.name==='face'){const f=row.vertex_indices||row.vertex_index;if(f&&f.length>=3)triFan(f,T)}}}
+ else{const dv=new DataView(buf),le=fmt==='binary_little_endian';let o=pos;
+  const rd=t=>{const d=PLYT[t];if(!d)throw new Error('Unsupported PLY type '+t);const v=dv[d[0]](o,le);o+=d[1];return v};
+  for(const el of els)for(let r=0;r<el.n;r++){const row={};
+   for(const p of el.props){if(p.list){const c=rd(p.ct),a=[];for(let k=0;k<c;k++)a.push(rd(p.it));row[p.name]=a}else row[p.name]=rd(p.t)}
+   if(el.name==='vertex')V.push(row.x,row.y,row.z);else if(el.name==='face'){const f=row.vertex_indices||row.vertex_index;if(f&&f.length>=3)triFan(f,T)}}}
+ return{V:new Float32Array(V),T:new Int32Array(T)}}
+function m4mul(a,b){const o=new Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+r]*b[c*4+k];o[c*4+r]=s}return o}
+function m4trs(t,q,s){const[x,y,z,w]=q,x2=x+x,y2=y+y,z2=z+z,xx=x*x2,xy=x*y2,xz=x*z2,yy=y*y2,yz=y*z2,zz=z*z2,wx=w*x2,wy=w*y2,wz=w*z2;
+ return[(1-(yy+zz))*s[0],(xy+wz)*s[0],(xz-wy)*s[0],0,(xy-wz)*s[1],(1-(xx+zz))*s[1],(yz+wx)*s[1],0,(xz+wy)*s[2],(yz-wx)*s[2],(1-(xx+yy))*s[2],0,t[0],t[1],t[2],1]}
+function parseGLB(buf){
+ const dv=new DataView(buf);if(dv.getUint32(0,true)!==0x46546C67)throw new Error('Not a GLB file.');
+ let off=12,json=null,bin=null;
+ while(off+8<=buf.byteLength){const len=dv.getUint32(off,true),typ=dv.getUint32(off+4,true);
+  if(typ===0x4E4F534A)json=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,off+8,len)));
+  else if(typ===0x004E4942&&!bin)bin=new Uint8Array(buf,off+8,len);off+=8+len+((4-len%4)%4)}
+ if(!json||!bin)throw new Error('This GLB has no geometry data (an external .bin is not supported).');
+ const ext=(json.extensionsRequired||[]).concat(json.extensionsUsed||[]);
+ if(ext.includes('KHR_draco_mesh_compression')||ext.includes('EXT_meshopt_compression'))throw new Error('This GLB is compressed (Draco or Meshopt). Ask the service for an uncompressed GLB, or an OBJ/PLY/STL.');
+ const CT={5120:[Int8Array,1],5121:[Uint8Array,1],5122:[Int16Array,2],5123:[Uint16Array,2],5125:[Uint32Array,4],5126:[Float32Array,4]},NC={SCALAR:1,VEC2:2,VEC3:3,VEC4:4};
+ const readAcc=i=>{const a=json.accessors[i],bv=json.bufferViews[a.bufferView];if(a.bufferView===undefined)throw new Error('Unsupported accessor.');
+  const[Ty,sz]=CT[a.componentType],nc=NC[a.type],stride=bv.byteStride||sz*nc,base=(bv.byteOffset||0)+(a.byteOffset||0),out=new Ty(a.count*nc),dvb=new DataView(bin.buffer,bin.byteOffset);
+  const gm={5120:'getInt8',5121:'getUint8',5122:'getInt16',5123:'getUint16',5125:'getUint32',5126:'getFloat32'}[a.componentType];
+  for(let n=0;n<a.count;n++)for(let c=0;c<nc;c++)out[n*nc+c]=dvb[gm](base+n*stride+c*sz,true);return out};
+ const V=[],T=[];
+ const doMesh=(mi,M)=>{const mesh=json.meshes[mi];if(!mesh)return;
+  for(const pr of mesh.primitives||[]){if(pr.mode!==undefined&&pr.mode!==4)continue;if(pr.attributes.POSITION===undefined)continue;
+   const pos=readAcc(pr.attributes.POSITION),base=V.length/3;
+   for(let i=0;i<pos.length;i+=3){const x=pos[i],y=pos[i+1],z=pos[i+2];V.push(M[0]*x+M[4]*y+M[8]*z+M[12],M[1]*x+M[5]*y+M[9]*z+M[13],M[2]*x+M[6]*y+M[10]*z+M[14])}
+   if(pr.indices!==undefined){const ix=readAcc(pr.indices);for(let i=0;i+2<ix.length;i+=3)T.push(base+ix[i],base+ix[i+1],base+ix[i+2])}
+   else for(let i=0;i+2<pos.length/3;i+=3)T.push(base+i,base+i+1,base+i+2)}};
+ const I4=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
+ const walk=(ni,P)=>{const n=json.nodes[ni];const L=n.matrix?n.matrix:m4trs(n.translation||[0,0,0],n.rotation||[0,0,0,1],n.scale||[1,1,1]),M=m4mul(P,L);
+  if(n.mesh!==undefined)doMesh(n.mesh,M);(n.children||[]).forEach(c=>walk(c,M))};
+ if(json.nodes&&json.scenes){const sc=json.scenes[json.scene||0];(sc.nodes||[]).forEach(n=>walk(n,I4))}
+ else if(json.meshes)json.meshes.forEach((_,i)=>doMesh(i,I4));
+ return{V:new Float32Array(V),T:new Int32Array(T)}}
+function parseMesh(buf){
+ const u8=new Uint8Array(buf),head=new TextDecoder().decode(u8.subarray(0,Math.min(300,u8.length)));
+ let M;
+ if(head.startsWith('glTF'))M=parseGLB(buf);
+ else if(head.startsWith('ply'))M=parsePLY(buf);
+ else if(/^\s*solid/.test(head)&&/facet/.test(new TextDecoder().decode(u8.subarray(0,Math.min(2000,u8.length))))||(buf.byteLength>=84&&new DataView(buf).getUint32(80,true)*50+84===buf.byteLength))M=parseSTL(buf);
+ else if(/^\s*[\[{]/.test(head))throw new Error('The service sent JSON instead of a mesh: '+head.slice(0,160));
+ else M=parseOBJ(new TextDecoder().decode(buf));
+ if(!M.T.length||!M.V.length)throw new Error('No triangles were found in that file.');
+ return M}
+
+/* ---------- triangles -> quads ---------- */
+function ptTri2(px,py,pz,ax,ay,az,bx,by,bz,cx,cy,cz){ /* squared distance from p to triangle abc (Ericson) */
+ const abx=bx-ax,aby=by-ay,abz=bz-az,acx=cx-ax,acy=cy-ay,acz=cz-az,apx=px-ax,apy=py-ay,apz=pz-az;
+ const d1=abx*apx+aby*apy+abz*apz,d2=acx*apx+acy*apy+acz*apz;
+ if(d1<=0&&d2<=0)return apx*apx+apy*apy+apz*apz;
+ const bpx=px-bx,bpy=py-by,bpz=pz-bz,d3=abx*bpx+aby*bpy+abz*bpz,d4=acx*bpx+acy*bpy+acz*bpz;
+ if(d3>=0&&d4<=d3)return bpx*bpx+bpy*bpy+bpz*bpz;
+ const vc=d1*d4-d3*d2;
+ if(vc<=0&&d1>=0&&d3<=0){const v=d1/(d1-d3),qx=apx-v*abx,qy=apy-v*aby,qz=apz-v*abz;return qx*qx+qy*qy+qz*qz}
+ const cpx=px-cx,cpy=py-cy,cpz=pz-cz,d5=abx*cpx+aby*cpy+abz*cpz,d6=acx*cpx+acy*cpy+acz*cpz;
+ if(d6>=0&&d5<=d6)return cpx*cpx+cpy*cpy+cpz*cpz;
+ const vb=d5*d2-d1*d6;
+ if(vb<=0&&d2>=0&&d6<=0){const w=d2/(d2-d6),qx=apx-w*acx,qy=apy-w*acy,qz=apz-w*acz;return qx*qx+qy*qy+qz*qz}
+ const va=d3*d6-d5*d4;
+ if(va<=0&&(d4-d3)>=0&&(d5-d6)>=0){const w=(d4-d3)/((d4-d3)+(d5-d6)),qx=px-(bx+w*(cx-bx)),qy=py-(by+w*(cy-by)),qz=pz-(bz+w*(cz-bz));return qx*qx+qy*qy+qz*qz}
+ const den=1/(va+vb+vc),v=vb*den,w=vc*den,qx=apx-abx*v-acx*w,qy=apy-aby*v-acy*w,qz=apz-abz*v-acz*w;return qx*qx+qy*qy+qz*qz}
+function orientMesh(raw,up,rotDeg,H){ /* Y up, height H, standing on y=0, centred in x and z */
+ const n=raw.V.length/3,V=new Float32Array(raw.V.length),a=rotDeg*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a);
+ for(let i=0;i<n;i++){let x=raw.V[i*3],y=raw.V[i*3+1],z=raw.V[i*3+2];
+  if(up==='z'){const t=y;y=z;z=-t}
+  const xr=x*ca+z*sa,zr=-x*sa+z*ca;V[i*3]=xr;V[i*3+1]=y;V[i*3+2]=zr}
+ let x0=1e30,x1=-1e30,y0=1e30,y1=-1e30,z0=1e30,z1=-1e30;
+ for(let i=0;i<n;i++){const x=V[i*3],y=V[i*3+1],z=V[i*3+2];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;if(z<z0)z0=z;if(z>z1)z1=z}
+ const k=H/Math.max(1e-9,y1-y0),cx=(x0+x1)/2,cz=(z0+z1)/2;
+ for(let i=0;i<n;i++){V[i*3]=(V[i*3]-cx)*k;V[i*3+1]=(V[i*3+1]-y0)*k;V[i*3+2]=(V[i*3+2]-cz)*k}
+ return{V,T:raw.T}}
+/* closest point on triangle abc to p (Ericson); writes it to out and returns the squared distance */
+function cpTri(px,py,pz,ax,ay,az,bx,by,bz,cx,cy,cz,out){
+ const abx=bx-ax,aby=by-ay,abz=bz-az,acx=cx-ax,acy=cy-ay,acz=cz-az,apx=px-ax,apy=py-ay,apz=pz-az;
+ const d1=abx*apx+aby*apy+abz*apz,d2=acx*apx+acy*apy+acz*apz;let qx,qy,qz;
+ const fin=()=>{out[0]=qx;out[1]=qy;out[2]=qz;const dx=px-qx,dy=py-qy,dz=pz-qz;return dx*dx+dy*dy+dz*dz};
+ if(d1<=0&&d2<=0){qx=ax;qy=ay;qz=az;return fin()}
+ const bpx=px-bx,bpy=py-by,bpz=pz-bz,d3=abx*bpx+aby*bpy+abz*bpz,d4=acx*bpx+acy*bpy+acz*bpz;
+ if(d3>=0&&d4<=d3){qx=bx;qy=by;qz=bz;return fin()}
+ const vc=d1*d4-d3*d2;
+ if(vc<=0&&d1>=0&&d3<=0){const v=d1/(d1-d3);qx=ax+v*abx;qy=ay+v*aby;qz=az+v*abz;return fin()}
+ const cpx=px-cx,cpy=py-cy,cpz=pz-cz,d5=abx*cpx+aby*cpy+abz*cpz,d6=acx*cpx+acy*cpy+acz*cpz;
+ if(d6>=0&&d5<=d6){qx=cx;qy=cy;qz=cz;return fin()}
+ const vb=d5*d2-d1*d6;
+ if(vb<=0&&d2>=0&&d6<=0){const w=d2/(d2-d6);qx=ax+w*acx;qy=ay+w*acy;qz=az+w*acz;return fin()}
+ const va=d3*d6-d5*d4;
+ if(va<=0&&(d4-d3)>=0&&(d5-d6)>=0){const w=(d4-d3)/((d4-d3)+(d5-d6));qx=bx+w*(cx-bx);qy=by+w*(cy-by);qz=bz+w*(cz-bz);return fin()}
+ const den=1/(va+vb+vc),v=vb*den,w=vc*den;qx=ax+abx*v+acx*w;qy=ay+aby*v+acy*w;qz=az+abz*v+acz*w;return fin()}
+function meshArea(V,T){let s=0;for(let t=0;t<T.length;t+=3){const a=T[t]*3,b=T[t+1]*3,c=T[t+2]*3,ux=V[b]-V[a],uy=V[b+1]-V[a+1],uz=V[b+2]-V[a+2],vx=V[c]-V[a],vy=V[c+1]-V[a+1],vz=V[c+2]-V[a+2];
+ const x=uy*vz-uz*vy,y=uz*vx-ux*vz,z=ux*vy-uy*vx;s+=0.5*Math.sqrt(x*x+y*y+z*z)}return s}
+/* a bucket grid of the triangles so "closest point on the original surface" is quick */
+function triGrid(V,T,bs){
+ let x0=1e30,y0=1e30,z0=1e30,x1=-1e30,y1=-1e30,z1=-1e30;for(let i=0;i<V.length;i+=3){if(V[i]<x0)x0=V[i];if(V[i]>x1)x1=V[i];if(V[i+1]<y0)y0=V[i+1];if(V[i+1]>y1)y1=V[i+1];if(V[i+2]<z0)z0=V[i+2];if(V[i+2]>z1)z1=V[i+2]}
+ x0-=bs*2;y0-=bs*2;z0-=bs*2;const nx=Math.ceil((x1-x0)/bs)+3,ny=Math.ceil((y1-y0)/bs)+3,nz=Math.ceil((z1-z0)/bs)+3,nt=T.length/3,cnt=new Int32Array(nx*ny*nz+1);
+ const rng=t=>{const a=T[t*3]*3,b=T[t*3+1]*3,c=T[t*3+2]*3,m=(k)=>Math.min(V[a+k],V[b+k],V[c+k]),M=(k)=>Math.max(V[a+k],V[b+k],V[c+k]);
+  return[Math.floor((m(0)-x0)/bs),Math.floor((M(0)-x0)/bs),Math.floor((m(1)-y0)/bs),Math.floor((M(1)-y0)/bs),Math.floor((m(2)-z0)/bs),Math.floor((M(2)-z0)/bs)]};
+ for(let t=0;t<nt;t++){const r=rng(t);for(let k=r[4];k<=r[5];k++)for(let j=r[2];j<=r[3];j++)for(let i=r[0];i<=r[1];i++)cnt[1+i+nx*(j+ny*k)]++}
+ for(let i=0;i<nx*ny*nz;i++)cnt[i+1]+=cnt[i];
+ const list=new Int32Array(cnt[nx*ny*nz]),fill=new Int32Array(nx*ny*nz);
+ for(let t=0;t<nt;t++){const r=rng(t);for(let k=r[4];k<=r[5];k++)for(let j=r[2];j<=r[3];j++)for(let i=r[0];i<=r[1];i++){const q=i+nx*(j+ny*k);list[cnt[q]+fill[q]++]=t}}
+ const out=[0,0,0];
+ return{nearest(px,py,pz){ /* writes the closest point to this.p and returns squared distance */
+  const ci=Math.floor((px-x0)/bs),cj=Math.floor((py-y0)/bs),ck=Math.floor((pz-z0)/bs);let best=1e30,bx=px,by=py,bz=pz;
+  for(let r=1;r<=8;r++){
+   for(let k=Math.max(0,ck-r);k<=Math.min(nz-1,ck+r);k++)for(let j=Math.max(0,cj-r);j<=Math.min(ny-1,cj+r);j++)for(let i=Math.max(0,ci-r);i<=Math.min(nx-1,ci+r);i++){
+    if(Math.max(Math.abs(i-ci),Math.abs(j-cj),Math.abs(k-ck))!==r&&r>1)continue;
+    const q=i+nx*(j+ny*k);for(let s=cnt[q];s<cnt[q+1];s++){const t=list[s],a=T[t*3]*3,b=T[t*3+1]*3,c=T[t*3+2]*3;
+     const d=cpTri(px,py,pz,V[a],V[a+1],V[a+2],V[b],V[b+1],V[b+2],V[c],V[c+1],V[c+2],out);if(d<best){best=d;bx=out[0];by=out[1];bz=out[2]}}}
+   if(best<1e30&&Math.sqrt(best)<=r*bs)break}
+  this.p=[bx,by,bz];return best}}}
+
+/* sharp edges and corners of the source mesh, so the new quads keep them sharp instead of rounding them off */
+function findFeatures(V,T,deg){
+ const nt=T.length/3,nv=V.length/3,cosT=Math.cos(deg*Math.PI/180),N=new Float32Array(nt*3);
+ for(let t=0;t<nt;t++){const a=T[t*3]*3,b=T[t*3+1]*3,c=T[t*3+2]*3,ux=V[b]-V[a],uy=V[b+1]-V[a+1],uz=V[b+2]-V[a+2],vx=V[c]-V[a],vy=V[c+1]-V[a+1],vz=V[c+2]-V[a+2];
+  let x=uy*vz-uz*vy,y=uz*vx-ux*vz,z=ux*vy-uy*vx;const l=Math.hypot(x,y,z)||1;N[t*3]=x/l;N[t*3+1]=y/l;N[t*3+2]=z/l}
+ const em=new Map();
+ for(let t=0;t<nt;t++)for(let c=0;c<3;c++){const a=T[t*3+c],b=T[t*3+(c+1)%3],k=a<b?a*nv+b:b*nv+a;const l=em.get(k);if(l)l.push(t);else em.set(k,[t])}
+ const segs=[],fdeg=new Int32Array(nv),nb=new Array(nv);
+ em.forEach((ts,k)=>{if(ts.length!==2)return;const t1=ts[0],t2=ts[1];if(N[t1*3]*N[t2*3]+N[t1*3+1]*N[t2*3+1]+N[t1*3+2]*N[t2*3+2]>cosT)return;
+  const a=Math.floor(k/nv),b=k-a*nv;segs.push(a,b);fdeg[a]++;fdeg[b]++;(nb[a]||(nb[a]=[])).push(b);(nb[b]||(nb[b]=[])).push(a)});
+ const corners=[];
+ for(let i=0;i<nv;i++){if(!fdeg[i])continue;let isC=fdeg[i]!==2;
+  if(!isC){const p=nb[i],ax=V[p[0]*3]-V[i*3],ay=V[p[0]*3+1]-V[i*3+1],az=V[p[0]*3+2]-V[i*3+2],bx=V[p[1]*3]-V[i*3],by=V[p[1]*3+1]-V[i*3+1],bz=V[p[1]*3+2]-V[i*3+2];
+   const c=(ax*bx+ay*by+az*bz)/Math.max(1e-12,Math.hypot(ax,ay,az)*Math.hypot(bx,by,bz));if(c>-0.64)isC=true} /* the edge line bends by more than about 50 degrees */
+  if(isC)corners.push([V[i*3],V[i*3+1],V[i*3+2]])}
+ const S=new Float32Array(segs.length*3);for(let i=0;i<segs.length;i+=2){const a=segs[i]*3,b=segs[i+1]*3;S.set([V[a],V[a+1],V[a+2]],i*3);S.set([V[b],V[b+1],V[b+2]],i*3+3)}
+ return{S,ns:segs.length/2,corners}}
+/* keep only real creases: connected crease lines shorter than minLen are faceting noise (common on scanned / generated / traced meshes) */
+function filterFeatures(F,minLen){if(!F.ns)return F;
+ const S=F.S,ns=F.ns,key=(i)=>Math.round(S[i]*1e5)+','+Math.round(S[i+1]*1e5)+','+Math.round(S[i+2]*1e5),pid=new Map(),ends=new Int32Array(ns*2);
+ for(let s=0;s<ns;s++)for(let e=0;e<2;e++){const k=key(s*6+e*3);let id=pid.get(k);if(id===undefined){id=pid.size;pid.set(k,id)}ends[s*2+e]=id}
+ const uf=new Int32Array(pid.size);for(let i=0;i<uf.length;i++)uf[i]=i;const fd=x=>{while(uf[x]!==x){uf[x]=uf[uf[x]];x=uf[x]}return x};
+ for(let s=0;s<ns;s++){const a=fd(ends[s*2]),b=fd(ends[s*2+1]);if(a!==b)uf[a]=b}
+ const len=new Map();for(let s=0;s<ns;s++){const r=fd(ends[s*2]),b=s*6,l=Math.hypot(S[b+3]-S[b],S[b+4]-S[b+1],S[b+5]-S[b+2]);len.set(r,(len.get(r)||0)+l)}
+ const keep=[];for(let s=0;s<ns;s++)if(len.get(fd(ends[s*2]))>=minLen)keep.push(s);
+ const S2=new Float32Array(keep.length*6);keep.forEach((s,i)=>S2.set(S.subarray(s*6,s*6+6),i*6));
+ const kept=new Set();for(const s of keep)for(let e=0;e<2;e++)kept.add(key(s*6+e*3));
+ const corners=F.corners.filter(c=>kept.has(Math.round(c[0]*1e5)+','+Math.round(c[1]*1e5)+','+Math.round(c[2]*1e5)));
+ return{S:S2,ns:keep.length,corners}}
+function segGrid(F,bs){
+ const ns=F.ns,S=F.S;let x0=1e30,y0=1e30,z0=1e30,x1=-1e30,y1=-1e30,z1=-1e30;
+ for(let i=0;i<S.length;i+=3){if(S[i]<x0)x0=S[i];if(S[i]>x1)x1=S[i];if(S[i+1]<y0)y0=S[i+1];if(S[i+1]>y1)y1=S[i+1];if(S[i+2]<z0)z0=S[i+2];if(S[i+2]>z1)z1=S[i+2]}
+ x0-=bs*2;y0-=bs*2;z0-=bs*2;const nx=Math.ceil((x1-x0)/bs)+3,ny=Math.ceil((y1-y0)/bs)+3,nz=Math.ceil((z1-z0)/bs)+3,cells=new Map();
+ for(let s=0;s<ns;s++){const b=s*6,i0=Math.floor((Math.min(S[b],S[b+3])-x0)/bs),i1=Math.floor((Math.max(S[b],S[b+3])-x0)/bs),j0=Math.floor((Math.min(S[b+1],S[b+4])-y0)/bs),j1=Math.floor((Math.max(S[b+1],S[b+4])-y0)/bs),k0=Math.floor((Math.min(S[b+2],S[b+5])-z0)/bs),k1=Math.floor((Math.max(S[b+2],S[b+5])-z0)/bs);
+  for(let k=k0;k<=k1;k++)for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const key=i+nx*(j+ny*k);const l=cells.get(key);if(l)l.push(s);else cells.set(key,[s])}}
+ return{nearest(px,py,pz,maxd){ /* closest point on any sharp edge within maxd; returns squared distance or -1 (point in this.p) */
+  const r=Math.ceil(maxd/bs),ci=Math.floor((px-x0)/bs),cj=Math.floor((py-y0)/bs),ck=Math.floor((pz-z0)/bs);let best=maxd*maxd,found=false;
+  for(let k=ck-r;k<=ck+r;k++)for(let j=cj-r;j<=cj+r;j++)for(let i=ci-r;i<=ci+r;i++){const l=cells.get(i+nx*(j+ny*k));if(!l)continue;
+   for(const s of l){const b=s*6,ax=S[b],ay=S[b+1],az=S[b+2],dx=S[b+3]-ax,dy=S[b+4]-ay,dz=S[b+5]-az,L2=dx*dx+dy*dy+dz*dz||1e-12;
+    let t=((px-ax)*dx+(py-ay)*dy+(pz-az)*dz)/L2;t=t<0?0:t>1?1:t;const qx=ax+t*dx,qy=ay+t*dy,qz=az+t*dz,d=(px-qx)*(px-qx)+(py-qy)*(py-qy)+(pz-qz)*(pz-qz);
+    if(d<best){best=d;found=true;this.p=[qx,qy,qz];const il=1/Math.sqrt(L2);this.dir=[dx*il,dy*il,dz*il]}}}
+  return found?best:-1}}}
+function quadAdjacency(M){const n=M.V.length/3,m=M.Q.length/4,deg=new Int32Array(n+1);
+ for(let q=0;q<m;q++)for(let c=0;c<4;c++)deg[M.Q[q*4+c]+1]+=2;for(let i=0;i<n;i++)deg[i+1]+=deg[i];
+ const adj=new Int32Array(deg[n]),fill=new Int32Array(n);
+ for(let q=0;q<m;q++)for(let c=0;c<4;c++){const a=M.Q[q*4+c],b=M.Q[q*4+(c+1)%4];adj[deg[a]+fill[a]++]=b;adj[deg[b]+fill[b]++]=a}
+ return{deg,adj}}
+
+/* how square are the quads? a quad counts as a clean square when all four corners are within 15 degrees of a right angle and its longest side is at most 1.35 times its shortest */
+function quadQuality(M){const V=M.V,Q=M.Q,m=Q.length/4;let good=0,devSum=0;const e=[0,0,0,0],ang=[0,0,0,0];
+ for(let q=0;q<m;q++){let ok=true,mn=1e30,mx=0,dv=0;
+  for(let k=0;k<4;k++){const i=Q[q*4+k]*3,j=Q[q*4+(k+1)%4]*3,h=Q[q*4+(k+3)%4]*3,ux=V[j]-V[i],uy=V[j+1]-V[i+1],uz=V[j+2]-V[i+2],wx=V[h]-V[i],wy=V[h+1]-V[i+1],wz=V[h+2]-V[i+2];
+   const lu=Math.hypot(ux,uy,uz),lw=Math.hypot(wx,wy,wz);e[k]=lu;if(lu<mn)mn=lu;if(lu>mx)mx=lu;
+   const c=(ux*wx+uy*wy+uz*wz)/Math.max(1e-12,lu*lw),ag=Math.acos(Math.max(-1,Math.min(1,c)))*180/Math.PI;dv=Math.max(dv,Math.abs(ag-90));if(Math.abs(ag-90)>15)ok=false}
+  if(mx/Math.max(1e-12,mn)>1.35)ok=false;if(ok)good++;devSum+=dv}
+ return{pct:100*good/Math.max(1,m),meanDev:devSum/Math.max(1,m)}}
+/* one squaring pass: every quad is pulled toward the nearest perfect square (same centre, equal sides, right angles, similar size to its neighbours) */
+function squareStep(M,lam,mu){const V=M.V,Q=M.Q,m=Q.length/4,n=V.length/3,acc=new Float64Array(n*3),cnt=new Float64Array(n);
+ let areaSum=0;for(let q=0;q<m;q++){const a=Q[q*4]*3,b=Q[q*4+1]*3,c=Q[q*4+2]*3,d=Q[q*4+3]*3,x1=V[c]-V[a],y1=V[c+1]-V[a+1],z1=V[c+2]-V[a+2],x2=V[d]-V[b],y2=V[d+1]-V[b+1],z2=V[d+2]-V[b+2];
+  const nx=y1*z2-z1*y2,ny=z1*x2-x1*z2,nz=x1*y2-y1*x2;areaSum+=0.5*Math.hypot(nx,ny,nz)}
+ const rt=Math.sqrt(areaSum/m/2),W=[[0,0,0],[0,0,0],[0,0,0],[0,0,0]];
+ for(let q=0;q<m;q++){const id=[Q[q*4]*3,Q[q*4+1]*3,Q[q*4+2]*3,Q[q*4+3]*3];
+  let cx=0,cy=0,cz=0;for(let k=0;k<4;k++){cx+=V[id[k]];cy+=V[id[k]+1];cz+=V[id[k]+2]}cx/=4;cy/=4;cz/=4;
+  const x1=V[id[2]]-V[id[0]],y1=V[id[2]+1]-V[id[0]+1],z1=V[id[2]+2]-V[id[0]+2],x2=V[id[3]]-V[id[1]],y2=V[id[3]+1]-V[id[1]+1],z2=V[id[3]+2]-V[id[1]+2];
+  let nx=y1*z2-z1*y2,ny=z1*x2-x1*z2,nz=x1*y2-y1*x2;const nl=Math.hypot(nx,ny,nz);if(nl<1e-14)continue;nx/=nl;ny/=nl;nz/=nl;
+  let ax=0,ay=0,az=0;
+  for(let k=0;k<4;k++){let wx=V[id[k]]-cx,wy=V[id[k]+1]-cy,wz=V[id[k]+2]-cz;const dn=wx*nx+wy*ny+wz*nz;wx-=dn*nx;wy-=dn*ny;wz-=dn*nz;
+   for(let t=0;t<k;t++){const rx=wy*nz-wz*ny,ry=wz*nx-wx*nz,rz=wx*ny-wy*nx;wx=rx;wy=ry;wz=rz} /* rotate back by -90 degrees, k times */
+   ax+=wx;ay+=wy;az+=wz}
+  ax/=4;ay/=4;az/=4;const r=Math.hypot(ax,ay,az);if(r<1e-14)continue;const s=1+mu*(rt/r-1);ax*=s;ay*=s;az*=s;
+  let wx=ax,wy=ay,wz=az;
+  for(let k=0;k<4;k++){const i=id[k]/3;acc[i*3]+=cx+wx;acc[i*3+1]+=cy+wy;acc[i*3+2]+=cz+wz;cnt[i]++;
+   const rx=ny*wz-nz*wy,ry=nz*wx-nx*wz,rz=nx*wy-ny*wx;wx=rx;wy=ry;wz=rz}}
+ for(let i=0;i<n;i++)if(cnt[i]){V[i*3]+=lam*(acc[i*3]/cnt[i]-V[i*3]);V[i*3+1]+=lam*(acc[i*3+1]/cnt[i]-V[i*3+1]);V[i*3+2]+=lam*(acc[i*3+2]/cnt[i]-V[i*3+2])}}
+
+/* clean up the quad connectivity: move or remove the irregular points (points with 3, 5, 6... quads around them instead of 4).
+   Two local moves, both keep the mesh all-quad: rotate the edge shared by two quads, or collapse a quad's diagonal. A move is kept only if it lowers
+   the total irregularity and keeps the new quads convex and facing the same way. */
+function irregularCount(M){const n=M.V.length/3,deg=new Int32Array(n);for(let i=0;i<M.Q.length;i++)deg[M.Q[i]]++;let c=0,u=0;for(let i=0;i<n;i++)if(deg[i]){u++;if(deg[i]!==4)c++}return{irr:c,used:u,pct:100*c/Math.max(1,u)}}
+function topoOptimize(M,sweeps){
+ const f=v=>(v-4)*(v-4);let V=M.V,Q=Int32Array.from(M.Q),moves=0;
+ const cross=(p,q,r)=>[(q[1]-p[1])*(r[2]-q[2])-(q[2]-p[2])*(r[1]-q[1]),(q[2]-p[2])*(r[0]-q[0])-(q[0]-p[0])*(r[2]-q[2]),(q[0]-p[0])*(r[1]-q[1])-(q[1]-p[1])*(r[0]-q[0])];
+ const P=i=>[V[i*3],V[i*3+1],V[i*3+2]];
+ const convexOK=(ids,nrm)=>{const p=ids.map(P);for(let k=0;k<4;k++){const c=cross(p[k],p[(k+1)%4],p[(k+2)%4]);if(c[0]*nrm[0]+c[1]*nrm[1]+c[2]*nrm[2]<=1e-12)return false}return true};
+ const quadNormal=ids=>{const p=ids.map(P),d1=[p[2][0]-p[0][0],p[2][1]-p[0][1],p[2][2]-p[0][2]],d2=[p[3][0]-p[1][0],p[3][1]-p[1][1],p[3][2]-p[1][2]];
+  const n=[d1[1]*d2[2]-d1[2]*d2[1],d1[2]*d2[0]-d1[0]*d2[2],d1[0]*d2[1]-d1[1]*d2[0]],l=Math.hypot(n[0],n[1],n[2])||1;return[n[0]/l,n[1]/l,n[2]/l]};
+ let dead=new Uint8Array(Q.length/4);
+ for(let sw=0;sw<sweeps;sw++){
+  const n=V.length/3,m=Q.length/4,vq=new Array(n);for(let i=0;i<n;i++)vq[i]=[];
+  for(let q=0;q<m;q++)if(!dead[q])for(let c=0;c<4;c++)vq[Q[q*4+c]].push(q);
+  const val=new Int32Array(n);for(let i=0;i<n;i++)val[i]=vq[i].length;
+  const em=new Map();for(let q=0;q<m;q++)if(!dead[q])for(let c=0;c<4;c++){const a=Q[q*4+c],b=Q[q*4+(c+1)%4],k=a<b?a*n+b:b*n+a;const l=em.get(k);if(l)l.push(q);else em.set(k,[q])}
+  const vt=new Uint8Array(n),qt=new Uint8Array(m);let changed=0;
+  const touchQ=q=>{qt[q]=1;for(let c=0;c<4;c++)vt[Q[q*4+c]]=1};
+  const adjacent=(a,b)=>{for(const q of vq[a])for(let c=0;c<4;c++)if(Q[q*4+c]===b)return true;return false};
+  const nbrs=a=>{const s=new Set();for(const q of vq[a])for(let c=0;c<4;c++){const v=Q[q*4+c];if(v!==a)s.add(v)}return s};
+  /* edge rotations */
+  for(const [key,qs] of em){if(qs.length!==2)continue;const q1=qs[0],q2=qs[1];if(qt[q1]||qt[q2]||dead[q1]||dead[q2])continue;
+   const a=Math.floor(key/n),b=key-a*n;let A=a,B=b,i1=-1;
+   for(let c=0;c<4;c++)if(Q[q1*4+c]===A&&Q[q1*4+(c+1)%4]===B){i1=c;break}
+   if(i1<0){A=b;B=a;for(let c=0;c<4;c++)if(Q[q1*4+c]===A&&Q[q1*4+(c+1)%4]===B){i1=c;break}}
+   if(i1<0)continue;let i2=-1;for(let c=0;c<4;c++)if(Q[q2*4+c]===B&&Q[q2*4+(c+1)%4]===A){i2=c;break}
+   if(i2<0)continue;
+   const c1=Q[q1*4+(i1+2)%4],d1=Q[q1*4+(i1+3)%4],c2=Q[q2*4+(i2+2)%4],d2=Q[q2*4+(i2+3)%4],h=[A,c2,d2,B,c1,d1];
+   if(new Set(h).size!==6)continue;let skip=false;for(const v of h)if(vt[v]){skip=true;break}if(skip)continue;
+   let best=null,bd=1e9;
+   for(const o of [1,2]){const x=h[o],y=h[o+3];if(val[A]-1<3||val[B]-1<3)continue;if(adjacent(x,y))continue;
+    const dE=f(val[A]-1)+f(val[B]-1)+f(val[x]+1)+f(val[y]+1)-f(val[A])-f(val[B])-f(val[x])-f(val[y]);
+    const diffuse=dE===0&&sw<8&&((q1*7+q2*13+sw)%5===0);
+    if((dE<0||diffuse)&&dE<bd){
+     const nA=[h[o],h[(o+1)%6],h[(o+2)%6],h[(o+3)%6]],nB=[h[(o+3)%6],h[(o+4)%6],h[(o+5)%6],h[o]];
+     const o1=quadNormal([Q[q1*4],Q[q1*4+1],Q[q1*4+2],Q[q1*4+3]]),o2=quadNormal([Q[q2*4],Q[q2*4+1],Q[q2*4+2],Q[q2*4+3]]),nr=[o1[0]+o2[0],o1[1]+o2[1],o1[2]+o2[2]];
+     if(convexOK(nA,nr)&&convexOK(nB,nr)){best={o,nA,nB};bd=dE}}}
+   if(best){Q.set(best.nA,q1*4);Q.set(best.nB,q2*4);const o=best.o,x=h[o],y=h[o+3];val[A]--;val[B]--;val[x]++;val[y]++;touchQ(q1);touchQ(q2);for(const v of h)vt[v]=1;changed++}}
+  /* diagonal collapses */
+  for(let q=0;q<m;q++){if(dead[q]||qt[q])continue;const id=[Q[q*4],Q[q*4+1],Q[q*4+2],Q[q*4+3]];let skip=false;for(const v of id)if(vt[v]){skip=true;break}if(skip)continue;
+   for(const [i0,i1] of [[0,2],[1,3]]){const a=id[i0],c=id[i1],b=id[(i0+1)%4],d=id[(i0+3)%4];
+    const mv=val[a]+val[c]-2;if(mv<3||val[b]-1<3||val[d]-1<3)continue;
+    const dE=f(mv)+f(val[b]-1)+f(val[d]-1)-f(val[a])-f(val[c])-f(val[b])-f(val[d]);if(dE>=0)continue;
+    let bad=false;const ring=new Set([...vq[a],...vq[c]]);for(const r of ring){if(qt[r]){bad=true;break}for(let k=0;k<4;k++)if(vt[Q[r*4+k]]){bad=true;break}if(bad)break}if(bad)continue;
+    const na=nbrs(a),nc=nbrs(c);let common=0;for(const v of na)if(nc.has(v))common++;if(common!==2)continue;
+    /* geometry: the merged point sits between the two; the quads around it must stay convex and facing the same way */
+    const mid=[(V[a*3]+V[c*3])/2,(V[a*3+1]+V[c*3+1])/2,(V[a*3+2]+V[c*3+2])/2];const sa=[V[a*3],V[a*3+1],V[a*3+2]],sc=[V[c*3],V[c*3+1],V[c*3+2]];
+    V[a*3]=mid[0];V[a*3+1]=mid[1];V[a*3+2]=mid[2];let ok=true;
+    const trial=[];for(const r of ring){if(r===q)continue;const ids=[Q[r*4],Q[r*4+1],Q[r*4+2],Q[r*4+3]].map(v=>v===c?a:v);trial.push([r,ids])}
+    V[a*3]=sa[0];V[a*3+1]=sa[1];V[a*3+2]=sa[2];
+    for(const [r,ids] of trial){const old=quadNormal([Q[r*4],Q[r*4+1],Q[r*4+2],Q[r*4+3]]);V[a*3]=mid[0];V[a*3+1]=mid[1];V[a*3+2]=mid[2];const nn=quadNormal(ids);const okc=convexOK(ids,old);V[a*3]=sa[0];V[a*3+1]=sa[1];V[a*3+2]=sa[2];if(!okc||nn[0]*old[0]+nn[1]*old[1]+nn[2]*old[2]<0.5){ok=false;break}}
+    if(!ok)continue;
+    V[a*3]=mid[0];V[a*3+1]=mid[1];V[a*3+2]=mid[2];for(const [r,ids] of trial){Q.set(ids,r*4);touchQ(r)}dead[q]=1;touchQ(q);
+    val[a]=mv;val[b]--;val[d]--;val[c]=0;vt[c]=1;changed++;break}}
+  moves+=changed;if(!changed&&sw>=6)break}
+ /* drop dead quads and unused points */
+ const keep=[];for(let q=0;q<Q.length/4;q++)if(!dead[q])keep.push(q);
+ const used=new Int32Array(V.length/3).fill(-1);let nn=0;for(const q of keep)for(let c=0;c<4;c++){const v=Q[q*4+c];if(used[v]<0)used[v]=nn++}
+ const nV=new Float32Array(nn*3),nQ=new Uint32Array(keep.length*4);
+ for(let i=0;i<used.length;i++)if(used[i]>=0){nV[used[i]*3]=V[i*3];nV[used[i]*3+1]=V[i*3+1];nV[used[i]*3+2]=V[i*3+2]}
+ keep.forEach((q,k)=>{for(let c=0;c<4;c++)nQ[k*4+c]=used[Q[q*4+c]]});
+ M.V=nV;M.Q=nQ;return moves}
+/* one pass: triangles -> signed distance on a grid of this cell size -> all-quad surface */
+async function sdfQuads(job,V,T,H,o,cell,prog){const lo=0;
+ const nt=T.length/3;let x0=1e30,x1=-1e30,z0=1e30,z1=-1e30,y1=-1e30;for(let i=0;i<V.length;i+=3){if(V[i]<x0)x0=V[i];if(V[i]>x1)x1=V[i];if(V[i+2]<z0)z0=V[i+2];if(V[i+2]>z1)z1=V[i+2];if(V[i+1]>y1)y1=V[i+1]}
+ const sx=x1-x0,sz=z1-z0,pad=4,nx=Math.ceil(sx/cell)+2*pad+1,ny=Math.ceil(Math.max(H,y1)/cell)+2*pad+1,nz=Math.ceil(sz/cell)+2*pad+1;
+ const ox=x0-pad*cell,oy=-pad*cell,oz=z0-pad*cell,N=nx*ny*nz;
+ if(N>20e6)throw new Error('That many quads needs a grid of '+N.toLocaleString()+' cells, which is more than a browser can hold. Ask for fewer quads.');
+ const r=0.75*cell,band=r+1.5*cell,band2=band*band,D=new Float32Array(N).fill(band);
+ prog(lo,'Measuring distance to the surface (0%)');
+ for(let t=0;t<nt;t++){
+  const a=T[t*3]*3,b=T[t*3+1]*3,c=T[t*3+2]*3,ax=V[a],ay=V[a+1],az=V[a+2],bx=V[b],by=V[b+1],bz=V[b+2],cx=V[c],cy=V[c+1],cz=V[c+2];
+  const i0=Math.max(0,Math.floor((Math.min(ax,bx,cx)-band-ox)/cell)),i1=Math.min(nx-1,Math.ceil((Math.max(ax,bx,cx)+band-ox)/cell));
+  const j0=Math.max(0,Math.floor((Math.min(ay,by,cy)-band-oy)/cell)),j1=Math.min(ny-1,Math.ceil((Math.max(ay,by,cy)+band-oy)/cell));
+  const k0=Math.max(0,Math.floor((Math.min(az,bz,cz)-band-oz)/cell)),k1=Math.min(nz-1,Math.ceil((Math.max(az,bz,cz)+band-oz)/cell));
+  for(let k=k0;k<=k1;k++){const pz=oz+k*cell;for(let j=j0;j<=j1;j++){const py=oy+j*cell;let q=i0+nx*(j+ny*k);for(let i=i0;i<=i1;i++,q++){
+   const d2=ptTri2(ox+i*cell,py,pz,ax,ay,az,bx,by,bz,cx,cy,cz);if(d2<band2){const d=Math.sqrt(d2);if(d<D[q])D[q]=d}}}}
+  if((t&8191)===8191){prog(lo+0.45*t/nt,'Measuring distance to the surface ('+Math.round(100*t/nt)+'%)');await stepCheck(job)}}
+ prog(lo+0.45,'Finding inside and outside');await stepCheck(job);
+ const state=new Uint8Array(N);for(let q=0;q<N;q++)if(D[q]<r)state[q]=1;
+ const st=new Int32Array(N);let sp=0;const push=q=>{if(state[q]===0){state[q]=2;st[sp++]=q}};
+ for(let k=0;k<nz;k++)for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){if(i===0||j===0||k===0||i===nx-1||j===ny-1||k===nz-1)push(i+nx*(j+ny*k))}
+ while(sp){const q=st[--sp],i=q%nx,j=((q-i)/nx)%ny,k=(q-i-nx*j)/(nx*ny);
+  if(i>0)push(q-1);if(i<nx-1)push(q+1);if(j>0)push(q-nx);if(j<ny-1)push(q+nx);if(k>0)push(q-nx*ny);if(k<nz-1)push(q+nx*ny)}
+ const F=new Float32Array(N);let inside=0;
+ /* true signed distance: outside cells are +, enclosed cells are -, and the cells right at the surface get the sign of the nearest classified cell */
+ const sg=new Int8Array(N);for(let q=0;q<N;q++){if(state[q]===2)sg[q]=1;else if(state[q]===0){sg[q]=-1;inside++}}
+ let frontier=[];
+ for(let q=0;q<N;q++)if(state[q]===1){const i=q%nx,j=((q-i)/nx)%ny,k=(q-i-nx*j)/(nx*ny);let v=0;
+  if(i>0)v+=sg[q-1];if(i<nx-1)v+=sg[q+1];if(j>0)v+=sg[q-nx];if(j<ny-1)v+=sg[q+nx];if(k>0)v+=sg[q-nx*ny];if(k<nz-1)v+=sg[q+nx*ny];
+  if(v!==0)frontier.push(q,v>0?1:-1)}
+ /* settle the first ring only after all of them are read, so the order does not matter; then grow inward through the wall layer by layer */
+ for(let t=0;t<frontier.length;t+=2)sg[frontier[t]]=frontier[t+1];
+ for(let layer=0;layer<8;layer++){const nf=[];
+  for(let q=0;q<N;q++)if(state[q]===1&&sg[q]===0){const i=q%nx,j=((q-i)/nx)%ny,k=(q-i-nx*j)/(nx*ny);let v=0;
+   if(i>0)v+=sg[q-1];if(i<nx-1)v+=sg[q+1];if(j>0)v+=sg[q-nx];if(j<ny-1)v+=sg[q+nx];if(k>0)v+=sg[q-nx*ny];if(k<nz-1)v+=sg[q+nx*ny];
+   if(v!==0)nf.push(q,v>0?1:-1)}
+  if(!nf.length)break;for(let t=0;t<nf.length;t+=2)sg[nf[t]]=nf[t+1]}
+ const roff=0.2*cell; /* a small outward offset so features thinner than a quad are not lost; the snap step brings the points back onto the true surface */for(let q=0;q<N;q++)F[q]=(sg[q]||1)*D[q]-roff;
+ if(inside===0)log('The mesh looks open (it has holes), so the result is a thin shell rather than a solid. It still works as a quad surface.');
+ prog(lo+0.5,'Building the quad surface');await stepCheck(job);
+ if(o.sm>0)blurField(F,nx,ny,nz,o.sm);
+ const M=surfaceNets(F,nx,ny,nz,cell,ox,oy,oz);
+ if(!M.Q.length)throw new Error('No surface was produced from this mesh.');
+ return M}
+/* triangles -> pure quads: o.quads = how many quads, o.snap = pull every point back onto the original surface (keeps the detail) */
+async function remeshTris(job,raw,o,p0,p1){
+ const prog=(f,l)=>Status.set(p0+(p1-p0)*f,l);
+ const M0=o.skipOrient?{V:raw.V,T:raw.T}:orientMesh(raw,o.up,o.rot,o.H),V=M0.V,T=M0.T,H=o.H;
+ const A=meshArea(V,T),target=Math.max(50,o.quads|0),tEff=o.snap&&o.topo?target*1.045:target; /* the layout clean-up removes about 4% of the quads */
+ prog(0,'Measuring the mesh');
+ const pp=(a,b)=>(f,l)=>prog(a+(b-a)*(f/0.55),l);
+ let cell=Math.sqrt(1.6*A/tEff),M,got;
+ if(o.flow==='field'){ /* edges follow the form (app7.js) */
+  const Gd=triGrid(V,T,Math.max(cell,1e-6));M=await fieldQuads(job,V,T,H,o,o.topo?target*1.02:target,(f,l)=>prog(0.85*f,l),Gd);got=M.Q.length/4;o.snap=true}
+ else{M=await sdfQuads(job,V,T,H,o,cell,pp(0,0.42));got=M.Q.length/4}
+ if(o.flow!=='field'&&Math.abs(got-tEff)/tEff>0.06){ /* the count scales with 1/cell^2: correct the cell size once and go again */
+  const k=got*cell*cell/A;cell=Math.sqrt(k*A/tEff);prog(0.42,'Adjusting to reach '+target.toLocaleString()+' quads (first try gave '+got.toLocaleString()+')');await stepCheck(job);
+  M=await sdfQuads(job,V,T,H,o,cell,pp(0.42,0.85));got=M.Q.length/4}
+ if(o.snap){
+  prog(0.86,'Snapping to the original surface');await stepCheck(job);
+  const G=triGrid(V,T,Math.max(cell*2,1e-6));
+  const FT=o.keep?filterFeatures(findFeatures(V,T,o.keepAngle||40),3*cell):null,FG=FT&&FT.ns?segGrid(FT,Math.max(cell*2,1e-6)):null,thr=0.55*cell;
+  const proj=()=>{const Vv=M.V,n=Vv.length/3,locked=FG?new Uint8Array(n):null;
+   if(FG){ /* corners first: the nearest point of the mesh is pinned exactly on each sharp corner (at most 400 corners) */
+    const cs=FT.corners.length<=400?FT.corners:[];for(const c of cs){let bi=-1,bd=thr*thr*2.2;for(let i=0;i<n;i++){const d=(Vv[i*3]-c[0])**2+(Vv[i*3+1]-c[1])**2+(Vv[i*3+2]-c[2])**2;if(d<bd){bd=d;bi=i}}
+     if(bi>=0&&!locked[bi]){Vv[bi*3]=c[0];Vv[bi*3+1]=c[1];Vv[bi*3+2]=c[2];locked[bi]=2}}}
+   if(FG){ /* points close to a sharp edge: only the one nearest the edge (across it) sits on the edge; its neighbours stay on the surface */
+    const dF=new Float32Array(n).fill(1e9),pt=new Float32Array(n*3),dr=new Float32Array(n*3),big=1.0*cell;
+    for(let i=0;i<n;i++){if(locked[i]===2)continue;const d=FG.nearest(Vv[i*3],Vv[i*3+1],Vv[i*3+2],big);if(d>=0){dF[i]=Math.sqrt(d);pt.set(FG.p,i*3);dr.set(FG.dir,i*3)}}
+    const {deg,adj}=quadAdjacency(M);
+    for(let i=0;i<n;i++){if(dF[i]>=1e8)continue;let ok=true;
+     for(let t=deg[i];t<deg[i+1]&&ok;t++){const w=adj[t];if(dF[w]<dF[i]-1e-7){const ex=Vv[w*3]-Vv[i*3],ey=Vv[w*3+1]-Vv[i*3+1],ez=Vv[w*3+2]-Vv[i*3+2],l=Math.hypot(ex,ey,ez)||1;
+       if(Math.abs(ex*dr[i*3]+ey*dr[i*3+1]+ez*dr[i*3+2])<0.7*l)ok=false}}
+     if(ok)locked[i]=1}
+    for(let i=0;i<n;i++)if(locked[i]===1){Vv[i*3]=pt[i*3];Vv[i*3+1]=pt[i*3+1];Vv[i*3+2]=pt[i*3+2]}}
+   for(let i=0;i<n;i++){if(locked&&locked[i])continue;
+    G.nearest(Vv[i*3],Vv[i*3+1],Vv[i*3+2]);const p=G.p;Vv[i*3]=p[0];Vv[i*3+1]=p[1];Vv[i*3+2]=p[2]}};
+  proj();M.q0=quadQuality(M);M.i0=irregularCount(M);
+  const total=Math.max(0,o.rx|0),rounds=o.topo?3:0,per=Math.min(10,Math.max(4,Math.floor(total/4)));let done=0;
+  const squareRun=async(k)=>{for(let i=0;i<k;i++){squareStep(M,0.9,0.3);if(i%3===2||i===k-1)proj();done++;if((i&3)===3){prog(0.9+0.09*Math.min(1,done/(total+rounds*per)),'Making the quads square');await stepCheck(job)}}};
+  for(let r=0;r<rounds;r++){prog(0.9,'Cleaning up the quad layout ('+(r+1)+' of '+rounds+')');await stepCheck(job);topoOptimize(M,24);await squareRun(per)}
+  await squareRun(Math.max(0,total-done));
+  M.q1=quadQuality(M);M.i1=irregularCount(M);
+ }else{
+  prog(0.9,'Relaxing the mesh');await stepCheck(job);relaxQuads(M,o.rx);
+  const s0=meshStats(M),k=H/Math.max(1e-9,s0.y1-s0.y0),cxm=(s0.x0+s0.x1)/2,czm=(s0.z0+s0.z1)/2;
+  for(let i=0;i<s0.n;i++){M.V[i*3]=(M.V[i*3]-cxm)*k;M.V[i*3+1]=(M.V[i*3+1]-s0.y0)*k;M.V[i*3+2]=(M.V[i*3+2]-czm)*k}}
+ M.target=target;return{M,oriented:M0}}
+
+function showQuadStats(M){const st=meshStats(M);
+ $('stats').textContent=st.m.toLocaleString()+' quads'+(M.target?' (asked for '+M.target.toLocaleString()+')':'')+(M.q1?' · '+M.q1.pct.toFixed(0)+'% clean squares (was '+M.q0.pct.toFixed(0)+'%) · '+M.i1.pct.toFixed(0)+'% irregular points (was '+M.i0.pct.toFixed(0)+'%)':'')+' · '+st.n.toLocaleString()+' points · size '+(st.x1-st.x0).toFixed(2)+' × '+(st.y1-st.y0).toFixed(2)+' × '+(st.z1-st.z0).toFixed(2);return st}
+function remeshOpts(){return{flow:$('aFlow')?$('aFlow').value:'grid',H:+$('aH').value,quads:Math.round(+$('aQ').value||5000),sm:+$('aSm').value,rx:+$('aRx').value,up:$('aUp').value,rot:+$('aRot').value,snap:$('aSnap').checked,topo:$('aTopo').checked,keep:$('aKeep').checked}}
+let SRC=null,SRCPRE=false;
+async function runRemesh(job,p0,p1){
+ const raw=SRC||meshes.raw;if(!raw)throw new Error('There is no AI mesh to remesh yet.');
+ const o=remeshOpts();if(SRCPRE)o.skipOrient=true;const res=await remeshTris(job,raw,o,p0,p1);
+ setMesh('raw',res.oriented);setMesh('quad',res.M);showMesh('quad',true);
+ const st=showQuadStats(res.M);$('exp').disabled=false;return st}
+
+
+async function guarded(label,fn){
+ const job=newJob();Status.start(label,()=>{job.cancelled=true;if(job.abort)job.abort();if(job.wake)job.wake()});
+ ['goAi','goRemesh','impMesh','goTrace'].forEach(i=>{if($(i))$(i).disabled=true});
+ try{await fn(job)}
+ catch(e){if(e.message==='cancelled'){Status.idle('Cancelled');log('Cancelled.')}else{Status.fail('Failed');log(e.message,true);console.error(e)}}
+ finally{['goAi','goTrace'].forEach(i=>{if($(i))$(i).disabled=false});$('impMesh').disabled=false;$('goRemesh').disabled=!SRC&&!meshes.raw;JOB=null}}
+
+$('goRemesh').onclick=()=>guarded('Remeshing',async job=>{const st=await runRemesh(job,0,1);Status.done('Done: '+st.m.toLocaleString()+' quads');log('Remeshed the AI mesh to '+st.m.toLocaleString()+' quads.')});
+$('impMesh').onclick=()=>$('meshIn').click();
+$('meshIn').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+ guarded('Reading '+f.name,async job=>{const M=parseMesh(await f.arrayBuffer());SRC=M;SRCPRE=false;setMesh('raw',M);showMesh('raw',true);$('goRemesh').disabled=false;
+  log('Imported '+f.name+': '+(M.T.length/3).toLocaleString()+' triangles. Remeshing to quads…');
+  const st=await runRemesh(job,0.1,1);Status.done('Done: '+st.m.toLocaleString()+' quads');log('Imported '+f.name+' and remeshed it to '+st.m.toLocaleString()+' quads.')})};
+document.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{$('aQ').value=b.dataset.q});
+
+
+/* ================= field-aligned quad remesher: edges follow the form of the model =================
+   Method after "Instant Field-Aligned Meshes" (Jakob, Tarini, Panozzo, Sorkine-Hornung 2015), written from scratch here:
+   1. a dense, even copy of the surface is made (the same distance-grid skin the grid remesher uses, but finer) and snapped onto the original;
+   2. a smooth 4-way direction field (a "cross" at every point) is solved on it, coarse to fine; it lines up with sharp edges and with the curvature;
+   3. a grid-position field is solved: every point learns where the nearest corner of a square grid of the wanted spacing is, with the grid turned to the cross;
+   4. points that share a grid corner are merged, neighbouring grid corners are joined, and the faces are read off (mostly quads, a few triangles/pentagons);
+   5. one split step (every n-sided face -> n quads) makes it 100% quads, then the usual snap / sharp edges / squaring finish it. */
+function fmRand(seed){let s=(seed>>>0)||1;return()=>{s^=s<<13;s>>>=0;s^=s>>>17;s^=s<<5;s>>>=0;return s/4294967296}}
+function fmUniq(a){a.sort();let m=0;for(let i=0;i<a.length;i++)if(i===0||a[i]!==a[i-1])a[m++]=a[i];return a.slice(0,m)}
+function fmCSR(n,keys){const S=new Int32Array(n+1);
+ for(let e=0;e<keys.length;e++){const k=keys[e],a=Math.floor(k/n),b=k-a*n;S[a+1]++;S[b+1]++}
+ for(let i=0;i<n;i++)S[i+1]+=S[i];const J=new Int32Array(S[n]),f=new Int32Array(n);
+ for(let e=0;e<keys.length;e++){const k=keys[e],a=Math.floor(k/n),b=k-a*n;J[S[a]+f[a]++]=b;J[S[b]+f[b]++]=a}
+ return{S,J}}
+/* a unit vector at right angles to n */
+function fmPerp(nx,ny,nz,o,k){let ax=0,ay=0,az=0;const x=Math.abs(nx),y=Math.abs(ny),z=Math.abs(nz);if(x<=y&&x<=z)ax=1;else if(y<=z)ay=1;else az=1;
+ let px=ny*az-nz*ay,py=nz*ax-nx*az,pz=nx*ay-ny*ax;const l=Math.hypot(px,py,pz)||1;o[k]=px/l;o[k+1]=py/l;o[k+2]=pz/l}
+/* one coarser level: neighbours that face the same way and have similar size are paired up */
+function fmCoarsen(L){
+ const n=L.n,S=L.S,J=L.J,P=L.P,N=L.N,A=L.A;let ne=0;for(let i=0;i<n;i++)for(let t=S[i];t<S[i+1];t++)if(J[t]>i)ne++;
+ const ea=new Int32Array(ne),eb=new Int32Array(ne),sc=new Float64Array(ne);let e=0;
+ for(let i=0;i<n;i++)for(let t=S[i];t<S[i+1];t++){const j=J[t];if(j<=i)continue;ea[e]=i;eb[e]=j;
+  const d=N[i*3]*N[j*3]+N[i*3+1]*N[j*3+1]+N[i*3+2]*N[j*3+2],r=A[i]>A[j]?A[j]/A[i]:A[i]/A[j];sc[e]=d*r;e++}
+ const ord=new Uint32Array(ne);for(let i=0;i<ne;i++)ord[i]=i;ord.sort((x,y)=>sc[y]-sc[x]);
+ const par=new Int32Array(n).fill(-1);let nc=0;
+ for(let k=0;k<ne;k++){const x=ea[ord[k]],y=eb[ord[k]];if(par[x]<0&&par[y]<0){par[x]=nc;par[y]=nc;nc++}}
+ for(let i=0;i<n;i++)if(par[i]<0)par[i]=nc++;
+ const cP=new Float64Array(nc*3),cN=new Float64Array(nc*3),cA=new Float64Array(nc),first=new Int32Array(nc).fill(-1);
+ for(let i=0;i<n;i++){const p=par[i],a=A[i]||1e-12;if(first[p]<0)first[p]=i;cA[p]+=a;for(let c=0;c<3;c++){cP[p*3+c]+=P[i*3+c]*a;cN[p*3+c]+=N[i*3+c]}}
+ for(let p=0;p<nc;p++){for(let c=0;c<3;c++)cP[p*3+c]/=cA[p];const l=Math.hypot(cN[p*3],cN[p*3+1],cN[p*3+2]);
+  if(l>1e-9)for(let c=0;c<3;c++)cN[p*3+c]/=l;else{const f=first[p];for(let c=0;c<3;c++)cN[p*3+c]=N[f*3+c]}}
+ let cf=null,CQ=null,CA=null;
+ if(L.cf){cf=new Uint8Array(nc);CQ=new Float64Array(nc*3);CA=new Float64Array(nc*3);
+  for(let i=0;i<n;i++)if(L.cf[i]){const p=par[i];if(cf[p])continue;cf[p]=1;for(let c=0;c<3;c++){CQ[p*3+c]=L.CQ[i*3+c];CA[p*3+c]=L.CA[i*3+c]}}}
+ const keys=new Float64Array(ne);let m=0;for(let k=0;k<ne;k++){const a=par[ea[k]],b=par[eb[k]];if(a!==b)keys[m++]=a<b?a*nc+b:b*nc+a}
+ const{S:cS,J:cJ}=fmCSR(nc,fmUniq(keys.subarray(0,m)));L.parent=par;
+ return{n:nc,P:cP,N:cN,A:cA,S:cS,J:cJ,cf,CQ,CA}}
+function fmHierarchy(L0){const Ls=[L0];while(Ls.length<40){const L=Ls[Ls.length-1];if(L.n<48)break;const C=fmCoarsen(L);if(C.n>0.92*L.n)break;Ls.push(C)}return Ls}
+/* project q into the tangent plane of point i and make it unit length */
+function fmTan(Q,N,i){const nx=N[i*3],ny=N[i*3+1],nz=N[i*3+2];let qx=Q[i*3],qy=Q[i*3+1],qz=Q[i*3+2];const d=qx*nx+qy*ny+qz*nz;qx-=d*nx;qy-=d*ny;qz-=d*nz;
+ const l=Math.hypot(qx,qy,qz);if(l<1e-9)fmPerp(nx,ny,nz,Q,i*3);else{Q[i*3]=qx/l;Q[i*3+1]=qy/l;Q[i*3+2]=qz/l}}
+/* the direction field: Gauss-Seidel smoothing of a 4-way cross at every point, coarse to fine */
+async function fmSolveO(job,Ls,iters,rnd,tick){
+ for(let l=Ls.length-1;l>=0;l--){const L=Ls[l],n=L.n,N=L.N,S=L.S,J=L.J,Q=new Float64Array(n*3),cf=L.cf;
+  if(l===Ls.length-1){for(let i=0;i<n*3;i++)Q[i]=rnd()-0.5}else{const C=Ls[l+1],par=L.parent;for(let i=0;i<n;i++){const p=par[i]*3;Q[i*3]=C.Q[p];Q[i*3+1]=C.Q[p+1];Q[i*3+2]=C.Q[p+2]}}
+  for(let i=0;i<n;i++){if(cf&&cf[i]){Q[i*3]=L.CQ[i*3];Q[i*3+1]=L.CQ[i*3+1];Q[i*3+2]=L.CQ[i*3+2]}fmTan(Q,N,i)}
+  L.Q=Q;
+  for(let it=0;it<iters;it++){
+   for(let i=0;i<n;i++){if(cf&&cf[i])continue;
+    const nx=N[i*3],ny=N[i*3+1],nz=N[i*3+2];let qx=Q[i*3],qy=Q[i*3+1],qz=Q[i*3+2],w=0;
+    for(let t=S[i];t<S[i+1];t++){const j=J[t]*3,mx=N[j],my=N[j+1],mz=N[j+2],px=Q[j],py=Q[j+1],pz=Q[j+2];
+     const ax=ny*qz-nz*qy,ay=nz*qx-nx*qz,az=nx*qy-ny*qx,bx=my*pz-mz*py,by=mz*px-mx*pz,bz=mx*py-my*px;
+     const d00=qx*px+qy*py+qz*pz,d01=qx*bx+qy*by+qz*bz,d10=ax*px+ay*py+az*pz,d11=ax*bx+ay*by+az*bz;
+     let best=Math.abs(d00),A0=qx,A1=qy,A2=qz,B0=px,B1=py,B2=pz,sg=d00<0?-1:1;
+     if(Math.abs(d01)>best){best=Math.abs(d01);A0=qx;A1=qy;A2=qz;B0=bx;B1=by;B2=bz;sg=d01<0?-1:1}
+     if(Math.abs(d10)>best){best=Math.abs(d10);A0=ax;A1=ay;A2=az;B0=px;B1=py;B2=pz;sg=d10<0?-1:1}
+     if(Math.abs(d11)>best){best=Math.abs(d11);A0=ax;A1=ay;A2=az;B0=bx;B1=by;B2=bz;sg=d11<0?-1:1}
+     qx=A0*w+B0*sg;qy=A1*w+B1*sg;qz=A2*w+B2*sg;w+=1;
+     const d=qx*nx+qy*ny+qz*nz;qx-=d*nx;qy-=d*ny;qz-=d*nz;const ll=Math.hypot(qx,qy,qz);if(ll>1e-12){qx/=ll;qy/=ll;qz/=ll}}
+    Q[i*3]=qx;Q[i*3+1]=qy;Q[i*3+2]=qz}
+   if(tick)await tick()}}}
+/* the point where the two tangent planes meet that is closest to both points (from Instant Meshes) */
+function fmMid(P,N,i,j,o){const n0x=N[i],n0y=N[i+1],n0z=N[i+2],n1x=N[j],n1y=N[j+1],n1z=N[j+2],p0x=P[i],p0y=P[i+1],p0z=P[i+2],p1x=P[j],p1y=P[j+1],p1z=P[j+2];
+ const n0p0=n0x*p0x+n0y*p0y+n0z*p0z,n0p1=n0x*p1x+n0y*p1y+n0z*p1z,n1p0=n1x*p0x+n1y*p0y+n1z*p0z,n1p1=n1x*p1x+n1y*p1y+n1z*p1z,n0n1=n0x*n1x+n0y*n1y+n0z*n1z;
+ const den=1/(1-n0n1*n0n1+1e-4),l0=2*(n0p1-n0p0-n0n1*(n1p0-n1p1))*den,l1=2*(n1p0-n1p1-n0n1*(n0p1-n0p0))*den;
+ o[0]=0.5*(p0x+p1x)-0.25*(n0x*l0+n1x*l1);o[1]=0.5*(p0y+p1y)-0.25*(n0y*l0+n1y*l1);o[2]=0.5*(p0z+p1z)-0.25*(n0z*l0+n1z*l1)}
+/* for the grid at point i (corner o, directions q and t=n x q, spacing s): the grid square under the point m; writes the 4 corners' integer index */
+function fmCell(O,ox,oy,oz,qx,qy,qz,tx,ty,tz,mx,my,mz,inv,out,k){const dx=mx-ox,dy=my-oy,dz=mz-oz;out[k]=Math.floor((qx*dx+qy*dy+qz*dz)*inv);out[k+1]=Math.floor((tx*dx+ty*dy+tz*dz)*inv)}
+/* the grid-position field: every point keeps the grid corner nearest to it, consistent with its neighbours' grids */
+async function fmSolveP(job,Ls,iters,s,tick){
+ const inv=1/s,mid=[0,0,0],ci=[0,0],cj=[0,0];
+ for(let l=Ls.length-1;l>=0;l--){const L=Ls[l],n=L.n,N=L.N,P=L.P,Q=L.Q,S=L.S,J=L.J,O=new Float64Array(n*3),cf=L.cf;
+  if(l===Ls.length-1)O.set(P);else{const C=Ls[l+1],par=L.parent;for(let i=0;i<n;i++){const p=par[i]*3;O[i*3]=C.O[p];O[i*3+1]=C.O[p+1];O[i*3+2]=C.O[p+2]}}
+  for(let i=0;i<n;i++){const d=(O[i*3]-P[i*3])*N[i*3]+(O[i*3+1]-P[i*3+1])*N[i*3+1]+(O[i*3+2]-P[i*3+2])*N[i*3+2];O[i*3]-=d*N[i*3];O[i*3+1]-=d*N[i*3+1];O[i*3+2]-=d*N[i*3+2]}
+  L.O=O;
+  for(let it=0;it<iters;it++){
+   for(let i=0;i<n;i++){const i3=i*3,nx=N[i3],ny=N[i3+1],nz=N[i3+2],qx=Q[i3],qy=Q[i3+1],qz=Q[i3+2],tx=ny*qz-nz*qy,ty=nz*qx-nx*qz,tz=nx*qy-ny*qx;
+    let ox=O[i3],oy=O[i3+1],oz=O[i3+2],w=0;
+    for(let t=S[i];t<S[i+1];t++){const j3=J[t]*3,mx=N[j3],my=N[j3+1],mz=N[j3+2],px=Q[j3],py=Q[j3+1],pz=Q[j3+2],ux=my*pz-mz*py,uy=mz*px-mx*pz,uz=mx*py-my*px;
+     fmMid(P,N,i3,j3,mid);
+     fmCell(O,ox,oy,oz,qx,qy,qz,tx,ty,tz,mid[0],mid[1],mid[2],inv,ci,0);fmCell(O,O[j3],O[j3+1],O[j3+2],px,py,pz,ux,uy,uz,mid[0],mid[1],mid[2],inv,cj,0);
+     let bd=1e30,bax=0,bay=0,baz=0,bbx=0,bby=0,bbz=0;
+     for(let a=0;a<4;a++){const ia=(ci[0]+(a&1))*s,ib=(ci[1]+(a>>1))*s,ax=ox+qx*ia+tx*ib,ay=oy+qy*ia+ty*ib,az=oz+qz*ia+tz*ib;
+      for(let b=0;b<4;b++){const ja=(cj[0]+(b&1))*s,jb=(cj[1]+(b>>1))*s,bx=O[j3]+px*ja+ux*jb,by=O[j3+1]+py*ja+uy*jb,bz=O[j3+2]+pz*ja+uz*jb;
+       const d=(ax-bx)*(ax-bx)+(ay-by)*(ay-by)+(az-bz)*(az-bz);if(d<bd){bd=d;bax=ax;bay=ay;baz=az;bbx=bx;bby=by;bbz=bz}}}
+     ox=(bax*w+bbx)/(w+1);oy=(bay*w+bby)/(w+1);oz=(baz*w+bbz)/(w+1);w+=1;
+     const d=(ox-P[i3])*nx+(oy-P[i3+1])*ny+(oz-P[i3+2])*nz;ox-=d*nx;oy-=d*ny;oz-=d*nz}
+    if(cf&&cf[i]){const d=(L.CA[i3]-ox)*tx+(L.CA[i3+1]-oy)*ty+(L.CA[i3+2]-oz)*tz;ox+=d*tx;oy+=d*ty;oz+=d*tz} /* a grid line runs along the sharp edge */
+    const dx=P[i3]-ox,dy=P[i3+1]-oy,dz=P[i3+2]-oz,ra=Math.round((qx*dx+qy*dy+qz*dz)*inv)*s,rb=Math.round((tx*dx+ty*dy+tz*dz)*inv)*s;
+    O[i3]=ox+qx*ra+tx*rb;O[i3+1]=oy+qy*ra+ty*rb;O[i3+2]=oz+qz*ra+tz*rb}
+   if(tick)await tick()}}}
+/* read the grid off the dense surface: merged points become the new points, unit grid steps become edges */
+function fmExtract(L,s){
+ const n=L.n,P=L.P,N=L.N,Q=L.Q,O=L.O,S=L.S,J=L.J,inv=1/s,mid=[0,0,0],ci=[0,0],cj=[0,0];
+ const uf=new Int32Array(n);for(let i=0;i<n;i++)uf[i]=i;const find=x=>{while(uf[x]!==x){uf[x]=uf[uf[x]];x=uf[x]}return x};
+ const E=[];
+ for(let i=0;i<n;i++){const i3=i*3,nx=N[i3],ny=N[i3+1],nz=N[i3+2],qx=Q[i3],qy=Q[i3+1],qz=Q[i3+2],tx=ny*qz-nz*qy,ty=nz*qx-nx*qz,tz=nx*qy-ny*qx;
+  for(let t=S[i];t<S[i+1];t++){const j=J[t];if(j<=i)continue;const j3=j*3,mx=N[j3],my=N[j3+1],mz=N[j3+2];
+   /* turn j's cross so it matches i's */
+   let px=Q[j3],py=Q[j3+1],pz=Q[j3+2];const ux0=my*pz-mz*py,uy0=mz*px-mx*pz,uz0=mx*py-my*px,d0=qx*px+qy*py+qz*pz,d1=qx*ux0+qy*uy0+qz*uz0;
+   if(Math.abs(d1)>Math.abs(d0)){const sg=d1<0?-1:1;px=ux0*sg;py=uy0*sg;pz=uz0*sg}else if(d0<0){px=-px;py=-py;pz=-pz}
+   const ux=my*pz-mz*py,uy=mz*px-mx*pz,uz=mx*py-my*px;
+   fmMid(P,N,i3,j3,mid);
+   fmCell(O,O[i3],O[i3+1],O[i3+2],qx,qy,qz,tx,ty,tz,mid[0],mid[1],mid[2],inv,ci,0);fmCell(O,O[j3],O[j3+1],O[j3+2],px,py,pz,ux,uy,uz,mid[0],mid[1],mid[2],inv,cj,0);
+   let bd=1e30,ba=0,bb=0;
+   for(let a=0;a<4;a++){const ia=(ci[0]+(a&1))*s,ib=(ci[1]+(a>>1))*s,ax=O[i3]+qx*ia+tx*ib,ay=O[i3+1]+qy*ia+ty*ib,az=O[i3+2]+qz*ia+tz*ib;
+    for(let b=0;b<4;b++){const ja=(cj[0]+(b&1))*s,jb=(cj[1]+(b>>1))*s,bx=O[j3]+px*ja+ux*jb,by=O[j3+1]+py*ja+uy*jb,bz=O[j3+2]+pz*ja+uz*jb;
+     const d=(ax-bx)*(ax-bx)+(ay-by)*(ay-by)+(az-bz)*(az-bz);if(d<bd){bd=d;ba=a;bb=b}}}
+   if(bd>0.25*s*s)continue; /* the two grids disagree here (near a singular point): no evidence either way */
+   const dx=(ci[0]+(ba&1))-(cj[0]+(bb&1)),dy=(ci[1]+(ba>>1))-(cj[1]+(bb>>1)),ad=Math.abs(dx)+Math.abs(dy);
+   if(ad===0){const ex=O[i3]-O[j3],ey=O[i3+1]-O[j3+1],ez=O[i3+2]-O[j3+2];if(ex*ex+ey*ey+ez*ez<0.25*s*s){const a=find(i),b=find(j);if(a!==b)uf[a]=b}}
+   else if(ad===1&&Math.abs(dx)<=1&&Math.abs(dy)<=1)E.push(i,j)}}
+ const cluster=()=>{const id=new Int32Array(n).fill(-1);let C=0;for(let i=0;i<n;i++){const r=find(i);if(id[r]<0)id[r]=C++;}
+  const CP=new Float64Array(C*3),CN=new Float64Array(C*3),cnt=new Float64Array(C);
+  for(let i=0;i<n;i++){const c=id[find(i)];cnt[c]++;for(let k=0;k<3;k++){CP[c*3+k]+=O[i*3+k];CN[c*3+k]+=N[i*3+k]}}
+  for(let c=0;c<C;c++){for(let k=0;k<3;k++)CP[c*3+k]/=cnt[c];const l=Math.hypot(CN[c*3],CN[c*3+1],CN[c*3+2])||1;for(let k=0;k<3;k++)CN[c*3+k]/=l}
+  return{id,C,CP,CN}};
+ let K=cluster();
+ /* grid corners that ended up almost on top of each other are one corner */
+ let merged=0;for(let e=0;e<E.length;e+=2){const a=K.id[find(E[e])],b=K.id[find(E[e+1])];if(a===b)continue;
+  const d=Math.hypot(K.CP[a*3]-K.CP[b*3],K.CP[a*3+1]-K.CP[b*3+1],K.CP[a*3+2]-K.CP[b*3+2]);if(d<0.3*s){const x=find(E[e]),y=find(E[e+1]);if(x!==y){uf[x]=y;merged++}}}
+ if(merged)K=cluster();
+ const keys=[];for(let e=0;e<E.length;e+=2){const a=K.id[find(E[e])],b=K.id[find(E[e+1])];if(a===b)continue;
+  const d=Math.hypot(K.CP[a*3]-K.CP[b*3],K.CP[a*3+1]-K.CP[b*3+1],K.CP[a*3+2]-K.CP[b*3+2]);if(d>1.9*s)continue;keys.push(a<b?a*K.C+b:b*K.C+a)}
+ return{C:K.C,CP:K.CP,CN:K.CN,keys:fmUniq(Float64Array.from(keys))}}
+/* edges -> faces: neighbours are sorted around each point, and faces are traced by always turning the same way.
+   That always gives a closed, two-sided surface; dangling edges and points with only two edges are removed first. */
+function fmFaces(G){
+ const C=G.C,CP=G.CP,CN=G.CN,nb=new Array(C);for(let i=0;i<C;i++)nb[i]=[];
+ for(const k of G.keys){const a=Math.floor(k/C),b=k-a*C;nb[a].push(b);nb[b].push(a)}
+ const del=(a,b)=>{const l=nb[a],i=l.indexOf(b);if(i>=0){l[i]=l[l.length-1];l.pop()}};
+ const tmp=[0,0,0];let faces=null;
+ for(let round=0;round<50;round++){
+  /* prune: no dangling edges, no two-edge points */
+  const st=[];for(let i=0;i<C;i++)if(nb[i].length>0&&nb[i].length<3)st.push(i);
+  while(st.length){const v=st.pop(),d=nb[v].length;if(d===0||d>=3)continue;
+   if(d===1){const a=nb[v][0];nb[v]=[];del(a,v);if(nb[a].length<3)st.push(a)}
+   else{const a=nb[v][0],b=nb[v][1];nb[v]=[];del(a,v);del(b,v);if(nb[a].indexOf(b)<0){nb[a].push(b);nb[b].push(a)}if(nb[a].length<3)st.push(a);if(nb[b].length<3)st.push(b)}}
+  /* sort neighbours counter-clockwise seen from outside */
+  for(let v=0;v<C;v++){const l=nb[v];if(l.length<3)continue;const nx=CN[v*3],ny=CN[v*3+1],nz=CN[v*3+2];fmPerp(nx,ny,nz,tmp,0);
+   const b1x=tmp[0],b1y=tmp[1],b1z=tmp[2],b2x=ny*b1z-nz*b1y,b2y=nz*b1x-nx*b1z,b2z=nx*b1y-ny*b1x;
+   const ang=new Map();for(const u of l){const dx=CP[u*3]-CP[v*3],dy=CP[u*3+1]-CP[v*3+1],dz=CP[u*3+2]-CP[v*3+2];ang.set(u,Math.atan2(dx*b2x+dy*b2y+dz*b2z,dx*b1x+dy*b1y+dz*b1z))}
+   l.sort((a,b)=>ang.get(a)-ang.get(b))}
+  const pos=new Map();for(let v=0;v<C;v++){const l=nb[v];for(let k=0;k<l.length;k++)pos.set(v*C+l[k],k)}
+  const fid=new Map();faces=[];
+  for(let u=0;u<C;u++)for(const v0 of nb[u]){if(fid.has(u*C+v0))continue;const f=[],F=faces.length;let a=u,b=v0,guard=0;
+   while(!fid.has(a*C+b)&&guard++<100000){fid.set(a*C+b,F);f.push(a);const l=nb[b],k=pos.get(b*C+a);const w=l[(k-1+l.length)%l.length];a=b;b=w}
+   faces.push(f)}
+  /* an edge with the same face on both sides is a bridge or a spike: remove it and trace again */
+  let bad=0;for(let u=0;u<C;u++)for(const v of nb[u])if(u<v&&fid.get(u*C+v)===fid.get(v*C+u)){del(u,v);del(v,u);bad++}
+  if(!bad)break}
+ return faces}
+/* two triangles side by side become one quad when that quad is a reasonable shape */
+function fmMergeTris(faces,P){
+ const ang=(a,b,c)=>{const ux=P[a*3]-P[b*3],uy=P[a*3+1]-P[b*3+1],uz=P[a*3+2]-P[b*3+2],vx=P[c*3]-P[b*3],vy=P[c*3+1]-P[b*3+1],vz=P[c*3+2]-P[b*3+2];
+  return Math.acos(Math.max(-1,Math.min(1,(ux*vx+uy*vy+uz*vz)/Math.max(1e-12,Math.hypot(ux,uy,uz)*Math.hypot(vx,vy,vz)))))*180/Math.PI};
+ const he=new Map(),C=P.length/3;faces.forEach((f,fi)=>{if(f.length!==3)return;for(let k=0;k<3;k++)he.set(f[k]*C+f[(k+1)%3],fi)});
+ const cand=[];faces.forEach((f,fi)=>{if(f.length!==3)return;for(let k=0;k<3;k++){const u=f[k],v=f[(k+1)%3],x=f[(k+2)%3],g=he.get(v*C+u);if(g===undefined||g<=fi)continue;
+  const h=faces[g];let y=-1;for(let m=0;m<3;m++)if(h[m]===v&&h[(m+1)%3]===u)y=h[(m+2)%3];if(y<0||y===x)continue;
+  const q=[u,y,v,x];let dev=0;for(let m=0;m<4;m++)dev=Math.max(dev,Math.abs(ang(q[(m+3)%4],q[m],q[(m+1)%4])-90));if(dev<55)cand.push([dev,fi,g,q])}});
+ cand.sort((a,b)=>a[0]-b[0]);const used=new Uint8Array(faces.length),out=[];let merged=0;
+ for(const [d,a,b,q] of cand){if(used[a]||used[b])continue;used[a]=used[b]=1;out.push(q);merged++}
+ faces.forEach((f,i)=>{if(!used[i])out.push(f)});return{faces:out,merged}}
+/* every n-sided face -> n quads (one split step); the result is 100% quads and keeps the edge flow */
+function fmSplit(faces,P){
+ const C=P.length/3,emap=new Map();let nv=C;const V=[];for(let i=0;i<P.length;i++)V.push(P[i]);
+ const mid=(a,b)=>{const k=a<b?a*C+b:b*C+a;let m=emap.get(k);if(m===undefined){m=nv++;emap.set(k,m);V.push((P[a*3]+P[b*3])/2,(P[a*3+1]+P[b*3+1])/2,(P[a*3+2]+P[b*3+2])/2)}return m};
+ const Q=[];for(const f of faces){const k=f.length,c=nv++;let x=0,y=0,z=0;for(const v of f){x+=P[v*3];y+=P[v*3+1];z+=P[v*3+2]}V.push(x/k,y/k,z/k);
+  for(let i=0;i<k;i++){const a=f[i],b=f[(i+1)%k],p=f[(i+k-1)%k];Q.push(a,mid(a,b),c,mid(p,a))}}
+ /* drop points no quad uses */
+ const used=new Int32Array(nv).fill(-1);let m=0;for(const v of Q)if(used[v]<0)used[v]=m++;
+ const nV=new Float32Array(m*3);for(let i=0;i<nv;i++)if(used[i]>=0){nV[used[i]*3]=V[i*3];nV[used[i]*3+1]=V[i*3+1];nV[used[i]*3+2]=V[i*3+2]}
+ return{V:nV,Q:Int32Array.from(Q,v=>used[v])}}
+/* the whole field-aligned path: triangles -> quads that follow the form. o.keep / o.keepAngle = line the field up with sharp edges */
+async function fieldQuads(job,V,T,H,o,target,prog,G){
+ const A=meshArea(V,T);let x0=1e30,x1=-1e30,y0=1e30,y1=-1e30,z0=1e30,z1=-1e30;
+ for(let i=0;i<V.length;i+=3){if(V[i]<x0)x0=V[i];if(V[i]>x1)x1=V[i];if(V[i+1]<y0)y0=V[i+1];if(V[i+1]>y1)y1=V[i+1];if(V[i+2]<z0)z0=V[i+2];if(V[i+2]>z1)z1=V[i+2]}
+ let s=Math.sqrt(4*A/target)*0.97;
+ /* dense copy: about 4 points per grid step, limited by what the browser can hold */
+ let h=s/4;const vol=(x1-x0+10*h)*(Math.max(H,y1)+10*h)*(z1-z0+10*h);if(vol/(h*h*h)>16e6)h=Math.cbrt(vol/16e6);
+ if(h>s/2.2)log('So many quads leaves little room for the shape-following field; the edge flow will be rougher. Ask for fewer quads for the best flow.');
+ const D=await sdfQuads(job,V,T,H,{sm:0},h,(f,l)=>prog(0.3*f,'Dense copy: '+l));
+ const n=D.V.length/3,m=D.Q.length/4;prog(0.3,'Snapping the dense copy onto the surface');await stepCheck(job);
+ const P=new Float64Array(n*3),Nn=new Float64Array(n*3),Ar=new Float64Array(n),deg=new Int32Array(n);
+ for(let i=0;i<n;i++){G.nearest(D.V[i*3],D.V[i*3+1],D.V[i*3+2]);P[i*3]=G.p[0];P[i*3+1]=G.p[1];P[i*3+2]=G.p[2];if((i&16383)===16383)await stepCheck(job)}
+ const keys=new Float64Array(m*6);let kk=0;
+ for(let q=0;q<m;q++){const id=[D.Q[q*4],D.Q[q*4+1],D.Q[q*4+2],D.Q[q*4+3]];
+  const x1_=P[id[2]*3]-P[id[0]*3],y1_=P[id[2]*3+1]-P[id[0]*3+1],z1_=P[id[2]*3+2]-P[id[0]*3+2],x2=P[id[3]*3]-P[id[1]*3],y2=P[id[3]*3+1]-P[id[1]*3+1],z2=P[id[3]*3+2]-P[id[1]*3+2];
+  const nx=y1_*z2-z1_*y2,ny=z1_*x2-x1_*z2,nz=x1_*y2-y1_*x2,ar=0.5*Math.hypot(nx,ny,nz);
+  for(const v of id){Nn[v*3]+=nx;Nn[v*3+1]+=ny;Nn[v*3+2]+=nz;Ar[v]+=ar/4;deg[v]++}
+  for(const [a,b] of [[0,1],[1,2],[2,3],[3,0],[0,2],[1,3]]){const u=id[a],w=id[b];if(u!==w)keys[kk++]=u<w?u*n+w:w*n+u}}
+ for(let i=0;i<n;i++){const l=Math.hypot(Nn[i*3],Nn[i*3+1],Nn[i*3+2]);if(l>0){Nn[i*3]/=l;Nn[i*3+1]/=l;Nn[i*3+2]/=l}else Nn[i*3+1]=1;if(!Ar[i])Ar[i]=h*h*1e-3}
+ const{S,J}=fmCSR(n,fmUniq(keys.subarray(0,kk)));
+ const L0={n,P,N:Nn,A:Ar,S,J,cf:null,CQ:null,CA:null};
+ /* sharp edges steer the field: points on a crease get the crease direction and a grid line through the crease */
+ if(o.keep){const FT=filterFeatures(findFeatures(V,T,o.keepAngle||40),1.5*s);if(FT.ns){const FG=segGrid(FT,Math.max(2*h,1e-6));L0.cf=new Uint8Array(n);L0.CQ=new Float64Array(n*3);L0.CA=new Float64Array(n*3);let nc=0;
+  for(let i=0;i<n;i++){const d=FG.nearest(P[i*3],P[i*3+1],P[i*3+2],0.75*h);if(d>=0){L0.cf[i]=1;L0.CQ.set(FG.dir,i*3);L0.CA.set(FG.p,i*3);nc++}}
+  if(!nc)L0.cf=null}}
+ prog(0.34,'Building the coarse-to-fine levels');await stepCheck(job);
+ const Ls=fmHierarchy(L0),rnd=fmRand(12345);
+ let ticks=0;const tick=async()=>{if((++ticks&3)===0)await stepCheck(job)};
+ prog(0.38,'Solving the direction field (which way the edges should run)');await stepCheck(job);
+ await fmSolveO(job,Ls,o.fieldIters||16,rnd,tick);
+ let best=null;
+ for(let pass=0;pass<3;pass++){
+  prog(0.55+pass*0.12,'Solving the grid positions'+(pass?' (adjusting the quad count, try '+(pass+1)+')':''));await stepCheck(job);
+  await fmSolveP(job,Ls,o.fieldIters||16,s,tick);
+  prog(0.6+pass*0.12,'Reading the quads off the grid');await stepCheck(job);
+  const Gx=fmExtract(L0,s),faces0=fmFaces(Gx),mt=fmMergeTris(faces0,Gx.CP),faces=mt.faces;
+  let got=0,qn=0;for(const f of faces){got+=f.length;if(f.length===4)qn++}
+  const cand={faces,G:Gx,got,quadFaces:qn,s};
+  if(!best||Math.abs(got-target)<Math.abs(best.got-target))best=cand;
+  if(Math.abs(got-target)/target<=0.05||!got)break;
+  s*=Math.sqrt(got/target)}
+ if(!best.faces.length)throw new Error('The shape-following remesher found no faces. Try the regular grid edge flow.');
+ const M=fmSplit(best.faces,best.G.CP);M.fieldStats={faces:best.faces.length,quadFaces:best.quadFaces,dense:n,levels:Ls.length};
+ return M}
+
+
+/* ---------- 3-D viewer (WebGL2) ---------- */
+const meshes={raw:null,quad:null};let shown='quad';
+const vc=$('viewCv');let gl=null,prog=null,U={},tri={vao:null,n:0,buf:null},wire={vao:null,n:0,buf:null};
+const cam={yaw:0.6,pitch:0.35,dist:8,tx:0,ty:2,tz:0,rad:3};let vmode='shaded',dirty=true;
+function initGL(){
+ gl=vc.getContext('webgl2',{antialias:true,alpha:false});
+ if(!gl){$('viewStat').textContent='This browser has no WebGL2, so the 3-D view cannot be shown (the model can still be saved).';return}
+ const vs='#version 300 es\nin vec3 p;uniform mat4 uMVP,uMV;out vec3 vv;void main(){vec4 v=uMV*vec4(p,1.0);vv=v.xyz;gl_Position=uMVP*vec4(p,1.0);}';
+ const fs='#version 300 es\nprecision highp float;in vec3 vv;uniform vec3 uCol;uniform int uFlat;out vec4 o;void main(){if(uFlat==0){o=vec4(uCol,1.0);return;}vec3 n=normalize(cross(dFdx(vv),dFdy(vv)));float l=0.35+0.45*abs(n.z)+0.25*max(n.y,0.0);o=vec4(uCol*l,1.0);}';
+ const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o};
+ prog=gl.createProgram();gl.attachShader(prog,sh(gl.VERTEX_SHADER,vs));gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,fs));gl.bindAttribLocation(prog,0,'p');gl.linkProgram(prog);
+ for(const n of ['uMVP','uMV','uCol','uFlat'])U[n]=gl.getUniformLocation(prog,n);
+ for(const o of [tri,wire]){o.vao=gl.createVertexArray();o.buf=gl.createBuffer();gl.bindVertexArray(o.vao);gl.bindBuffer(gl.ARRAY_BUFFER,o.buf);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0)}
+ gl.bindVertexArray(null)}
+function uploadMesh(M){
+ if(!gl)return;
+ const quad=!!M.Q,V=M.V;let tp,ep;
+ if(quad){const m=M.Q.length/4;tp=new Float32Array(m*18);ep=new Float32Array(m*24);let a=0,b=0;
+  for(let q=0;q<m;q++){const i=[M.Q[q*4],M.Q[q*4+1],M.Q[q*4+2],M.Q[q*4+3]];
+   for(const c of [0,1,2,0,2,3]){tp[a++]=V[i[c]*3];tp[a++]=V[i[c]*3+1];tp[a++]=V[i[c]*3+2]}
+   for(let c=0;c<4;c++){const s=i[c],e=i[(c+1)%4];tp;ep[b++]=V[s*3];ep[b++]=V[s*3+1];ep[b++]=V[s*3+2];ep[b++]=V[e*3];ep[b++]=V[e*3+1];ep[b++]=V[e*3+2]}}}
+ else{const m=M.T.length/3;tp=new Float32Array(m*9);ep=new Float32Array(m*18);let a=0,b=0;
+  for(let t=0;t<m;t++){const i=[M.T[t*3],M.T[t*3+1],M.T[t*3+2]];
+   for(let c=0;c<3;c++){tp[a++]=V[i[c]*3];tp[a++]=V[i[c]*3+1];tp[a++]=V[i[c]*3+2]}
+   for(let c=0;c<3;c++){const s=i[c],e=i[(c+1)%3];ep[b++]=V[s*3];ep[b++]=V[s*3+1];ep[b++]=V[s*3+2];ep[b++]=V[e*3];ep[b++]=V[e*3+1];ep[b++]=V[e*3+2]}}}
+ gl.bindBuffer(gl.ARRAY_BUFFER,tri.buf);gl.bufferData(gl.ARRAY_BUFFER,tp,gl.STATIC_DRAW);tri.n=tp.length/3;
+ gl.bindBuffer(gl.ARRAY_BUFFER,wire.buf);gl.bufferData(gl.ARRAY_BUFFER,ep,gl.STATIC_DRAW);wire.n=ep.length/3}
+function fitCamera(M){let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9,z0=1e9,z1=-1e9;const V=M.V;
+ for(let i=0;i<V.length;i+=3){if(V[i]<x0)x0=V[i];if(V[i]>x1)x1=V[i];if(V[i+1]<y0)y0=V[i+1];if(V[i+1]>y1)y1=V[i+1];if(V[i+2]<z0)z0=V[i+2];if(V[i+2]>z1)z1=V[i+2]}
+ cam.tx=(x0+x1)/2;cam.ty=(y0+y1)/2;cam.tz=(z0+z1)/2;cam.rad=Math.max(0.1,Math.hypot(x1-x0,y1-y0,z1-z0)/2);cam.dist=cam.rad*3.9}
+function setMesh(kind,M){meshes[kind]=M;if(kind===shown||!meshes[shown]){shown=kind}showMesh(shown,true)}
+function showMesh(kind,fit){shown=kind;const M=meshes[kind];if(!M){tri.n=0;wire.n=0;needDraw();return}uploadMesh(M);if(fit)fitCamera(M);
+ const b1=$('showRaw'),b2=$('showQuad');if(b1){b1.classList.toggle('on',kind==='raw');b2.classList.toggle('on',kind==='quad')}needDraw()}
+const m4={persp(f,a,n,fr){const t=1/Math.tan(f/2);return [t/a,0,0,0,0,t,0,0,0,0,(fr+n)/(n-fr),-1,0,0,2*fr*n/(n-fr),0]},
+ look(e,c,u){let zx=e[0]-c[0],zy=e[1]-c[1],zz=e[2]-c[2];let l=Math.hypot(zx,zy,zz);zx/=l;zy/=l;zz/=l;
+  let xx=u[1]*zz-u[2]*zy,xy=u[2]*zx-u[0]*zz,xz=u[0]*zy-u[1]*zx;l=Math.hypot(xx,xy,xz);xx/=l;xy/=l;xz/=l;
+  const yx=zy*xz-zz*xy,yy=zz*xx-zx*xz,yz=zx*xy-zy*xx;
+  return [xx,yx,zx,0,xy,yy,zy,0,xz,yz,zz,0,-(xx*e[0]+xy*e[1]+xz*e[2]),-(yx*e[0]+yy*e[1]+yz*e[2]),-(zx*e[0]+zy*e[1]+zz*e[2]),1]},
+ mul(a,b){const o=new Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+r]*b[c*4+k];o[c*4+r]=s}return o}};
+function needDraw(){if(dirty)return;dirty=true;requestAnimationFrame(drawView)}
+function drawView(){
+ dirty=false;if(!gl)return;sizeCanvas(vc);gl.viewport(0,0,vc.width,vc.height);gl.clearColor(0.043,0.059,0.078,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+ if(!tri.n)return;gl.enable(gl.DEPTH_TEST);
+ const cp=Math.cos(cam.pitch),e=[cam.tx+cam.dist*Math.sin(cam.yaw)*cp,cam.ty+cam.dist*Math.sin(cam.pitch),cam.tz+cam.dist*Math.cos(cam.yaw)*cp];
+ const MV=m4.look(e,[cam.tx,cam.ty,cam.tz],[0,1,0]),PR=m4.persp(0.6,vc.width/vc.height,cam.rad*0.05,cam.dist+cam.rad*6),MVP=m4.mul(PR,MV);
+ gl.useProgram(prog);gl.uniformMatrix4fv(U.uMV,false,MV);gl.uniformMatrix4fv(U.uMVP,false,MVP);
+ if(vmode!=='wire'){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);gl.uniform1i(U.uFlat,1);gl.uniform3f(U.uCol,0.72,0.82,0.9);gl.bindVertexArray(tri.vao);gl.drawArrays(gl.TRIANGLES,0,tri.n);gl.disable(gl.POLYGON_OFFSET_FILL)}
+ if(vmode!=='shaded'){gl.uniform1i(U.uFlat,0);gl.uniform3f(U.uCol,vmode==='both'?0.07:0.35,vmode==='both'?0.2:0.85,vmode==='both'?0.25:0.75);gl.bindVertexArray(wire.vao);gl.drawArrays(gl.LINES,0,wire.n)}
+ gl.bindVertexArray(null)}
+let orb=null;
+vc.addEventListener('pointerdown',e=>{vc.setPointerCapture(e.pointerId);orb={x:e.clientX,y:e.clientY}});
+vc.addEventListener('pointermove',e=>{if(!orb)return;cam.yaw-=(e.clientX-orb.x)*0.008;cam.pitch=clamp(cam.pitch+(e.clientY-orb.y)*0.008,-1.55,1.55);orb={x:e.clientX,y:e.clientY};needDraw()});
+vc.addEventListener('pointerup',()=>orb=null);
+vc.addEventListener('wheel',e=>{e.preventDefault();cam.dist=clamp(cam.dist*Math.exp(e.deltaY*0.0012),cam.rad*0.4,cam.rad*20);needDraw()},{passive:false});
+vc.addEventListener('dblclick',()=>{if(meshes[shown])fitCamera(meshes[shown]);cam.yaw=0.6;cam.pitch=0.35;needDraw()});
+document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{vmode=b.dataset.v;document.querySelectorAll('[data-v]').forEach(x=>x.classList.toggle('on',x===b));needDraw()});
+document.querySelectorAll('[data-cam]').forEach(b=>b.onclick=()=>{const k=b.dataset.cam;
+ if(k==='front'){cam.yaw=0;cam.pitch=0}else if(k==='side'){cam.yaw=Math.PI/2;cam.pitch=0}else if(k==='top'){cam.yaw=0;cam.pitch=1.55}else{cam.yaw=0.6;cam.pitch=0.35}
+ if(meshes[shown])cam.dist=cam.rad*3.9;needDraw()});
+if($('showRaw')){$('showRaw').onclick=()=>showMesh('raw',false);$('showQuad').onclick=()=>showMesh('quad',false)}
+try{initGL()}catch(e){gl=null;$('viewStat').textContent='3-D view failed to start: '+e.message}
+drawSheet();dirty=false;needDraw();
+
+</script>
+</body></html>

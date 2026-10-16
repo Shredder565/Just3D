@@ -1,0 +1,13 @@
+const {chromium}=require('playwright');
+const L='/tmp/claude-0/-home-claude-just3d/26896240-ee5c-57b7-b189-4c106f8e38c5/scratchpad/lab/';
+(async()=>{const b=await chromium.launch({args:['--use-gl=swiftshader','--enable-unsafe-swiftshader']});const p=await b.newPage({viewport:{width:1600,height:950}});
+const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.goto('file://'+L+'out/just3d-ai.html');await p.waitForTimeout(400);
+await p.setInputFiles('#fileIn',L+'t/sheet.png');await p.waitForTimeout(700);
+const done=async()=>{for(let i=0;i<200;i++){await p.waitForTimeout(250);const c=await p.getAttribute('#sb','class');if(c==='ok'||c==='err'||c==='idle')return c}return 'timeout'};
+await p.fill('#aiUrl','http://127.0.0.1:8792/generate');
+await p.click('#goAi');console.log('no key:',await done(),'|',(await p.textContent('#log')).slice(0,100));
+await p.fill('#aiKey','sekret');await p.click('#goAi');console.log('with key:',await done(),await p.textContent('#stats'));
+await p.setInputFiles('#meshIn',L+'t/open.obj');console.log('open mesh:',await done(),await p.textContent('#stats'),'|',await p.textContent('#log'));
+await p.screenshot({path:L+'t/open.png'});
+console.log('errs',errs);await b.close()})();
