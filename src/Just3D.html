@@ -346,15 +346,15 @@ const IMPRINT={p:{},fn:(m,p,n)=>n.path?imprint(m,n.path):m};
 const TY={...GEN,...OPS,...FOPS,Edit:EDITOP,Imprint:IMPRINT};
 /* ---------- scene + dependency graph ---------- */
 const mk=t=>({type:t,on:true,out:null,dirty:true,off:t==='Edit'?{}:null,fl:null,p:Object.fromEntries(Object.entries(TY[t].p).map(([k,s])=>[k,s[0]]))});
-let cams=[],camSel=-1,camAct=-1,tgt=[0,0,0],gridOn=true,exNode=null,exSel=new Set();let uid=0,groups=[],gid2=0;const osel=new Set();const objs=[];let sel=0,mode=0,editMode=false,sub='pt',knife=false,kn=null,drawOn=false,dw=null,odOn=false,od=null,odCand=null,xf='select',axisK=null,multi=true,box=null,selEdges=new Set(),ringPrev=null,hoverK=null,paintOn=false,jointOn=false,sculptOn=false,sBrush='clay',sSize=60,sStr=.5,sHard=.35,sRes=6,sSub=false,sSym=false,sNow=false,sMode=null,sVF=null,sLast=null,sPos=null,sGrab=null,rig={joints:[]},rigSel=-1,jid=0,lastEdge=null,selPts=new Set(),stats={ran:0,hit:0};
+let cams=[],camSel=-1,camAct=-1,tgt=[0,0,0],gridOn=true,exNode=null,exSel=new Set();let uid=0,groups=[],gid2=0;const osel=new Set();const objs=[];let sel=0,mode=0,editMode=false,sub='pt',knife=false,kn=null,drawOn=false,dw=null,odOn=false,odFree=false,od=null,odCand=null,xf='select',axisK=null,multi=true,box=null,selEdges=new Set(),ringPrev=null,hoverK=null,paintOn=false,jointOn=false,sculptOn=false,sBrush='clay',sSize=60,sStr=.5,sHard=.35,sRes=6,sSub=false,sSym=false,sNow=false,sMode=null,sVF=null,sLast=null,sPos=null,sGrab=null,rig={joints:[]},rigSel=-1,jid=0,lastEdge=null,selPts=new Set(),stats={ran:0,hit:0};
 /* new objects go to the dead center of the scene: their bounding box is centered on the world origin */
 function centerNew(o){const m=evaluate(o),mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];m.f.flat().forEach(i=>{for(let k=0;k<3;k++){mn[k]=Math.min(mn[k],m.v[i][k]);mx[k]=Math.max(mx[k],m.v[i][k])}});if(mn[0]>mx[0])return o;o.pos=[0,1,2].map(k=>-+((mn[k]+mx[k])/2).toFixed(5));return o}
 function addObj(type,x,ops=[]){const o={name:type+(++uid),pos:[x,0,0],rot:[0,0,0],sc:[1,1,1],hue:0,color:['#3aa393','#c9783a','#4a7fd1','#c9a93a','#b5559c'][uid%5],fc:{},nodes:[mk(type),...ops.map(mk)]};objs.push(o);sel=objs.length-1;osel.clear();selPts.clear();return o}
 function dirtyFrom(o,i){for(let j=i;j<o.nodes.length;j++)o.nodes[j].dirty=true}
 const editNode=o=>{const n=o&&o.nodes[o.nodes.length-1];return n&&n.type==='Edit'?n:undefined};
 function ensureEdit(o){let n=editNode(o);if(!n){n=mk('Edit');o.nodes.push(n)}return n}
-function setTool(t){const same=t==='odraw'?odOn:t==='draw'?drawOn:t==='knife'?knife:t==='paint'?paintOn:t==='joint'?jointOn:t==='sculpt'?sculptOn:(editMode&&sub===t);editMode=false;knife=false;paintOn=false;jointOn=false;sculptOn=false;kn=null;drawOn=false;dw=null;odOn=false;od=null;odCand=null;selPts.clear();
- if(!same&&t){if(t==='odraw')odOn=true;else if(t==='draw')drawOn=true;else if(t==='knife')knife=true;else if(t==='sculpt')sculptOn=true;else if(t==='joint')jointOn=true;else if(t==='paint')paintOn=true;else{editMode=true;sub=t;if(xf==='select')setXf('move')}}
+function setTool(t){const same=t==='odraw'?odOn&&!odFree:t==='fdraw'?odOn&&odFree:t==='draw'?drawOn:t==='knife'?knife:t==='paint'?paintOn:t==='joint'?jointOn:t==='sculpt'?sculptOn:(editMode&&sub===t);editMode=false;knife=false;paintOn=false;jointOn=false;sculptOn=false;kn=null;drawOn=false;dw=null;odOn=false;odFree=false;od=null;odCand=null;selPts.clear();
+ if(!same&&t){if(t==='odraw')odOn=true;else if(t==='fdraw'){odOn=true;odFree=true}else if(t==='draw')drawOn=true;else if(t==='knife')knife=true;else if(t==='sculpt')sculptOn=true;else if(t==='joint')jointOn=true;else if(t==='paint')paintOn=true;else{editMode=true;sub=t;if(xf==='select')setXf('move')}}
  $('#tpt').classList.toggle('on',editMode&&sub==='pt');$('#tfc').classList.toggle('on',editMode&&sub==='face');$('#tkn').classList.toggle('on',knife);$('#tdg').classList.toggle('on',editMode&&sub==='edge');$('#tlp').classList.toggle('on',editMode&&sub==='loop');$('#tpn').classList.toggle('on',paintOn);ringPrev=null;hoverK=null}
 /* lazy evaluation: a node recomputes only if it or anything upstream changed */
 function evaluate(o){let cur=null;
@@ -540,7 +540,7 @@ function draw(){
   if(sw3&&en3.out){g.save();for(const p of polys){if(p.oi!==sel)continue;const f=en3.out.f[p.fi];if(!f)continue;let t=0;f.forEach(i=>{t+=sw3.get(en3.rep[i])||0});t/=f.length;if(t<.02)continue;
    const cx=p.pts.reduce((a,q)=>a+q[0],0)/p.pts.length,cy=p.pts.reduce((a,q)=>a+q[1],0)/p.pts.length;if(!vis(cx,cy,p.z))continue;
    g.globalAlpha=.55;g.fillStyle=softHeat(t);g.beginPath();p.pts.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath();g.fill()}g.restore()}}
- $('#stat').textContent=`${polys.length} polys · ${useGPU?'GPU':'CPU'} render · graph: ${stats.ran} node(s) evaluated, ${stats.hit} cached`+' · '+XF[xf]+(ortho?' · Orthographic':'')+(drag&&drag.zm?' · Zooming (middle mouse)':'')+(axisK===null?'':' on '+'XYZ'[axisK])+(sculptOn?' · Sculpt ('+sBrush+(sSub?', subtract':'')+(sSym?', X symmetry':'')+'): drag on the surface (Shift smooths, Ctrl reverses, [ ] change the radius, Alt+drag orbits)':jointOn?' · Joint tool: click empty space to add a joint under the selected one, click a joint to select it':paintOn?' · Paint: click or drag over faces (Shift erases, Ctrl+click picks the color)':odOn?' · Object Draw: drag on the object to draw a curve that follows its surface (it snaps to points and edges), click to add a corner, then right-click (or Enter) to cut it into the mesh. Backspace undoes the last stroke, Esc cancels, Alt+drag orbits':drawOn?' · World Draw on the '+(['YZ','XZ','XY'][dw?dw.k:dwPlane().k])+' plane: drag to draw a curve, click to add a corner, then right-click (or Enter) to close the shape. Backspace undoes the last stroke, Esc cancels, Alt+drag orbits':knife?' · Knife: drag a line across the object (Shift snaps the angle, Alt+drag orbits)':editMode?(sub==='loop'?' · Loop cut: hover an edge to preview the ring, click to insert it (tune cuts and position in the stack)':' · click or box-select '+(sub==='face'?'faces':sub==='edge'?'edges':'points')+' (Shift or Multi adds, Ctrl+A all, Esc clears, X/Y/Z lock an axis)'):'');stats={ran:0,hit:0};
+ $('#stat').textContent=`${polys.length} polys · ${useGPU?'GPU':'CPU'} render · graph: ${stats.ran} node(s) evaluated, ${stats.hit} cached`+' · '+XF[xf]+(ortho?' · Orthographic':'')+(drag&&drag.zm?' · Zooming (middle mouse)':'')+(axisK===null?'':' on '+'XYZ'[axisK])+(sculptOn?' · Sculpt ('+sBrush+(sSub?', subtract':'')+(sSym?', X symmetry':'')+'): drag on the surface (Shift smooths, Ctrl reverses, [ ] change the radius, Alt+drag orbits)':jointOn?' · Joint tool: click empty space to add a joint under the selected one, click a joint to select it':paintOn?' · Paint: click or drag over faces (Shift erases, Ctrl+click picks the color)':odOn?' · '+(odFree?'Free Draw: drag on the object to draw a curve that follows its surface, with points placed exactly where you draw (no snapping)':'Object Draw: drag on the object to draw a curve that follows its surface (it snaps to points and edges)')+', click to add a corner, then right-click (or Enter) to cut it into the mesh. Backspace undoes the last stroke, Esc cancels, Alt+drag orbits':drawOn?' · World Draw on the '+(['YZ','XZ','XY'][dw?dw.k:dwPlane().k])+' plane: drag to draw a curve, click to add a corner, then right-click (or Enter) to close the shape. Backspace undoes the last stroke, Esc cancels, Alt+drag orbits':knife?' · Knife: drag a line across the object (Shift snaps the angle, Alt+drag orbits)':editMode?(sub==='loop'?' · Loop cut: hover an edge to preview the ring, click to insert it (tune cuts and position in the stack)':' · click or box-select '+(sub==='face'?'faces':sub==='edge'?'edges':'points')+' (Shift or Multi adds, Ctrl+A all, Esc clears, X/Y/Z lock an axis)'):'');stats={ran:0,hit:0};
  if(rotoEdit&&ortho&&draw.roto)$('#stat').textContent+=' · Rotoscope: drag the image to move it, drag a yellow corner to scale it';
  if(kn){g.setLineDash([6,4]);g.strokeStyle=acc;g.lineWidth=2;g.beginPath();g.moveTo(kn.x0,kn.y0);g.lineTo(kn.x1,kn.y1);g.stroke();g.setLineDash([]);for(const [x,y] of [[kn.x0,kn.y0],[kn.x1,kn.y1]]){g.beginPath();g.arc(x,y,4,0,TAU);g.fillStyle=acc;g.fill()}}
  if(drawOn)dwOverlay(g,acc,view,scr);
@@ -841,7 +841,7 @@ function imprint(m,path){
  const ringOf=f=>{const r=[],L=f.length;for(let k=0;k<L;k++){const a=f[k],b=f[(k+1)%L],ca=canon[a],cb=canon[b];r.push({id:'c'+ca,idx:a});if(ca===cb)continue;
   const l=ins.get(ek(ca,cb));if(l){const seq=ca<cb?l:l.slice().reverse();for(const x of seq)r.push({id:x.id,idx:vfor(x.id,a,b)})}}return r};
  const byFace=new Map();runs.forEach(r=>{const f=r[0].f;let l=byFace.get(f);if(!l)byFace.set(f,l=[]);l.push(r)});
- const OF=[],src=[];
+ const OF=[],src=[];let keyhole=false;
  F.forEach((f,fi)=>{const ring=ringOf(f),rs=byFace.get(fi);
   if(!rs){OF.push(ring.map(r=>r.idx));src.push(fi);return}
   const polys=[ring];
@@ -853,10 +853,21 @@ function imprint(m,path){
     polys.splice(pi,1,p1,p2);return}};
   const onRing=id=>ring.some(x=>x.id===id);
   rs.forEach(r=>{const ids=[r[0].a];r.forEach(s=>ids.push(s.b));let cur=null;
+   /* a closed outline lying wholly inside one face has nothing to cut it against: the face becomes the inner face plus a ring around it, which is joined to two corners of the face by two extra edges so it stays one polygon without a hole */
+   if(ids.length>3&&ids[0]===ids[ids.length-1]&&polys.length===1&&!ids.some(onRing)){
+    const inn=ids.slice(0,-1).map(id=>({id,idx:pv(id)})),ni=inn.length,Lr=ring.length,dd=(i,k)=>v3len(v3sub(NV[inn[i].idx],NV[ring[k].idx]));
+    const nrmOf=A=>{let x=0,y=0,z=0;for(let k=0;k<A.length;k++){const u=NV[A[k].idx],w=NV[A[(k+1)%A.length].idx];x+=(u[1]-w[1])*(u[2]+w[2]);y+=(u[2]-w[2])*(u[0]+w[0]);z+=(u[0]-w[0])*(u[1]+w[1])}return[x,y,z]};
+    if(v3dot(nrmOf(inn),nrmOf(ring))<0)inn.reverse();
+    let ia=0,ka=0,bd=1e18;for(let i=0;i<ni;i++)for(let k=0;k<Lr;k++){const d=dd(i,k);if(d<bd){bd=d;ia=i;ka=k}}
+    let ib=-1,kb=-1;bd=1e18;for(let o=Math.ceil(ni/3);o<=Math.floor(2*ni/3);o++){const i=(ia+o)%ni;for(let k=0;k<Lr;k++){if(k===ka)continue;const d=dd(i,k);if(d<bd){bd=d;ib=i;kb=k}}}
+    if(ib<0||Lr<3){polys.length=1;return}
+    const p1=[],p2=[];for(let k=ka;;k=(k+1)%Lr){p1.push(ring[k]);if(k===kb)break}for(let i=ib;;i=(i-1+ni)%ni){p1.push(inn[i]);if(i===ia)break}
+    for(let k=kb;;k=(k+1)%Lr){p2.push(ring[k]);if(k===ka)break}for(let i=ia;;i=(i-1+ni)%ni){p2.push(inn[i]);if(i===ib)break}
+    polys.splice(0,1,p1,p2,inn);keyhole=true;return}
    for(const id of ids){if(cur===null){if(onRing(id))cur=[id];continue}cur.push(id);if(onRing(id)){splitBy(cur);cur=[id]}}});
   polys.forEach(pl=>{OF.push(pl.map(x=>x.idx));src.push(fi)})});
  if(OF.length===F.length&&NV.length===V.length)return m;
- return{v:NV,f:OF,src,loop,broken}}
+ return{v:NV,f:OF,src,loop,broken,keyhole}}
 /* ---- screen and ray helpers ---- */
 function pixRay(x,y){const r=cv.getBoundingClientRect(),W=r.width,H=r.height,F=draw.F;let o,d;
  if(ortho){const s=F/dist;o=unview((x-W/2-panX)/s,-(y-H/2-panY)/s,-1e4);d=unview(0,0,1)}else{o=unview(0,0,-dist);d=unview((x-W/2-panX)/F,-(y-H/2-panY)/F,1)}
@@ -875,7 +886,7 @@ function odPick(x,y,only){const ps=draw.polys||[],rc=new Map();let best=null;
   for(const t of triFace(f,m.v)){const tt=rayTri(rl.o,rl.d,m.v[f[t[0]]],m.v[f[t[1]]],m.v[f[t[2]]]);if(tt!==null&&(!best||tt<best.t))best={t:tt,oi:p.oi,fi:p.fi,P:[rl.o[0]+rl.d[0]*tt,rl.o[1]+rl.d[1]*tt,rl.o[2]+rl.d[2]*tt]}}}
  return best}
 /* snap a surface point to a nearby existing point (11 px) or edge (7 px) of the face it is in */
-function odSnap(h,x,y){const o=objs[h.oi],m=evaluate(o),f=m.f[h.fi];if(!f)return{P:h.P,kind:null};
+function odSnap(h,x,y){const o=objs[h.oi],m=evaluate(o),f=m.f[h.fi];if(!f||odFree)return{P:h.P,kind:null};
  let bv=null,bd=11;f.forEach(i=>{const s=w2s(odW(o,m.v[i])),d=Math.hypot(s[0]-x,s[1]-y);if(d<bd){bd=d;bv=i}});if(bv!==null)return{P:m.v[bv].slice(),kind:'v'};
  let be=null;bd=7;for(let k=0;k<f.length;k++){const a=f[k],b=f[(k+1)%f.length],sa=w2s(odW(o,m.v[a])),sb=w2s(odW(o,m.v[b])),dx=sb[0]-sa[0],dy=sb[1]-sa[1],L2=dx*dx+dy*dy;if(L2<1e-9)continue;
   const t=Math.max(0,Math.min(1,((x-sa[0])*dx+(y-sa[1])*dy)/L2)),d=Math.hypot(x-sa[0]-dx*t,y-sa[1]-dy*t);if(d<bd){bd=d;be=[a,b]}}
@@ -887,7 +898,7 @@ function odSegN(o,a,b){let nr;if(ortho)nr=v3cross(v3sub(b,a),odDir(o,unview(0,0,
 function odHover(e){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,h=odPick(x,y,od?od.oi:undefined);
  odCand=h?{...odSnap(h,x,y),oi:h.oi,v:curV}:null;if(od)od.hov={x,y,v:curV};draw()}
 function odDown(e){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,h=odPick(x,y,od?od.oi:undefined);
- if(!h){toast('Object Draw: click or drag on the surface of an object');return}
+ if(!h){toast((odFree?'Free Draw':'Object Draw')+': click or drag on the surface of an object');return}
  const sn=odSnap(h,x,y),o=objs[h.oi];if(!od)od={oi:h.oi,P:[],N:[],marks:[],hov:null,stroke:null};
  const last=od.P[od.P.length-1];
  if(!last||v3len(v3sub(last,sn.P))>1e-6){od.marks.push(od.P.length);od.P.push(sn.P);od.N.push(od.P.length>1?odSegN(o,od.P[od.P.length-2],sn.P):null)}
@@ -920,7 +931,7 @@ function odSeed(oi,sp){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;sp.forEach(p=>{x0=Math.
   if(!best||md>best.md){const h=odPick(x,y,oi);if(h)best={md,fi:h.fi}}}
  return best?best.fi:-1}
 function odClose(){
- if(!od||!od.P.length){toast('Object Draw: drag on the object to draw a curve (click for corners), then right-click to cut it into the mesh');return}
+ if(!od||!od.P.length){toast((odFree?'Free Draw: drag anywhere on the object (no snapping)':'Object Draw: drag on the object to draw a curve')+', click for corners, then right-click to cut it into the mesh');return}
  const oi=od.oi,o=objs[oi];let P=od.P.map(p=>p.slice()),Nn=od.N.slice();
  if(P.length>3){const a=w2s(odW(o,P[0])),b=w2s(odW(o,P[P.length-1]));if(Math.hypot(a[0]-b[0],a[1]-b[1])<6){P.pop();Nn.pop()}}
  if(P.length<3){toast('Draw at least 3 points before closing the outline');return}
@@ -933,7 +944,7 @@ function odClose(){
  const M=evaluate(o);let n=0;
  try{const seed=odSeed(oi,sp);if(seed>=0&&res.loop){const reg=odRegion(M,res.loop,seed);if(reg.size<M.f.length*.85){reg.forEach(f=>selPts.add(f));n=reg.size}}}catch(_){}
  all();commit();
- toast(n?'Outline cut into the mesh. '+n+' face(s) inside it are selected: press Extrude, or switch to Edges / Points to edit the new lines.':'Outline cut into the mesh as new edges. Select the faces you want to edit or extrude.')}
+ toast(n?'Outline cut into the mesh. '+n+' face(s) inside it are selected: press Extrude, or switch to Edges / Points to edit the new lines.'+(res.keyhole?' (It sits inside one face, so two extra edges join it to that face\'s corners.)':''):'Outline cut into the mesh as new edges. Select the faces you want to edit or extrude.')}
 function odOverlay(g,acc,view,scr){
  const pr=(o,p)=>{const w=odW(o,p),v=view(w[0],w[1],w[2]);return!ortho&&v[2]+dist<.05?null:scr(v)},line=(p,q)=>{g.beginPath();g.moveTo(p[0],p[1]);g.lineTo(q[0],q[1]);g.stroke()};
  g.save();g.lineJoin='round';
@@ -1144,7 +1155,8 @@ const CMDS=[
  {g:'Component mode',l:'Loop cut',k:'4',en:need,f:pick('loop'),on:()=>editMode&&sub==='loop'},
  {g:'Component mode',l:'Knife',k:'K',en:need,f:pick('knife'),on:()=>knife},
  {g:'Modeling',l:'World Draw',k:'N',f:()=>{setTool('draw');all()},on:()=>drawOn},
- {g:'Modeling',l:'Object Draw',f:()=>{setTool('odraw');all()},on:()=>odOn},
+ {g:'Modeling',l:'Object Draw',f:()=>{setTool('odraw');all()},on:()=>odOn&&!odFree},
+ {g:'Modeling',l:'Free Draw',f:()=>{setTool('fdraw');all()},on:()=>odOn&&odFree},
  {g:'Selection',l:'Select all',k:'Ctrl+A',en:()=>inEd()&&sub!=='loop',f:selectAll},
  {g:'Selection',l:'Invert selection',k:'Shift+I',en:()=>inEd()&&sub!=='loop',f:invertSel},
  {g:'Selection',l:'Clear selection',k:'Esc',f:clearSel},
@@ -1458,7 +1470,7 @@ const SHELVES=[
   {n:'Primitives',items:[{c:'Add cube',t:'Cube',ic:'cube'},{c:'Add sphere',t:'Sphere',ic:'sphere'},{c:'Add torus',t:'Torus',ic:'torus'},{c:'Add trapezoid',t:'Trapezoid',ic:'trap'},{c:'Add teapot',t:'Teapot',ic:'teapot'},{c:'Add tree',t:'Tree',ic:'tree'}]},
   {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid',ic:'grid'},{sp:1},{gl:'Component'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{gl:'Pivot'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X',ic:'axX'},{c:'Lock to Y axis',t:'Y',ic:'axY'},{c:'Lock to Z axis',t:'Z',ic:'axZ'},{c:'World (free move)',t:'World',ic:'world'},{sp:1},{gl:'Scene'},{c:'Object mode',t:'Object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save or load scene',t:'Save / load'}]},
   {n:'Modeling tools',items:[{c:'Loop cut'},{c:'Loop cut selected edges',t:'Cut'},{c:'Knife',ic:'knife'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object changes',t:'Symmetrize Object Changes'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Duplicate',ic:'dup3'},{c:'Group selected',t:'Group',ic:'dup'},{c:'Delete',t:'Delete'},{sp:1},{gl:'Soft select'},{c:'Soft select',t:'Soft Select',ic:'soft'},{soft:'mode'},{soft:'curve'},{soft:'r'}]},
-  {n:'Draw',items:[{c:'World Draw',t:'World Draw',ic:'draw'},{c:'Object Draw',t:'Object Draw',ic:'odraw'}]},
+  {n:'Draw',items:[{c:'World Draw',t:'World Draw',ic:'draw'},{c:'Object Draw',t:'Object Draw',ic:'odraw'},{c:'Free Draw',t:'Free Draw',ic:'fdraw'}]},
   {n:'Rotoscope',items:[{c:'Rotoscope: load image',t:'Load image…'},{c:'Rotoscope: move and scale',t:'Move / Scale'},{c:'Rotoscope: show or hide',t:'Visible'},{c:'Rotoscope: remove image',t:'Remove'},{roto:'op'},{roto:'size'},{roto:'x'},{roto:'y'},{rname:1}]},
   {n:'File',items:[{c:'New file',t:'New File'},{c:'Open file',t:'Open File'},{c:'Save file',t:'Save File'},{c:'Save file as',t:'Save As'},{fname:1},{c:'Export file',t:'Export File'},{fmt:1},{c:'Export and save to this computer',t:'Save to Computer'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Perspective view',t:'Perspective View'},{c:'Orthographic view',t:'Orthographic View'},{sp:1},{gl:'Selected object'},{c:'Object wireframe',t:'Wireframe'},{c:'Object shaded',t:'Shaded'},{vp:'op'},{sp:1},{c:'Affect front vertices',t:'Affect Front Vertices'}]}]},
  {n:'Coloring and Rendering',rows:[
@@ -1473,6 +1485,7 @@ const STAR=(cx,cy,R,r)=>{let d='';for(let i=0;i<10;i++){const a=-Math.PI/2+i*Mat
 const SNOW=(cx,cy,R)=>{let d='';for(let i=0;i<6;i++){const a=i*Math.PI/3,c=Math.cos(a),n=Math.sin(a),f=x=>x.toFixed(2);d+='M'+f(cx)+' '+f(cy)+'L'+f(cx+R*c)+' '+f(cy+R*n);const bx=cx+R*.55*c,by=cy+R*.55*n;for(const q of[-1,1]){const b=a+q*Math.PI/3;d+='M'+f(bx)+' '+f(by)+'L'+f(bx+R*.34*Math.cos(b))+' '+f(by+R*.34*Math.sin(b))}}return d};
 const ICONS={
  dup3:'<defs><radialGradient id="jgE" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#f8cfa6"/><stop offset=".55" stop-color="#d98a4e"/><stop offset="1" stop-color="#8f4c1e"/></radialGradient></defs><circle cx="6.2" cy="6.6" r="4.2" fill="url(#jgE)" stroke="#6b3a14" stroke-width=".8"/><circle cx="17.8" cy="6.6" r="4.2" fill="url(#jgE)" stroke="#6b3a14" stroke-width=".8"/><circle cx="12" cy="17.8" r="4.2" fill="url(#jgE)" stroke="#6b3a14" stroke-width=".8"/>',
+ fdraw:'<defs><radialGradient id="jgF" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#b9e7c9"/><stop offset=".55" stop-color="#43a86b"/><stop offset="1" stop-color="#1c5a37"/></radialGradient></defs><circle cx="11" cy="13" r="8.6" fill="url(#jgF)" stroke="#14452a" stroke-width=".9"/><path d="M5.6 14.6C7.4 10.4 10.4 12.6 12.4 9.6S15.4 11 17.2 9.4" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><circle cx="7.6" cy="12.4" r="1.1" fill="#fff"/><circle cx="11.6" cy="11.6" r="1.1" fill="#fff"/><circle cx="14.6" cy="10.3" r="1.1" fill="#fff"/><path d="M17.4 2.6l3.6 3.6-7.2 7.2-4 .4.4-4z" fill="#e0b541" stroke="#5a430d" stroke-width="1.1" stroke-linejoin="round"/>',
  odraw:'<defs><radialGradient id="jgO" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#9cc3f2"/><stop offset=".55" stop-color="#4a7fd1"/><stop offset="1" stop-color="#1d3f78"/></radialGradient></defs><circle cx="11" cy="13" r="8.6" fill="url(#jgO)" stroke="#14315f" stroke-width=".9"/><path d="M4.2 15.4C7 8.4 14 7.4 18 12" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-dasharray="3 2"/><circle cx="4.2" cy="15.4" r="1.5" fill="#fff"/><path d="M17.4 2.6l3.6 3.6-7.2 7.2-4 .4.4-4z" fill="#e0b541" stroke="#5a430d" stroke-width="1.1" stroke-linejoin="round"/>',
  dup:'<defs><radialGradient id="jgD" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#f8cfa6"/><stop offset=".55" stop-color="#d98a4e"/><stop offset="1" stop-color="#8f4c1e"/></radialGradient></defs><circle cx="16.6" cy="7.4" r="5.4" fill="url(#jgD)" stroke="#6b3a14" stroke-width=".8"/><circle cx="7" cy="9" r="5.4" fill="url(#jgD)" stroke="#6b3a14" stroke-width=".8"/><circle cx="12.4" cy="16.6" r="5.6" fill="url(#jgD)" stroke="#6b3a14" stroke-width=".8"/>',
  bullseye:'<circle cx="12" cy="12" r="9.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="5.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2" fill="#e5484d" stroke="#e5484d" stroke-width="1"/>',

@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v123 — Free Draw
+- New **Free Draw** button in the Draw row, under Object Draw. It works exactly like Object Draw (drag for a freehand curve on the surface, click for corners, right-click or Enter to cut the outline into the mesh as real edges, faces inside selected so Extrude works straight away), but nothing snaps: every point lands exactly where you put the cursor on the object, not on a nearby vertex or edge.
+- An outline drawn wholly inside one face now works too (it used to say nothing was cut). The face becomes an inner face plus a ring, joined to two corners of the face by two extra edges so the mesh stays closed. The inner face is selected, so it can be extruded at once.
+
 ## v122 — Object Draw always draws on the side facing you
 - Fix: in the Orthographic view, Object Draw picked the far side of the object (the back of a sphere seen from the front). It now always lands on the surface that faces the camera, in the Orthographic and Perspective views.
 
