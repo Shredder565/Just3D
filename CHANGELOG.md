@@ -4,6 +4,15 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v135 — Sculpt, Paint and Joints on huge models; every button under about 2 seconds
+Tested on a 700,000-point / 1,400,000-polygon model (the turtle) and a 1,000,000-point / 2,000,000-polygon model (freeza). Timings are from a software-rendered test machine; a real graphics card should be as fast or faster.
+- **Sculpting works on huge models.** Clay, Grab, Smooth, Crease, Flatten, Inflate and Pinch (with Subtract and Symmetry) now run on the same fast big-model path as Edit mode. Each step of a stroke takes about 0.2–0.4 s on both models. The brush ring follows the mouse without redrawing the model. Build-up resolution and Add detail are skipped on huge models (they would add millions more polygons).
+- **Paint tool and Joint tool work on huge models.** The paint brush covers a small disc of polygons so a stroke is visible; only the painted polygons are rewritten. Bind skin to skeleton takes about 1.2 s on the turtle.
+- **Faster commands on huge models:** Weld 8 s to 2.4 s, Freeze (delete history) 2.7 s to 1.3 s, Loop cut selected edges 41 s to under 2 s (it cuts the first 2 selected edges at a time on huge models), Select edge loop 6.7 s to 0.5 s, Symmetrize 5.4 s to about 3 s, Bevel 2.5 s to 1.9 s, Paint selected faces 1.6 s to 0.5 s, Extrude 1.1–1.7 s.
+- Turning the graphics card off now declines, with a message, on huge models (drawing 2 million polygons on the processor took 14 s for every change).
+- **Add loop edge** is still not available on models over 60,000 polygons (it shows a message and suggests Loop cut); Add detail and build-up resolution are also off for them.
+- Both the native Windows app and the original version are in the one zip and use the same program.
+
 ## v134 — Big models edit in under two seconds per step
 Tested on a 700,000-point / 1,400,000-polygon model (the turtle). Timings are from a software-rendered test machine; a real graphics card should be as fast or faster.
 - **Soft select** on a big model: about 0.5 s (it used to hang).

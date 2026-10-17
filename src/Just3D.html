@@ -224,7 +224,9 @@ const FOPS={
    nI[c]=V.length;V.push([P[0]+dn[0]*p.width,P[1]+dn[1]*p.width,P[2]+dn[2]*p.width]);
    mid[c]=[];const S0=V[sI[c]],N0=V[nI[c]],Sg=Math.round(p.segs),cp=[P[0]+nn[0]*p.depth,P[1]+nn[1]*p.depth,P[2]+nn[2]*p.depth];
    for(let i=1;i<Sg;i++){const t=i/Sg,u=1-t,pt=[0,1,2].map(k=>{const md=(S0[k]+N0[k])/2,ct=md+(cp[k]-md)*p.round;return u*u*S0[k]+2*u*t*ct+t*t*N0[k]});mid[c].push(V.length);V.push(pt)}});
+  const bm=new Uint8Array(m.v.length);q.bnd.forEach(c=>{bm[c]=1}); /* faces that do not touch the bevel keep their own array, so a big model only redraws what changed */
   m.f.forEach((f,fi)=>{const s=q.S.has(fi),M=s?sI:nI;
+   if(!s){let hit=false;for(let k=0;k<f.length;k++)if(bm[q.canon[f[k]]]){hit=true;break}if(!hit){F.push(f);return}}
    F.push(f.map(i=>{const c=q.canon[i];if(M[c]!==undefined)return M[c];if(s&&!moved.has(i)){moved.add(i);V[i]=V[i].slice();const nn=q.nrm(c);V[i][0]+=nn[0]*p.depth;V[i][1]+=nn[1]*p.depth;V[i][2]+=nn[2]*p.depth}return i}));
    if(s)f.forEach((a,k)=>{const b=f[(k+1)%f.length],ca=q.canon[a],cb=q.canon[b];if(ca===cb)return;const r=q.ec.get(ca<cb?ca+'_'+cb:cb+'_'+ca);if(r[0]===1){const A=[sI[ca],...mid[ca],nI[ca]],B=[sI[cb],...mid[cb],nI[cb]];for(let i=0;i<A.length-1;i++)W.push([A[i],B[i],B[i+1],A[i+1]])}})});
   return{v:V,f:F.concat(W)}}}
@@ -234,8 +236,9 @@ const ek=(a,b)=>a<b?a+'_'+b:b+'_'+a;
 function canonOf(m){return weldRep(m)}
 /* walks quad to opposite edge to find the whole ring; every ring edge keeps a consistent direction so cut positions don't twist */
 function ringOf(m,ia,ib){const c=canonOf(m),ca=c[ia],cb=c[ib];if(ca<0||cb<0||ca===cb)return null;
- const R=new Map(),eF=new Map();
- m.f.forEach((f,fi)=>{if(f.length!==4)return;for(let k=0;k<4;k++){const a=c[f[k]],b=c[f[(k+1)%4]];if(a===b)continue;const e=ek(a,b);(eF.get(e)||eF.set(e,[]).get(e)).push(fi)}});
+ const R=new Map();let eF;
+ if(m.f.length>=HEAVY_MIN){const T=canonCSR(m),cache=new Map();eF={get:e=>{let r=cache.get(e);if(!r){const[x,y]=e.split('_').map(Number);r=[];for(let q=T.start[x];q<T.start[x+1];q++){const fi=T.list[q],f=m.f[fi];if(f.length!==4)continue;for(let k=0;k<4;k++){const a=c[f[k]],b=c[f[(k+1)%4]];if((a===x&&b===y)||(a===y&&b===x)){r.push(fi);break}}}cache.set(e,r)}return r}}}
+ else{eF=new Map();m.f.forEach((f,fi)=>{if(f.length!==4)return;for(let k=0;k<4;k++){const a=c[f[k]],b=c[f[(k+1)%4]];if(a===b)continue;const e=ek(a,b);(eF.get(e)||eF.set(e,[]).get(e)).push(fi)}})}
  R.set(ek(ca,cb),[ca,cb]);const q=[[ca,cb]];
  while(q.length){const[s,e]=q.pop();(eF.get(ek(s,e))||[]).forEach(fi=>{const f=m.f[fi];
   for(let k=0;k<4;k++){const a=c[f[k]],b=c[f[(k+1)%4]];let ns,ne;
@@ -244,10 +247,11 @@ function ringOf(m,ia,ib){const c=canonOf(m),ca=c[ia],cb=c[ib];if(ca<0||cb<0||ca=
  return{c,R}}
 /* LoopCut: inserts 1-6 evenly spaced loops through the ring of the stored edge. Original vertices keep their indices, new ones are appended. */
 FOPS.LoopCut={p:{cuts:[1,1,6,1],pos:[.5,.05,.95,.01]},fn:(m,p,n)=>{if(!n.edge)return m;const r=ringOf(m,n.edge[0],n.edge[1]);if(!r)return m;
- const{c,R}=r,V=m.v.map(v=>v.slice()),F=m.f.slice(),extra=[],xs=[],N=Math.round(p.cuts),ts=N===1?[p.pos]:Array.from({length:N},(_,i)=>(i+1)/(N+1)),nv=new Map();
+ const{c,R}=r,V=m.v.length>=HEAVY_MIN?m.v.slice():m.v.map(v=>v.slice()),F=m.f.slice(),extra=[],xs=[],N=Math.round(p.cuts),ts=N===1?[p.pos]:Array.from({length:N},(_,i)=>(i+1)/(N+1)),nv=new Map();
  /* New points follow the shape: along each ring edge the position comes from a cubic curve whose end directions are taken from the edges that continue straight through the neighbouring points, so a sphere stays round and a flat face stays flat. Sharp corners (more than 55 degrees) and points without a straight continuation use a plain straight line, so a cube keeps its edges. */
- const nbr=new Map(),fcs=new Map();
- m.f.forEach(f=>{const cf=f.map(i=>c[i]),L=cf.length;for(let k=0;k<L;k++){const v=cf[k],pp=cf[(k+L-1)%L],nn=cf[(k+1)%L];if(v<0||v===pp||v===nn)continue;let S=nbr.get(v);if(!S){S=new Set();nbr.set(v,S);fcs.set(v,[])}S.add(pp);S.add(nn);fcs.get(v).push({p:pp,n:nn,q:L===4})}});
+ const T=canonCSR(m),nbrC=new Map(),fcsC=new Map(); /* a point's neighbours are worked out only when the curve needs them, from the compact point-to-face table */
+ const fill=v=>{if(fcsC.has(v))return;const S=new Set(),Fv=[];if(v>=0)for(let q=T.start[v];q<T.start[v+1];q++){const f=m.f[T.list[q]],L=f.length;for(let k=0;k<L;k++){if(c[f[k]]!==v)continue;const pp=c[f[(k+L-1)%L]],nn=c[f[(k+1)%L]];if(v===pp||v===nn)continue;S.add(pp);S.add(nn);Fv.push({p:pp,n:nn,q:L===4})}}nbrC.set(v,S.size?S:null);fcsC.set(v,Fv)};
+ const nbr={get:v=>{fill(v);return nbrC.get(v)||undefined}},fcs={get:v=>{fill(v);return fcsC.get(v)}};
  const cont=(u,v)=>{const S=nbr.get(v);if(!S||S.size!==4)return -1;const Fv=fcs.get(v);if(Fv.some(x=>!x.q))return -1;const au=new Set([u]);Fv.forEach(x=>{if(x.p===u)au.add(x.n);else if(x.n===u)au.add(x.p)});let r=-1,cnt=0;S.forEach(w=>{if(!au.has(w)){r=w;cnt++}});if(cnt!==1)return -1;
   const P=m.v[u],Q=m.v[v],X=m.v[r],d1=[Q[0]-P[0],Q[1]-P[1],Q[2]-P[2]],d2=[X[0]-Q[0],X[1]-Q[1],X[2]-Q[2]],l1=Math.hypot(...d1),l2=Math.hypot(...d2);if(!l1||!l2)return -1;
   return (d1[0]*d2[0]+d1[1]*d2[1]+d1[2]*d2[2])/(l1*l2)>Math.cos(55*Math.PI/180)?r:-1};
@@ -257,7 +261,7 @@ FOPS.LoopCut={p:{cuts:[1,1,6,1],pos:[.5,.05,.95,.01]},fn:(m,p,n)=>{if(!n.edge)re
   return[0,1,2].map(k=>h00*A[k]+h10*m0[k]+h01*B[k]+h11*m1[k])};
  R.forEach(([s,e],k)=>{const ids=ts.map(t=>{V.push(curvePt(s,e,t));return V.length-1});nv.set(k,{s,ids})});
  const along=(a,b,from)=>{const o=nv.get(ek(a,b));return o.s===from?o.ids:o.ids.slice().reverse()};
- m.f.forEach((f,fi)=>{const L=f.length;
+ const doFace=(f,fi)=>{const L=f.length;
   if(L===4){for(let k=0;k<2;k++){const a=c[f[k]],b=c[f[k+1]],cc=c[f[k+2]],d=c[f[(k+3)%4]];
    if(a!==b&&cc!==d&&nv.has(ek(a,b))&&nv.has(ek(cc,d))){
     const A=along(a,b,a),B=along(d,cc,d),f0=f[k],f1=f[k+1],f2=f[k+2],f3=f[(k+3)%4],S=[[f0,A[0],B[0],f3]];
@@ -265,7 +269,8 @@ FOPS.LoopCut={p:{cuts:[1,1,6,1],pos:[.5,.05,.95,.01]},fn:(m,p,n)=>{if(!n.edge)re
     F[fi]=S[0];for(let i=1;i<S.length;i++){extra.push(S[i]);xs.push(fi)}return}}}
   let touched=false;const P=[];
   f.forEach((a,k)=>{P.push(a);const ca=c[a],cb=c[f[(k+1)%L]];if(ca!==cb&&nv.has(ek(ca,cb))){touched=true;along(ca,cb,ca).forEach(x=>P.push(x))}});
-  if(touched)F[fi]=P});
+  if(touched)F[fi]=P};
+ if(m.f.length>=HEAVY_MIN){const cand=new Set();R.forEach(([s0,e0])=>{for(const x of [s0,e0])for(let q=T.start[x];q<T.start[x+1];q++)cand.add(T.list[q])});[...cand].sort((a,b)=>a-b).forEach(fi=>doFace(m.f[fi],fi))}else m.f.forEach(doFace);
  return{v:V,f:F.concat(extra),src:m.f.map((_,i)=>i).concat(xs)}}};
 /* Skin: smooth skinning. Each vertex follows its 1-6 nearest bones (a bone runs from a joint to its first child); weights come from distance. Evaluated on the rest geometry, so it survives topology changes. */
 /* ---- more primitives: Trapezoid, Teapot and Tree ---- */
@@ -295,9 +300,10 @@ GEN.Mesh={p:{},fn:(p,n)=>{if(!(n&&n.mesh))return{v:[],f:[]};const mm=n.mesh;
 FOPS.Symmetrize={p:{axis:[0,0,2,1],dir:[1,-1,1,2],offset:[0,-3,3,.01],merge:[.02,0,.3,.005]},fn:(m,p)=>{
  const ax=Math.max(0,Math.min(2,Math.round(p.axis))),dr=p.dir<0?-1:1,off=p.offset,tol=p.merge,N=[0,0,0];N[ax]=1;
  const s=OPS.Slice.fn(m,{nx:N[0],ny:N[1],nz:N[2],d:off}),V=s.v.map(v=>{if(Math.abs(v[ax]-off)<=tol){const w=v.slice();w[ax]=off;return w}return v});
- const ki=[];s.f.forEach((f,k)=>{let t=0;f.forEach(i=>{const d=(V[i][ax]-off)*dr;if(Math.abs(d)>1e-9)t+=d});if(t>1e-9)ki.push(k)});const keep=ki.map(k=>s.f[k]),W=V.slice(),F=keep.slice(),map=new Map();
- const mir=i=>{if(Math.abs(V[i][ax]-off)<=1e-9)return i;if(map.has(i))return map.get(i);const w=V[i].slice();w[ax]=2*off-w[ax];W.push(w);map.set(i,W.length-1);return W.length-1};
- keep.forEach(f=>F.push(f.map(mir).reverse()));const sr=ki.map(k=>s.src[k]);return{v:W,f:F,src:sr.concat(sr)}}};
+ const ki=[],keep=[];for(let k=0;k<s.f.length;k++){const f=s.f[k];let t=0;for(let q=0;q<f.length;q++){const d=(V[f[q]][ax]-off)*dr;if(Math.abs(d)>1e-9)t+=d}if(t>1e-9){ki.push(k);keep.push(f)}}
+ const W=V.slice(),F=keep.slice(),map=new Int32Array(V.length).fill(-1);
+ const mir=i=>{if(Math.abs(V[i][ax]-off)<=1e-9)return i;let r=map[i];if(r>=0)return r;const w=V[i].slice();w[ax]=2*off-w[ax];W.push(w);r=W.length-1;map[i]=r;return r};
+ for(let j=0;j<keep.length;j++){const f=keep[j],n=f.length,g=new Array(n);for(let q=0;q<n;q++)g[n-1-q]=mir(f[q]);F.push(g)}const sr=ki.map(k=>s.src[k]);return{v:W,f:F,src:sr.concat(sr)}}};
 /* Delete: removes the selected faces and nothing else. Vertex numbers stay the same so point edits made later still line up. */
 FOPS.Delete={p:{},fn:(m,p,n)=>{const d=new Set(n.fl||[]);return{v:m.v,f:m.f.filter((_,i)=>!d.has(i))}}};
 /* Dissolve edges / points: removing an edge joins the two polygons on either side of it into one; removing a point joins every polygon around it into one. Only what was selected goes: every other point, edge and polygon stays, and vertex numbers don't change. dissolveEdges / dissolveVerts also return, for each resulting polygon, the old polygon whose colour it keeps. */
@@ -350,9 +356,16 @@ FOPS.Mirror={p:{axis:[0,0,2,1],dir:[1,-1,1,2],atEdge:[1,0,1,1],offset:[0,-5,5,.0
 /* Reflect: flips the whole mesh across a plane through its own origin and reverses the face winding so the faces still point outward. Used by Mirror Polygons. */
 FOPS.Reflect={p:{axis:[0,0,2,1]},fn:(m,p)=>{const ax=Math.max(0,Math.min(2,Math.round(p.axis)));return{v:m.v.map(v=>{const w=v.slice();w[ax]=-w[ax];return w}),f:m.f.map(f=>f.slice().reverse())}}};
 /* Weld / Target Weld: merge points. Vertex numbers stay put (merged points just stop being used) so later point edits still line up. */
-function weldGroups(m,idx){const key=v=>Math.round(v[0]*1e5)+'_'+Math.round(v[1]*1e5)+'_'+Math.round(v[2]*1e5),K=new Map();m.v.forEach((v,i)=>{const k=key(v);(K.get(k)||K.set(k,[]).get(k)).push(i)});
+/* big models: only the points that sit where a selected point sits are looked for (one pass, number hashes), instead of a text key for every point */
+function weldGroups(m,idx){if(m.v.length>=50000){const kf=v=>{const x=Math.round(v[0]*1e5),y=Math.round(v[1]*1e5),z=Math.round(v[2]*1e5);return (((Math.imul(x,73856093)^Math.imul(y,19349663)^Math.imul(z,83492791))>>>0)*2097152)+((Math.imul(x,-1640531535)+Math.imul(y,40503)+Math.imul(z,69069))>>>11)},want=new Map(),G=[];
+  idx.forEach(i=>{const v=m.v[i];if(!v)return;const k=kf(v);if(!want.has(k)){const g=[];want.set(k,g);G.push(g)}});
+  for(let i=0;i<m.v.length;i++){const g=want.get(kf(m.v[i]));if(g)g.push(i)}return G}
+ const key=v=>Math.round(v[0]*1e5)+'_'+Math.round(v[1]*1e5)+'_'+Math.round(v[2]*1e5),K=new Map();m.v.forEach((v,i)=>{const k=key(v);(K.get(k)||K.set(k,[]).get(k)).push(i)});
  const seen=new Set(),G=[];idx.forEach(i=>{if(!m.v[i])return;const k=key(m.v[i]);if(seen.has(k))return;seen.add(k);G.push(K.get(k))});return G}
-function weldApply(m,map,pos){const V=m.v.map(v=>v.slice());pos.forEach((q,i)=>{V[i]=q});const F=[];
+function weldApply(m,map,pos){if(m.v.length>=50000){const V=m.v.slice(),mm=new Int32Array(m.v.length).fill(-1),F=[];pos.forEach((q,i)=>{V[i]=q});map.forEach((a,v)=>{mm[v]=a});
+  for(let j=0;j<m.f.length;j++){const f=m.f[j];let hit=false;for(let k=0;k<f.length;k++)if(mm[f[k]]>=0){hit=true;break}if(!hit){F.push(f);continue}
+   const g=f.map(i=>mm[i]>=0?mm[i]:i),h=g.filter((i,k)=>i!==g[(k+1)%g.length]);if(h.length>=3&&new Set(h).size>=3)F.push(h)}return{v:V,f:F}}
+ const V=m.v.map(v=>v.slice());pos.forEach((q,i)=>{V[i]=q});const F=[];
  m.f.forEach(f=>{const g=f.map(i=>map.has(i)?map.get(i):i),h=g.filter((i,k)=>i!==g[(k+1)%g.length]);if(h.length>=3&&new Set(h).size>=3)F.push(h)});return{v:V,f:F}}
 FOPS.Weld={p:{distance:[0,0,3,.01]},fn:(m,p,n)=>{const G=weldGroups(m,n.fl||[]);if(G.length<2)return m;const d=p.distance,P=G.map(g=>m.v[g[0]]),par=G.map((_,i)=>i),fd=i=>par[i]===i?i:(par[i]=fd(par[i]));
  if(d>0){for(let a=0;a<G.length;a++)for(let b=a+1;b<G.length;b++)if(Math.hypot(P[a][0]-P[b][0],P[a][1]-P[b][1],P[a][2]-P[b][2])<=d)par[fd(b)]=fd(a)}else for(let a=1;a<G.length;a++)par[fd(a)]=fd(0);
@@ -385,7 +398,7 @@ function addObj(type,x,ops=[]){const o={name:type+(++uid),pos:[x,0,0],rot:[0,0,0
 function dirtyFrom(o,i){for(let j=i;j<o.nodes.length;j++)o.nodes[j].dirty=true}
 const editNode=o=>{const n=o&&o.nodes[o.nodes.length-1];return n&&n.type==='Edit'?n:undefined};
 function ensureEdit(o){let n=editNode(o);if(!n){n=mk('Edit');o.nodes.push(n)}return n}
-function setTool(t){if((t==='sculpt'||t==='paint'||t==='joint'||t==='ce')&&objs[sel]){const m=evaluate(objs[sel]);if(m&&m.f&&m.f.length>=HEAVY_MIN&&gpuOn&&GL&&!GL.lost){toast('This model has '+m.f.length.toLocaleString()+' polygons, which is too many for '+({sculpt:'sculpting',paint:'painting',joint:'joints',ce:'Add loop edge'})[t]+' to stay responsive. Use the Edit tools (points, edges, faces, extrude, knife, Separate and Cut), or Separate and Cut a part and sculpt that.');return}}
+function setTool(t){if(t==='ce'&&objs[sel]){const m=evaluate(objs[sel]);if(m&&m.f&&m.f.length>=HEAVY_MIN&&gpuOn&&GL&&!GL.lost){toast('This model has '+m.f.length.toLocaleString()+' polygons, which is too many for '+'Add loop edge'+' to stay responsive. Use Loop cut (Component mode) to add loops on a model this size.');return}}
  const same=t==='sepcut'?scOn:t==='ce'?ceOn:t==='karea'?knife&&kaOn:t==='odraw'?odOn&&!odFree:t==='fdraw'?odOn&&odFree:t==='draw'?drawOn:t==='knife'?knife&&!kaOn&&!scOn:t==='paint'?paintOn:t==='joint'?jointOn:t==='sculpt'?sculptOn:(editMode&&sub===t);editMode=false;knife=false;kaOn=false;scOn=false;paintOn=false;jointOn=false;sculptOn=false;kn=null;drawOn=false;dw=null;odOn=false;odFree=false;od=null;odCand=null;ceOn=false;ce=null;ceCand=null;selPts.clear();
  if(!same&&t){if(t==='ce')ceOn=true;else if(t==='odraw')odOn=true;else if(t==='fdraw'){odOn=true;odFree=true}else if(t==='draw')drawOn=true;else if(t==='knife')knife=true;else if(t==='karea'){knife=true;kaOn=true}else if(t==='sepcut'){knife=true;scOn=true}else if(t==='sculpt')sculptOn=true;else if(t==='joint')jointOn=true;else if(t==='paint')paintOn=true;else{editMode=true;sub=t;if(xf==='select')setXf('move')}}
  $('#tpt').classList.toggle('on',editMode&&sub==='pt');$('#tfc').classList.toggle('on',editMode&&sub==='face');$('#tkn').classList.toggle('on',knife);$('#tdg').classList.toggle('on',editMode&&sub==='edge');$('#tlp').classList.toggle('on',editMode&&sub==='loop');$('#tpn').classList.toggle('on',paintOn);ringPrev=null;hoverK=null}
@@ -502,6 +515,7 @@ function heavyPatch(c,m,o){const A=c.m;if(!c.fstart)return false;const fa=A.f,fb
  const vch=new Uint8Array(nvB);let nch=0;for(let i=0;i<lim;i++)if(va[i]!==vb[i]){vch[i]=1;nch++}for(let i=lim;i<nvB;i++)vch[i]=1;
  if(nch>nvB*.5)return false;
  const dirty=[];for(let fi=0;fi<lf;fi++){const f=fb[fi],g=fa[fi];if(f!==g){if(f.length!==g.length)return false;dirty.push(fi)}else{for(let k=0;k<f.length;k++)if(vch[f[k]]){dirty.push(fi);break}}}
+ {const fa2=c.fc||{},fb2=o.fc||{},dm=new Uint8Array(nfB);for(const fi of dirty)dm[fi]=1;const addC=k=>{const fi=+k;if(fi<nfB&&fi<lf&&!dm[fi]){dm[fi]=1;dirty.push(fi)}};for(const k in fb2)if(fa2[k]!==fb2[k])addC(k);for(const k in fa2)if(!(k in fb2))addC(k)}
  if(dirty.length>nfB*.5)return false;
  const tc=n=>n<3?0:n===3?3:n===4?6:(n-2)*3;let oldW=c.fstart[lf],nw=oldW;const fstart=nfB===nfA?c.fstart:new Int32Array(nfB+1);
  if(fstart!==c.fstart)for(let i=0;i<=lf;i++)fstart[i]=c.fstart[i];
@@ -511,10 +525,14 @@ function heavyPatch(c,m,o){const A=c.m;if(!c.fstart)return false;const fa=A.f,fb
  const wr=heavyWriter(c.buf,o,m),ranges=[];let r0=-1,r1=-1;
  for(const fi of dirty){const a=fstart[fi],b=fstart[fi+1];wr(fi,a);if(r0>=0&&a-r1<=4096)r1=b;else{if(r0>=0)ranges.push([r0,r1]);r0=a;r1=b}}
  if(r0>=0)ranges.push([r0,r1]);
- c.fstart=fstart;c.w=nw;c.ver++;c.log.push({ver:c.ver,ranges:resized||ranges.length>64?null:ranges});if(c.log.length>8)c.log.shift();c.m=m;return true}
+ c.fstart=fstart;c.w=nw;c.fc=Object.assign({},o.fc);c.ver++;c.log.push({ver:c.ver,ranges:resized||ranges.length>64?null:ranges});if(c.log.length>8)c.log.shift();c.m=m;return true}
 /* the triangle buffer is built once per shape and shared by both viewports */
-function heavyCPU(o,m,sig){let c=hGet(HCPU,o,sig);if(c&&c.m!==m&&heavyPatch(c,m,o))return c;
- if(!c||c.m!==m){if(c)hDel(HCPU,o,c);c=heavyFill(o,m);c.m=m;c.ver=0;c.log=[];hPut(HCPU,o,sig,c)}return c}
+/* painted face colours are not part of the cache key: a paint stroke rewrites only the faces whose colour changed */
+const fcSame=(c,o)=>{const a=c.fc||{},b=o.fc||{};let n=0;for(const k in b){n++;if(a[k]!==b[k])return false}let n2=0;for(const k in a)n2++;return n===n2};
+function heavyCPU(o,m,sig){let c=hGet(HCPU,o,sig);
+ if(c){if(c.m!==m){if(heavyPatch(c,m,o))return c}else if(fcSame(c,o))return c;else if(heavyPatch(c,m,o))return c}
+ if(c)hDel(HCPU,o,c);
+ c=heavyFill(o,m);c.m=m;c.ver=0;c.log=[];c.fc=Object.assign({},o.fc);hPut(HCPU,o,sig,c);return c}
 function heavyUp(gl,c,vbo){if(!vbo)vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,new Uint8Array(c.buf,0,c.w*24),gl.STATIC_DRAW);gl.bindBuffer(gl.ARRAY_BUFFER,null);return vbo}
 /* bring one viewport's copy of the triangles up to date */
 function heavySync(gl,e,c){if(e.c===c&&e.ver===c.ver)return;
@@ -525,9 +543,8 @@ function heavySync(gl,e,c){if(e.c===c&&e.ver===c.ver)return;
   for(const r of seen){if(a>=0&&r[0]<=b)b=Math.max(b,r[1]);else{flush();a=r[0];b=r[1]}}flush();gl.bindBuffer(gl.ARRAY_BUFFER,null)}
  e.c=c;e.ver=c.ver;e.count=c.w}
 function heavyEntry(o,m,oi,cy,sy,cp,sp,selList){let gl;try{gl=GL.gl;heavyProg(gl)}catch(_){return null}
- let fs=0,fn=0;for(const k in o.fc){fn++;const v=o.fc[k];fs=(fs*31+(+k)*7+v.charCodeAt(1)*3+v.charCodeAt(3)*5+v.charCodeAt(5))|0}
- const sig=o.color+'|'+fn+'|'+fs;let e=hGet(GL.heavy,o,sig);
- if(!e||e.m!==m){try{const c=heavyCPU(o,m,sig);if(!e){e={vbo:gl.createBuffer(),c:null,ver:-1};e.drop=()=>gl.deleteBuffer(e.vbo);hPut(GL.heavy,o,sig,e)}e.m=m;heavySync(gl,e,c)}catch(_){console.warn('big model draw failed',_&&_.stack||_);if(e)hDel(GL.heavy,o,e);return null}}
+ const sig=o.color;let e=hGet(GL.heavy,o,sig);
+ {try{const c=heavyCPU(o,m,sig);if(!e){e={vbo:gl.createBuffer(),c:null,ver:-1};e.drop=()=>gl.deleteBuffer(e.vbo);hPut(GL.heavy,o,sig,e)}e.m=m;heavySync(gl,e,c)}catch(_){console.warn('big model draw failed',_&&_.stack||_);if(e)hDel(GL.heavy,o,e);return null}}
  const sc=o.sc||[1,1,1],R=rotMat(o.rot),Rv=[[cy,0,sy],[sy*sp,cp,-cy*sp],[-sy*cp,sp,cy*cp]],A=mulM(Rv,mulM(R,diag(sc))),NM=mulM(Rv,mulM(R,diag(sc.map(v=>Math.abs(v)<1e-9?1:1/v)))),
   t=mulv(Rv,[o.pos[0]-tgt[0],o.pos[1]-tgt[1],o.pos[2]-tgt[2]]),col=M=>new Float32Array([M[0][0],M[1][0],M[2][0],M[0][1],M[1][1],M[2][1],M[0][2],M[1][2],M[2][2]]);
  const he={vbo:e.vbo,count:e.count,A:col(A),NM:col(NM),t:new Float32Array(t),sel:(oi===sel||osel.has(o))?1:.88,ort:ortho?1:0,cam:new Float32Array([dist,draw.F,panX,panY])};
@@ -557,7 +574,8 @@ function gpuFlush(W,H,dpr){const gl=GL.gl,vp=hexRgb(getComputedStyle(document.do
  gl.enableVertexAttribArray(0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(0,3,gl.FLOAT,false,28,0);gl.vertexAttribPointer(1,4,gl.FLOAT,false,28,12);
  if(GP.T.length){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(GP.T),gl.DYNAMIC_DRAW);gl.drawArrays(gl.TRIANGLES,0,GP.T.length/7);gl.disable(gl.POLYGON_OFFSET_FILL)}
  if(GP.L.length){gl.depthMask(false);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(GP.L),gl.DYNAMIC_DRAW);gl.drawArrays(gl.LINES,0,GP.L.length/7);gl.depthMask(true)}}
-function setGpu(on){if(on&&!GL){initGL();if(!GL){toast('No graphics card rendering is available in this browser. Using the CPU.');on=false}}if(on)VW.forEach((w,i)=>{if(i!==curV&&!w.GL)w.GL=undefined});gpuOn=on;const b=document.getElementById('gpub');if(b){b.classList.toggle('on',gpuOn&&!!GL&&!GL.lost);b.textContent=gpuOn&&GL?'GPU: On':'GPU: Off';b.title=GL?'Graphics card rendering ('+gpuName+'). Click to switch to CPU rendering.':'No graphics card rendering available here; using the CPU.'}draw()}
+function setGpu(on){if(!on&&GL&&!GL.lost){let big=0;try{objs.forEach(o=>{big=Math.max(big,evaluate(o).f.length)})}catch(e){}if(big>=HEAVY_MIN){toast('Graphics card rendering stays on: this model has '+big.toLocaleString()+' polygons, and drawing that many on the processor would take many seconds for every change.');return}}
+ if(on&&!GL){initGL();if(!GL){toast('No graphics card rendering is available in this browser. Using the CPU.');on=false}}if(on)VW.forEach((w,i)=>{if(i!==curV&&!w.GL)w.GL=undefined});gpuOn=on;const b=document.getElementById('gpub');if(b){b.classList.toggle('on',gpuOn&&!!GL&&!GL.lost);b.textContent=gpuOn&&GL?'GPU: On':'GPU: Off';b.title=GL?'Graphics card rendering ('+gpuName+'). Click to switch to CPU rendering.':'No graphics card rendering available here; using the CPU.'}draw()}
 /* ---- Rotoscope: reference images fixed in the world, drawn behind the model in the orthographic view. One image per plane (Front/Back, Right/Left, Top/Bottom), placed in world units, so zooming and panning scale and move it with the model. ---- */
 const ROTO={front:null,side:null,top:null},RAX={front:{u:[1,0,0],v:[0,1,0],n:'Front / Back'},side:{u:[0,0,1],v:[0,1,0],n:'Right / Left'},top:{u:[1,0,0],v:[0,0,1],n:'Top / Bottom'}};
 let rotoEdit=false,rotoLast='';
@@ -642,7 +660,7 @@ function draw(){
  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr)}
  const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
  const cs=getComputedStyle(document.documentElement),acc=cs.getPropertyValue('--acc').trim(),gridc=cs.getPropertyValue('--grid').trim();
- const useGPU=gpuOn&&!!GL&&!GL.lost;glc.style.display=useGPU?'block':'none';if(useGPU){GP.T.length=0;GP.L.length=0}GP.H=[];draw.heavy=[];let heavyN=0;const hedOK=useGPU&&editMode&&!sculptOn&&!paintOn&&!jointOn&&!drawOn&&!odOn&&!ceOn&&!knife,hvAll=[];let hedO=null;const heavyOn=useGPU&&!editMode&&!sculptOn&&!paintOn&&!jointOn&&!ceOn;
+ const useGPU=gpuOn&&!!GL&&!GL.lost;glc.style.display=useGPU?'block':'none';if(useGPU){GP.T.length=0;GP.L.length=0}GP.H=[];draw.heavy=[];let heavyN=0;const hedOK=useGPU&&(editMode||sculptOn||paintOn)&&!jointOn&&!drawOn&&!odOn&&!ceOn&&!knife,hvAll=[];let hedO=null;const heavyOn=useGPU&&!editMode&&!sculptOn&&!paintOn&&!ceOn;
  const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch),F=camAct>=0&&cams[camAct]?H*cams[camAct].f/24:Math.min(W,H)*1.1;draw.F=F;draw.W=W;draw.H=H;
  const view=(x,y,z)=>{x-=tgt[0];y-=tgt[1];z-=tgt[2];const x1=x*cy+z*sy,z1=-x*sy+z*cy;return[x1,y*cp-z1*sp,y*sp+z1*cp]};
  const scr=v=>{const d=ortho?dist:v[2]+dist;return[W/2+panX+F*v[0]/d,H/2+panY-F*v[1]/d]};
@@ -661,7 +679,7 @@ function draw(){
  objs.forEach((o,oi)=>{
   if(o.hid){centers.push([-1e9,-1e9]);return}
   const m=evaluate(o);
-  if((heavyOn||hedOK)&&m.f.length>=HEAVY_MIN){const fs=hedOK&&oi===sel&&sub==='face'?[...selPts].filter(i=>i<m.f.length):null,he=heavyEntry(o,m,oi,cy,sy,cp,sp,fs);if(he){if(Array.isArray(he))GP.H.push(...he);else GP.H.push(he);draw.heavy.push(oi);heavyN+=m.f.length;if(hedOK){const rec={o,m,oi};hvAll.push(rec);if(oi===sel)hedO=rec}centers.push(scr(view(...o.pos)));return}}
+  if((heavyOn||hedOK)&&m.f.length>=HEAVY_MIN){const fs=hedOK&&editMode&&oi===sel&&sub==='face'?[...selPts].filter(i=>i<m.f.length):null,he=heavyEntry(o,m,oi,cy,sy,cp,sp,fs);if(he){if(Array.isArray(he))GP.H.push(...he);else GP.H.push(he);draw.heavy.push(oi);heavyN+=m.f.length;if(hedOK){const rec={o,m,oi};hvAll.push(rec);if(oi===sel)hedO=rec}centers.push(scr(view(...o.pos)));return}}
   const M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),V=m.v.map(v=>{const q=mulv(M,v);return view(q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2])}),S=V.map(scr);
   centers.push(scr(view(...o.pos)));
   m.f.forEach((f,fi)=>{if(!ortho&&f.some(i=>V[i][2]+dist<.05))return;const a=V[f[0]],b=V[f[1]],c=V[f[2]];
@@ -672,7 +690,7 @@ function draw(){
     if((ortho?nz:nx*cx+ny*cy+nz*(cz+dist))*BACKSIGN>0)return}
    const nl=Math.hypot(nx,ny,nz)||1,sh=Math.abs((-.4*nx+.6*ny-.7*nz)/nl);
    polys.push({z:f.reduce((s,i)=>s+V[i][2],0)/f.length,pts:f.map(i=>S[i]),zs:f.map(i=>V[i][2]),sh,oi,fi,tri:f.length>4?triFace(f,m.v):null})})});
- polys.sort((p,q)=>q.z-p.z);const bigD=hvAll.map(r=>{r.P=projAll(r.o,r.m);return{PX:r.P.PX,PY:r.P.PY,PZ:r.P.PZ,f:r.m.f}});if(editMode||sculptOn)buildDepth(polys,W,H,bigD);else draw.zb=null;
+ polys.sort((p,q)=>q.z-p.z);const bigD=hvAll.map(r=>{r.P=projAll(r.o,r.m);return{PX:r.P.PX,PY:r.P.PY,PZ:r.P.PZ,f:r.m.f}});if((editMode||sculptOn||paintOn)&&!((sculptOn||paintOn)&&drag&&(drag.sc||drag.pn)&&draw.zb&&bigD.length&&draw.zb.big))buildDepth(polys,W,H,bigD);else if(!(editMode||sculptOn||paintOn))draw.zb=null;
  g.lineJoin='round';
  if(useGPU)gpuPolys(polys,acc);else for(const p of polys){const o=objs[p.oi],m=om(o),al=oa(o);g.globalAlpha=al;g.beginPath();p.pts.forEach((s,i)=>i?g.lineTo(s[0],s[1]):g.moveTo(s[0],s[1]));g.closePath();
   if(m<2||sculptOn||(editMode&&m!==2)){const C=hexRgb((o.fc&&o.fc[p.fi])||o.color),f=(.3+.7*p.sh)*(p.oi===sel||osel.has(o)?1:.88);g.fillStyle=m===2?'#060606':`rgb(${C[0]*f|0},${C[1]*f|0},${C[2]*f|0})`;g.fill()}
@@ -698,6 +716,7 @@ function draw(){
  if(drawOn)dwOverlay(g,acc,view,scr);
  if(odOn)odOverlay(g,acc,view,scr);
  if(ceOn)ceOverlay(g,acc,view,scr);
+ brushRing();
  draw.edges=null;
  if(editMode&&(sub==='edge'||sub==='loop')){const en2=editNode(so);
   draw.edgeCap=false;if(en2&&en2.out&&en2.rep){const bigE=hedE&&hedE.m===en2.out,rp=en2.rep,P=bigE?new Proxy({},{get:(_,k)=>[hedE.P.PX[k],hedE.P.PY[k],hedE.P.PZ[k]]}):en2.out.v.map(v=>{const q=mulv(Ms,v),w=view(q[0]+so.pos[0],q[1]+so.pos[1],q[2]+so.pos[2]),s=scr(w);return[s[0],s[1],w[2]]}),seen=new Set(),E=[];
@@ -739,7 +758,7 @@ function draw(){
      const an=Math.atan2(A.tip[1]-ps[1],A.tip[0]-ps[0]),tx=A.tip[0],ty=A.tip[1];g.beginPath();g.moveTo(tx+Math.cos(an)*11,ty+Math.sin(an)*11);g.lineTo(tx+Math.cos(an+2.5)*8,ty+Math.sin(an+2.5)*8);g.lineTo(tx+Math.cos(an-2.5)*8,ty+Math.sin(an-2.5)*8);g.closePath();g.fill()}
     else{g.beginPath();A.ring.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.stroke()}});
    if(xe()==='scale'){g.fillStyle='#fff';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#888';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else if(xe()==='move'){g.fillStyle='#ffe066';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#5a4a00';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else{g.beginPath();g.arc(ps[0],ps[1],3.5,0,TAU);g.fillStyle='#fff';g.fill()}}}
- if(sculptOn&&sPos){g.strokeStyle=acc;g.lineWidth=1.5;g.beginPath();g.arc(sPos.x,sPos.y,sSize,0,TAU);g.stroke();g.globalAlpha=.5;g.beginPath();g.arc(sPos.x,sPos.y,sSize*.5,0,TAU);g.stroke();g.globalAlpha=1}
+ if(sculptOn&&sPos&&!draw.hed){g.strokeStyle=acc;g.lineWidth=1.5;g.beginPath();g.arc(sPos.x,sPos.y,sSize,0,TAU);g.stroke();g.globalAlpha=.5;g.beginPath();g.arc(sPos.x,sPos.y,sSize*.5,0,TAU);g.stroke();g.globalAlpha=1}
  if(box){g.setLineDash([4,3]);g.strokeStyle=box.hl?'#f2c230':box.sc?'#e0701b':box.sub?'#e5484d':acc;g.lineWidth=1;g.strokeRect(box.x0,box.y0,box.x1-box.x0,box.y1-box.y0);g.setLineDash([])}
  if(rig.joints.length){const jp=rigPose().P.map(p=>{const s=scr(view(p[0],p[1],p[2]));return[s[0],s[1]]});
   g.lineWidth=2;g.strokeStyle='#f2b01e';rig.joints.forEach((j,i)=>{if(j.parent>=0&&jp[j.parent]){g.beginPath();g.moveTo(jp[j.parent][0],jp[j.parent][1]);g.lineTo(jp[i][0],jp[i][1]);g.stroke()}});
@@ -1445,7 +1464,8 @@ function weldSel(){const o=objs[sel];if(!inEd()||sub!=='pt'||selPts.size<2){toas
 function targetWeldTool(){if(!objs[sel])return;tw=!tw;twSrc=null;if(tw){if(!(editMode&&sub==='pt'))setTool('pt');selPts.clear();toast('Target Weld: click a point, then click the point to weld it onto. Dragging one point onto another works too. Esc to finish.')}else toast('Target Weld off');all()}
 function twDo(a,b){if(a===b)return;const ma=mirPt(a),mb=mirPt(b);addNode('TargetWeld',[a,b]);if(symEdit&&ma!==undefined&&mb!==undefined&&ma!==mb&&!(ma===a&&mb===b)&&!(ma===b&&mb===a))addNode('TargetWeld',[ma,mb]);selPts.clear();twSrc=null;toast('Welded point onto target');all()}
 function loopSelected(){const o=objs[sel],m=symEdit?baseMesh(o):null,done=new Set();
- [...selEdges].slice(0,8).forEach(k=>{const[a,b]=k.split('_').map(Number);
+ const bigM=(editNode(o)&&editNode(o).out&&editNode(o).out.f.length>=HEAVY_MIN),cap=bigM?2:8;if(bigM&&selEdges.size>cap)toast('Big model: cut the first '+cap+' of the '+selEdges.size+' selected edges so it stays quick. Select more and cut again.');
+  [...selEdges].slice(0,cap).forEach(k=>{const[a,b]=k.split('_').map(Number);
   if(m){const r=ringOf(m,a,b);if(r){const kk=ek(r.c[a],r.c[b]);if(done.has(kk))return;r.R.forEach((_,x)=>done.add(x));const mi=symMirrorIdx(m,symAxis()),a2=mi(a),b2=mi(b);if(a2!==undefined&&b2!==undefined&&a2!==b2){const r2=ringOf(m,a2,b2);if(r2)r2.R.forEach((_,x)=>done.add(x))}}}
   loopInsert({a,b})});all()}
 function paintFaces(clear){const o=objs[sel];if(!o)return;if(clear){o.fc={};draw();return}const c=($('#fpaint')||{}).value||'#e5484d';symFaces(o,selPts).forEach(i=>{o.fc[i]=c});draw()}
@@ -1610,12 +1630,18 @@ const CMDS=[
 ];
 /* ---- painting individual faces ---- */
 function paintAt(e){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;let h=null;
- for(let k=draw.polys.length-1;k>=0&&!h;k--){const p=draw.polys[k];if(inPoly(x,y,p.pts))h=p}
+ let wide=null; /* on a big model one polygon is a speck, so the brush covers a small disc of them */
+ if(draw.hed){const q=hugeFaceAt(x,y);if(q){h={oi:sel,fi:q.fi};wide=hugeFacesInRect(x-10,y-10,x+10,y+10)}}
+ else for(let k=draw.polys.length-1;k>=0&&!h;k--){const p=draw.polys[k];if(inPoly(x,y,p.pts))h=p}
  if(!h)return;const o=objs[h.oi];
  if(e.ctrlKey||e.metaKey){$('#pcol').value=(o.fc&&o.fc[h.fi])||o.color;return}
- const fs=symFaces(o,new Set([h.fi]));if(e.shiftKey)fs.forEach(i=>delete o.fc[i]);else fs.forEach(i=>{o.fc[i]=$('#pcol').value});draw()}
+ const fs=symFaces(o,new Set(wide&&wide.length?wide:[h.fi]));if(e.shiftKey)fs.forEach(i=>delete o.fc[i]);else fs.forEach(i=>{o.fc[i]=$('#pcol').value});draw()}
 /* ---- edge loops, rings and edge bevel ---- */
-function edgeGraph(en){const rp=en.rep,eF=new Map(),vN=new Map();
+/* big models: edge to faces and point to neighbours are looked up on demand from the compact table, not built for every edge up front */
+function bigGraph(m,rp){const T=canonCSR(m),F=m.f,nbc=new Map(),efc=new Map();
+ return{eF:{get:k=>{let s=efc.get(k);if(!s){const[x,y]=k.split('_').map(Number);s=new Set();for(let q=T.start[x];q<T.start[x+1];q++){const fi=T.list[q],f=F[fi],L=f.length;for(let j=0;j<L;j++){const a=rp[f[j]],b=rp[f[(j+1)%L]];if((a===x&&b===y)||(a===y&&b===x)){s.add(fi);break}}}efc.set(k,s)}return s}},
+  vN:{get:i=>{let s=nbc.get(i);if(!s){s=new Set();for(let q=T.start[i];q<T.start[i+1];q++){const f=F[T.list[q]],L=f.length;for(let k=0;k<L;k++)if(rp[f[k]]===i){s.add(rp[f[(k+1)%L]]);s.add(rp[f[(k+L-1)%L]])}}s.delete(i);nbc.set(i,s)}return s}}}}
+function edgeGraph(en){const rp=en.rep;if(en.out.f.length>=HEAVY_MIN)return bigGraph(en.out,rp);const eF=new Map(),vN=new Map();
  en.out.f.forEach((f,fi)=>f.forEach((a,k)=>{const ra=rp[a],rb=rp[f[(k+1)%f.length]];if(ra===rb||ra<0||rb<0)return;
   const e=ek(ra,rb);(eF.get(e)||eF.set(e,new Set()).get(e)).add(fi);(vN.get(ra)||vN.set(ra,new Set()).get(ra)).add(rb);(vN.get(rb)||vN.set(rb,new Set()).get(rb)).add(ra)}));
  return{eF,vN}}
@@ -1632,10 +1658,10 @@ function edgeSel(kind){const o=objs[sel],en=editNode(o);if(!en||!en.rep||!selPts
  if(!set)return;set.forEach(x=>selEdges.add(x));syncEdges();all()}
 /* edge bevel: the selected loop splits the surface in two; the faces on one side are bevelled against the rest */
 function edgeBevel(){const o=objs[sel],en=editNode(o);if(!en||!en.rep||sub!=='edge'||!selPts.size)return;
- const{eF}=edgeGraph(en),fk=en.out.f.map(f=>f.map((a,k)=>{const ra=en.rep[a],rb=en.rep[f[(k+1)%f.length]];return ra===rb?null:ek(ra,rb)})),S=selEdges;
+ const{eF}=edgeGraph(en),fkc=new Map(),S=selEdges;const fkOf=fi=>{let r=fkc.get(fi);if(!r){const f=en.out.f[fi];r=f.map((a,k)=>{const ra=en.rep[a],rb=en.rep[f[(k+1)%f.length]];return ra===rb?null:ek(ra,rb)});fkc.set(fi,r)}return r};
  let seed=null;for(const k of S){const fs=eF.get(k);if(fs&&fs.size){seed=[...fs][0];break}}
  if(seed===null)return;const reg=new Set([seed]),q=[seed];
- while(q.length){const f=q.pop();fk[f].forEach(k=>{if(!k||S.has(k))return;(eF.get(k)||[]).forEach(g=>{if(!reg.has(g)){reg.add(g);q.push(g)}})})}
+ while(q.length){const f=q.pop();fkOf(f).forEach(k=>{if(!k||S.has(k))return;(eF.get(k)||[]).forEach(g=>{if(!reg.has(g)){reg.add(g);q.push(g)}})})}
  if(reg.size>=en.out.f.length){toast('Select a closed edge loop that splits the surface in two');return}
  const nn=mk('Bevel'),L=o.nodes.length-1;nn.fl=[...reg];
  placeNode(o,nn);selPts.clear();selEdges.clear();all()}
@@ -2023,7 +2049,7 @@ function buildDepth(polys,W,H,big){const s=.5,w=Math.max(1,Math.ceil(W*s)),h=Mat
    for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const l1=((by-cy)*(x-cx)+(cx-bx)*(y-cy))/den,l2=((cy-ay)*(x-cx)+(ax-cx)*(y-cy))/den,l3=1-l1-l2;
     if(l1<-.02||l2<-.02||l3<-.02)continue;const q=l1*Q[ia]+l2*Q[ib]+l3*Q[ic],ix=y*w+x;if(q>zb[ix])zb[ix]=q}}});
  if(big)for(const P of big)depthTyped(zb,w,h,s,P);
- draw.zb={zb,w,h,s}}
+ draw.zb={zb,w,h,s,big:!!(big&&big.length)}}
 /* ---- big models in Edit mode: points, edges and face picks are computed from flat arrays and only for what is on screen ---- */
 const HUGE_DOTS=25000;
 const _pp=[];
@@ -2107,10 +2133,19 @@ function mirrorObj(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK:
 function mirrorGeo(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK:0;const nn=addNode('Mirror',null);nn.p.axis=ax;dirtyFrom(o,o.nodes.indexOf(nn));
  selPts.clear();selEdges.clear();ringPrev=null;all();toast('Mirrored across the '+'XYZ'[ax]+' side. Change axis, direction, merge and offset in the Mirror card (right panel). Press X, Y or Z first to pick the axis.')}
 /* Which side of the plane was modelled? Compares every point with its mirror image (measured on the shape before manual point edits): the side with more points that have no partner on the other side got the loop cuts, knife cuts or extrusions, so that side is kept and cloned. If the topology is the same on both sides, the side with the larger point edits wins; with no information the positive side is kept. Returns {dir, why}. */
-function symSide(o,ax){const m=evaluate(o),last=o.nodes[o.nodes.length-1],en=last&&last.type==='Edit'?last:null,off=en&&en.off||{},rep=en&&en.rep,used=new Set(m.f.flat()),key=v=>v.map(t=>Math.round(t*1e3)).join(',');
+function symSide(o,ax){const m=evaluate(o),last=o.nodes[o.nodes.length-1],en=last&&last.type==='Edit'?last:null,off=en&&en.off||{},rep=en&&en.rep,big=m.v.length>=50000;
+ const usedA=new Uint8Array(m.v.length);if(big){for(let i=0;i<m.f.length;i++){const f=m.f[i];for(let k=0;k<f.length;k++)usedA[f[k]]=1}}
+ const used=big?{forEach:fn=>{for(let i=0;i<usedA.length;i++)if(usedA[i])fn(i)}}:new Set(m.f.flat());
+ /* big models compare points through two number hashes instead of text keys (a collision is vanishingly unlikely) */
+ const kxyz=(a,b,c)=>{const x=Math.round(a*1e3),y=Math.round(b*1e3),z=Math.round(c*1e3);return (((Math.imul(x,73856093)^Math.imul(y,19349663)^Math.imul(z,83492791))>>>0)*2097152)+((Math.imul(x,-1640531535)+Math.imul(y,40503)+Math.imul(z,69069))>>>11)};
+ const key=big?(v=>kxyz(v[0],v[1],v[2])):(v=>v.map(t=>Math.round(t*1e3)).join(','));
  const base=i=>{const v=m.v[i],q=off[rep?rep[i]:i];return q?[v[0]-q[0],v[1]-q[1],v[2]-q[2]]:v},K=new Set(),P=[];
- used.forEach(i=>{const b=base(i);K.add(key(b));P.push(b)});let neg=0,pos=0;
- P.forEach(b=>{const x=b[ax];if(Math.abs(x)<1e-6)return;const w=b.slice();w[ax]=-w[ax];if(!K.has(key(w)))x<0?neg++:pos++});
+ let neg=0,pos=0;
+ if(big){const n=usedA.length,C=new Float64Array(n*3),hasOff=Object.keys(off).length>0;let cnt=0;
+  for(let i=0;i<n;i++){if(!usedA[i])continue;const v=m.v[i],q=hasOff?off[rep?rep[i]:i]:null,x=q?v[0]-q[0]:v[0],y=q?v[1]-q[1]:v[1],z=q?v[2]-q[2]:v[2];C[cnt*3]=x;C[cnt*3+1]=y;C[cnt*3+2]=z;cnt++;K.add(kxyz(x,y,z))}
+  for(let c=0;c<cnt;c++){const x=C[c*3],y=C[c*3+1],z=C[c*3+2],a=ax===0?x:ax===1?y:z;if(Math.abs(a)<1e-6)continue;if(!K.has(kxyz(ax===0?-x:x,ax===1?-y:y,ax===2?-z:z)))a<0?neg++:pos++}}
+ else{used.forEach(i=>{const b=base(i);K.add(key(b));P.push(b)});
+  P.forEach(b=>{const x=b[ax];if(Math.abs(x)<1e-6)return;const w=b.slice();w[ax]=-w[ax];if(!K.has(key(w)))x<0?neg++:pos++})}
  if(neg!==pos)return{dir:pos>neg?1:-1,why:'topology',neg,pos};
  let en2=0,ep=0;Object.keys(off).forEach(k=>{const i=+k,d=off[k],v=m.v[i];if(!v)return;const mag=Math.hypot(d[0],d[1],d[2]),bx=v[ax]-d[ax];if(bx<-1e-6)en2+=mag;else if(bx>1e-6)ep+=mag});
  if(en2!==ep)return{dir:ep>en2?1:-1,why:'edits',neg:en2,pos:ep};return{dir:1,why:'none',neg:0,pos:0}}
@@ -2354,9 +2389,11 @@ function centerPivot(){const o=objs[sel];if(!o)return;const en=ensureEdit(o);eva
  rp.forEach((r,i)=>{if(r!==i)return;const q=en.off[i]||(en.off[i]=[0,0,0]);q[0]-=c[0];q[1]-=c[1];q[2]-=c[2]});
  const M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),w=mulv(M,c);o.pos=[o.pos[0]+w[0],o.pos[1]+w[1],o.pos[2]+w[2]];
  dirtyFrom(o,o.nodes.indexOf(en));evaluate(o);all();toast('Pivot moved to the center of the object')}
-function freezeObj(){const o=objs[sel];if(!o)return;const m=evaluate(o),M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),used=new Set(m.f.flat()),map=new Map(),V=[],r5=v=>+v.toFixed(5);
- used.forEach(i=>{const q=mulv(M,m.v[i]);map.set(i,V.length);V.push([r5(q[0]+o.pos[0]),r5(q[1]+o.pos[1]),r5(q[2]+o.pos[2])])});
- const g=mk('Mesh');g.mesh={v:V,f:m.f.map(f=>f.map(i=>map.get(i)))};
+function freezeObj(){const o=objs[sel];if(!o)return;const m=evaluate(o),M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),map=new Int32Array(m.v.length).fill(-1),V=[],big=m.v.length>=50000,r5=big?(x=>Math.round(x*1e5)/1e5):(x=>+x.toFixed(5));
+ /* points are renumbered in the order the polygons first use them; typed arrays keep this quick on million-polygon models */
+ const mv=m.v,F=new Array(m.f.length);
+ for(let j=0;j<m.f.length;j++){const f=m.f[j],n=f.length,g=new Array(n);for(let k=0;k<n;k++){const i=f[k];let r=map[i];if(r<0){const v=mv[i],a=v[0],b=v[1],c=v[2];r=map[i]=V.length;V.push([r5(M[0][0]*a+M[0][1]*b+M[0][2]*c+o.pos[0]),r5(M[1][0]*a+M[1][1]*b+M[1][2]*c+o.pos[1]),r5(M[2][0]*a+M[2][1]*b+M[2][2]*c+o.pos[2])])}g[k]=r}F[j]=g}
+ const g=mk('Mesh');g.mesh={v:V,f:F};
  o.nodes=[g];o.pos=[0,0,0];o.rot=[0,0,0];o.sc=[1,1,1];selPts.clear();selEdges.clear();ringPrev=null;all();toast('Frozen: history deleted and transforms reset. Ctrl+Z undoes it.')}
 /* ---- sculpting, Nomad style: a 3D brush sphere on the surface, dabs placed along the stroke, falloff, symmetry and subtract. Strokes are stored as point offsets in the Edit operator, so they stay undoable and saved. ---- */
 function sc(b){return()=>{if(sculptOn&&sBrush===b)setTool(null);else{sBrush=b;if(!sculptOn)setTool('sculpt')}all()}}
@@ -2364,7 +2401,16 @@ const scrPt=v=>{const d=ortho?dist:v[2]+dist;return[draw.W/2+panX+draw.F*v[0]/d,
 const nrm3=v=>{const l=Math.hypot(v[0],v[1],v[2])||1;return[v[0]/l,v[1]/l,v[2]/l]};
 const fall=u=>{const h=sHard;if(u<=h)return 1;return .5*(1+Math.cos(Math.PI*Math.min(1,(u-h)/(1-h))))};
 /* what the cursor touches: the nearest face under the pixel, with the exact point in object space and its depth */
-function sculptHit(x,y){const so=objs[sel],en=editNode(so);if(!so||!en||!en.out||!draw.polys)return null;
+/* big model: the face under the pixel comes from the projected arrays (no polygon list), then the exact point is interpolated on it */
+function sculptHitBig(x,y,en){const H=draw.hed,V=en.out.v;if(!H||H.P.PZ.length!==V.length)return undefined;
+ const h=hugeFaceAt(x,y);if(!h)return null;const f=en.out.f[h.fi],P=H.P,PX=P.PX,PY=P.PY,PZ=P.PZ;let best=null;
+ for(let k=1;k<f.length-1;k++){const a=f[0],b=f[k],c=f[k+1],ax=PX[a],ay=PY[a],bx=PX[b],by=PY[b],cx=PX[c],cy=PY[c],den=(by-cy)*(ax-cx)+(cx-bx)*(ay-cy);if(Math.abs(den)<1e-9)continue;
+  const l1=((by-cy)*(x-cx)+(cx-bx)*(y-cy))/den,l2=((cy-ay)*(x-cx)+(ax-cx)*(y-cy))/den,l3=1-l1-l2;if(l1<-.001||l2<-.001||l3<-.001)continue;
+  const A=V[a],B=V[b],C=V[c];best={P:[0,1,2].map(i=>l1*A[i]+l2*B[i]+l3*C[i]),z:l1*PZ[a]+l2*PZ[b]+l3*PZ[c]};break}
+ return best}
+function sculptHit(x,y){const so=objs[sel],en=editNode(so);if(!so||!en||!en.out)return null;
+ if(draw.hed){const r=sculptHitBig(x,y,en);if(r!==undefined)return r}
+ if(!draw.polys)return null;
  for(let k=draw.polys.length-1;k>=0;k--){const p=draw.polys[k];if(p.oi!==sel||!inPoly(x,y,p.pts))continue;const f=en.out.f[p.fi];if(!f)continue;
   for(let j=1;j<p.pts.length-1;j++){const A=p.pts[0],B=p.pts[j],C=p.pts[j+1],den=(B[1]-C[1])*(A[0]-C[0])+(C[0]-B[0])*(A[1]-C[1]);if(Math.abs(den)<1e-9)continue;
    const l1=((B[1]-C[1])*(x-C[0])+(C[0]-B[0])*(y-C[1]))/den,l2=((C[1]-A[1])*(x-C[0])+(A[0]-C[0])*(y-C[1]))/den,l3=1-l1-l2;if(l1<-.001||l2<-.001||l3<-.001)continue;
@@ -2377,10 +2423,12 @@ function sculptSel(en,so,H,R,front){const V=en.out.v,rp=en.rep,R2=R*R,out=[],Ms=
   if(front){const q=mulv(Ms,P),w=toViewP([q[0]+so.pos[0],q[1]+so.pos[1],q[2]+so.pos[2]]),s=scrPt(w);if(!vis(s[0],s[1],w[2]))continue}
   out.push({i,d:Math.sqrt(d2)/R})}
  return out}
+/* big model: vertex to faces and vertex to neighbours are read on demand from a compact table instead of building a map for every point */
+function bigVF(en){const T=canonCSR(en.out);return{vf:{get:i=>T.list.subarray(T.start[i],T.start[i+1])},nb:bigGraph(en.out,en.rep).vN,big:true}}
 function buildVF(en){const m=new Map();en.out.f.forEach((f,fi)=>f.forEach(a=>{const r=en.rep[a];if(r<0)return;let l=m.get(r);if(!l)m.set(r,l=[]);l.push(fi)}));return m}
 /* vertex normals for the brush points: 'cam' turns each face toward the camera, 'out' turns it away from the middle of the mesh */
 function candNormals(en,so,list,mode){const V=en.out.v,rp=en.rep,Mo=rotMat(so.rot),N=new Map(),cache=new Map();let cen=null;
- if(mode==='out'){cen=[0,0,0];let n=0;for(let i=0;i<V.length;i++)if(rp[i]===i){cen[0]+=V[i][0];cen[1]+=V[i][1];cen[2]+=V[i][2];n++}cen=cen.map(v=>v/(n||1))}
+ if(mode==='out'){if(sVF.cen)cen=sVF.cen;else{cen=[0,0,0];let n=0;for(let i=0;i<V.length;i++)if(rp[i]===i){cen[0]+=V[i][0];cen[1]+=V[i][1];cen[2]+=V[i][2];n++}cen=cen.map(v=>v/(n||1));if(sVF.big)sVF.cen=cen}}
  list.forEach(({i})=>{const a=[0,0,0];(sVF.vf.get(i)||[]).forEach(fi=>{let fn=cache.get(fi);if(!fn){const f=en.out.f[fi],n=f.length;let nx=0,ny=0,nz=0,cx=0,cy=0,cz=0;
    for(let k=0;k<n;k++){const u=V[f[k]],w=V[f[(k+1)%n]];nx+=(u[1]-w[1])*(u[2]+w[2]);ny+=(u[2]-w[2])*(u[0]+w[0]);nz+=(u[0]-w[0])*(u[1]+w[1]);cx+=u[0];cy+=u[1];cz+=u[2]}
    const l=Math.hypot(nx,ny,nz);if(l<1e-12)fn=[0,0,0];else{nx/=l;ny/=l;nz/=l;
@@ -2406,9 +2454,9 @@ function sculptDab(x,y){const so=objs[sel];let en=editNode(so);if(!so||!en||!en.
 function sculptStart(e){drag.sc=true;const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;sPos={x,y};
  const so=objs[sel],en=editNode(so);if(!so||!en||!en.out||!en.rep)return;
  sMode=e.shiftKey&&sBrush!=='grab'?'smooth':sBrush;sNow=sSub!==(e.ctrlKey||e.metaKey);
- if(sRes>0&&(sMode==='clay'||sMode==='inflate'))refineToRes(x,y);
+ if(sRes>0&&(sMode==='clay'||sMode==='inflate')&&!(draw.hed&&en.out.f.length>=HEAVY_MIN))refineToRes(x,y);
  if(!editNode(objs[sel])||!editNode(objs[sel]).rep)return;
- sVF={vf:buildVF(en),nb:edgeGraph(en).vN};
+ sVF=draw.hed&&en.out.f.length>=HEAVY_MIN?bigVF(en):{vf:buildVF(en),nb:edgeGraph(en).vN};
  if(sMode==='grab'){const hit=sculptHit(x,y);sGrab=null;if(!hit)return;
   const ks=((so.sc||[1,1,1]).reduce((s,v)=>s+v,0)/3)||1,R=sSize*((ortho?dist:hit.z+dist)/draw.F)/ks,sets=[{mir:false,list:sculptSel(en,so,hit.P,R,true).map(o=>({i:o.i,w:fall(o.d)}))}];
   if(sSym)sets.push({mir:true,list:sculptSel(en,so,[-hit.P[0],hit.P[1],hit.P[2]],R,false).map(o=>({i:o.i,w:fall(o.d)}))});
@@ -2427,11 +2475,16 @@ function sculptMove(e){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e
    if(en){const k=(ortho?dist:sGrab.z+dist)/draw.F,w=wl(so,unview((x-sPos.x)*k,-(y-sPos.y)*k,0));
     sGrab.sets.forEach(S=>{const v=S.mir?[-w[0],w[1],w[2]]:w;S.list.forEach(({i,w:wt})=>{const q=en.off[i]||(en.off[i]=[0,0,0]);q[0]+=v[0]*wt;q[1]+=v[1]*wt;q[2]+=v[2]*wt})});dirtyFrom(so,so.nodes.indexOf(en))}}}
  else if(sLast){const sp=Math.max(3,sSize*.2),dx=x-sLast.x,dy=y-sLast.y,L=Math.hypot(dx,dy);
-  if(L>=sp){const n=Math.min(40,Math.floor(L/sp));for(let k=1;k<=n;k++)sculptDab(sLast.x+dx/L*sp*k,sLast.y+dy/L*sp*k);sLast={x:sLast.x+dx/L*sp*n,y:sLast.y+dy/L*sp*n}}}
+  if(L>=sp){const n=Math.min(sVF&&sVF.big?3:40,Math.floor(L/sp));for(let k=1;k<=n;k++)sculptDab(sLast.x+dx/L*sp*k,sLast.y+dy/L*sp*k);sLast={x:sLast.x+dx/L*sp*n,y:sLast.y+dy/L*sp*n}}}
  sPos={x,y};draw()}
 function sculptEnd(){sGrab=null;sLast=null;sVF=null;sMode=null}
-cv.addEventListener('pointermove',e=>{if(!sculptOn)return;const r=cv.getBoundingClientRect();sPos={x:e.clientX-r.left,y:e.clientY-r.top};if(!drag)draw()});
-cv.addEventListener('pointerleave',()=>{if(sculptOn&&!drag){sPos=null;draw()}});
+/* on a big model the brush ring is a small page element, so moving the mouse does not redraw the whole model */
+var ringEl=null;
+function brushRing(){const on=sculptOn&&sPos&&draw.hed;if(!on){if(ringEl)ringEl.style.display='none';return}
+ if(!ringEl){ringEl=document.createElement('div');ringEl.style.cssText='position:absolute;pointer-events:none;border-radius:50%;box-sizing:border-box;border:1.5px solid var(--acc);z-index:3';const i=document.createElement('div');i.style.cssText='position:absolute;left:25%;top:25%;width:50%;height:50%;border-radius:50%;box-sizing:border-box;border:1.5px solid var(--acc);opacity:.5';ringEl.appendChild(i)}
+ const host=cv.parentNode;if(ringEl.parentNode!==host)host.appendChild(ringEl);const st=ringEl.style;st.display='block';st.left=(cv.offsetLeft+sPos.x-sSize)+'px';st.top=(cv.offsetTop+sPos.y-sSize)+'px';st.width=st.height=(2*sSize)+'px'}
+cv.addEventListener('pointermove',e=>{if(!sculptOn)return;const r=cv.getBoundingClientRect();sPos={x:e.clientX-r.left,y:e.clientY-r.top};if(!drag){if(draw.hed)brushRing();else draw()}});
+cv.addEventListener('pointerleave',()=>{if(sculptOn&&!drag){sPos=null;if(draw.hed)brushRing();else draw()}});
 /* Add detail bakes the sculpt so far, then splits every face into four so you can keep building finer shapes */
 function addDetail(quiet){const o=objs[sel];if(!o)return;const m=evaluate(o),total=m.f.reduce((s,f)=>s+f.length,0);
  if(total>20000){toast('Already very dense. More detail would make it slow.');return}
