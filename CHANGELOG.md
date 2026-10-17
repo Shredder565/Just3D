@@ -4,6 +4,14 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v134 — Big models edit in under two seconds per step
+Tested on a 700,000-point / 1,400,000-polygon model (the turtle). Timings are from a software-rendered test machine; a real graphics card should be as fast or faster.
+- **Soft select** on a big model: about 0.5 s (it used to hang).
+- **Extrude after moving points** on a big model no longer falls back to the slow drawing path (it took 50 s; now 1.4 s).
+- Measured on the turtle: move points 0.5 s, rotate 0.5 s, scale 0.4 s, extrude 1.4 s, knife 0.35 s, Knife Area 1.6 s, Separate and Cut 1.2 s, box select 0.3 s, undo/redo about 1 s, select all / invert / clear under 1 s, save 2 s, reload 2 s.
+- Sculpt, Paint, Joints and Add loop edge now say so, instead of freezing, when the model has more than 60,000 polygons. Use the Edit tools, or Separate and Cut a part and sculpt that.
+- Both the native Windows app and the original version are in the one zip and use the same program.
+
 ## v133 — Affect Front Vertices moved to shelf 5; one zip with both Windows versions
 - The **Affect Front Vertices** button moved from shelf 1 (File row) to shelf 5, Experimental and proprietary.
 - The Windows download is now one zip, `Just3D-v133-windows.zip`, holding both the native Windows app (`Just3D-v133-native.exe`) and the original browser-window version (`Just3D-v133.exe`).
