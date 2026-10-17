@@ -40,6 +40,7 @@ func main() {
 			c := exec.Command(b, "--app="+url, "--user-data-dir="+prof, "--window-size=1500,900", "--no-first-run", "--disable-features=msEdgeSignIn")
 			c.SysProcAttr = &syscall.SysProcAttr{HideWindow: false}
 			if c.Start() == nil {
+				keepIcon()
 				return
 			}
 		}

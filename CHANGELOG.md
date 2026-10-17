@@ -4,6 +4,11 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v129 — Taskbar icon
+- The Windows launcher now puts the Just3D icon on the Just3D window itself, so the taskbar and Alt+Tab show the Just3D logo instead of the browser's generic globe icon. (Edge ignored the page icon for windows opened from a local file; v104's page-icon fix was not enough.)
+- The launcher stays running quietly in the background while a Just3D window is open (it does this only to keep the icon applied) and exits a few seconds after the window closes.
+- Programs/app: no change to the modeling program itself.
+
 ## v128 — Drag and drop to open
 - Drag an **.obj** (or a Just3D .json) file onto the Just3D window and it opens immediately; a blue "Drop to open" overlay shows while the file is over the window. Other file types get a short message instead.
 - Drag a file onto the **Just3D .exe icon** (or use *Open with* / pass it on the command line) and Just3D starts with that file already open, with no tip dialog in the way.
