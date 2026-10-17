@@ -4,6 +4,11 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v128 — Drag and drop to open
+- Drag an **.obj** (or a Just3D .json) file onto the Just3D window and it opens immediately; a blue "Drop to open" overlay shows while the file is over the window. Other file types get a short message instead.
+- Drag a file onto the **Just3D .exe icon** (or use *Open with* / pass it on the command line) and Just3D starts with that file already open, with no tip dialog in the way.
+- Dropped files open exactly like File > Open, and set the file name in the title bar.
+
 ## v127 — Knife Area
 - New **Knife Area** button in Modeling tools, directly under Knife. Drag a straight line across the surface, from one edge to another: only the faces that line crosses on the visible side are cut, along the line you drew. Nothing behind them is touched (the regular Knife slices the whole object).
 - The ends of the line snap to a point or edge close by (like Object Draw), so a line dragged edge to edge starts and stops exactly on those edges. Shift snaps the angle. If the line passes behind a hole or another part of the object, each visible stretch is cut on its own.

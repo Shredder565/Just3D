@@ -1433,8 +1433,19 @@ async function saveFile(){if(!objs.length){toast('Nothing to save');return}if(!c
  if(curFile.handle){try{await writeHandle(curFile.handle,text);markSaved();toast('Saved '+curFile.name);return}
   catch(e){try{if(await curFile.handle.requestPermission({mode:'readwrite'})==='granted'){await writeHandle(curFile.handle,text);markSaved();toast('Saved '+curFile.name);return}}catch(_){}curFile.handle=null}}
  anchorSave(curFile.name,text);markSaved();toast('Saved '+curFile.name+' (downloaded again; your browser may add a number to the name)')}
-async function openFile(){if(window.showOpenFilePicker){try{const[h]=await showOpenFilePicker({types:[{description:'Just3D project or OBJ',accept:{'text/plain':['.obj','.json']}}]});const t=await(await h.getFile()).text();if(loadScene(t))setFile(h.name,h);return}catch(e){if(e&&e.name==='AbortError')return}}
- let i=document.getElementById('openIn');if(!i){i=document.createElement('input');i.type='file';i.id='openIn';i.accept='.obj,.json';i.hidden=true;document.body.appendChild(i);i.onchange=async()=>{const f=i.files[0];i.value='';if(!f)return;try{if(loadScene(await f.text()))setFile(f.name,null)}catch(_){toast('Could not read that file')}}}i.click()}
+/* opening a file: the Open button, a file dropped on the window, or a file dropped on the program icon all end up here */
+const OPEN_EXT=/\.(obj|json|txt)$/i;
+function openText(name,text,handle){if(loadScene(text)){setFile(name,handle||null);return true}return false}
+async function openDropped(f,hp){if(!f)return false;if(!OPEN_EXT.test(f.name||'')){toast('Drop an .obj or .json file ('+(f.name||'that file')+' is not one)');return false}
+ try{const t=await f.text();let h=null;try{h=hp?await hp:null;if(h&&h.kind!=='file')h=null}catch(_){h=null}return openText(f.name,t,h)}catch(_){toast('Could not read that file');return false}}
+(function(){let depth=0;const hint=()=>{let d=document.getElementById('dropHint');if(!d){d=document.createElement('div');d.id='dropHint';d.textContent='Drop to open';d.style.cssText='position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;font:600 22px system-ui,sans-serif;color:#fff;background:rgba(40,110,220,.35);border:3px dashed #8bb8ff;pointer-events:none';document.body.appendChild(d)}return d};
+ const hasFiles=e=>e.dataTransfer&&[...(e.dataTransfer.types||[])].includes('Files');
+ window.addEventListener('dragenter',e=>{if(!hasFiles(e))return;e.preventDefault();depth++;hint().style.display='flex'});
+ window.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();e.dataTransfer.dropEffect='copy'});
+ window.addEventListener('dragleave',e=>{if(!hasFiles(e))return;depth=Math.max(0,depth-1);if(!depth)hint().style.display='none'});
+ window.addEventListener('drop',e=>{if(!hasFiles(e))return;e.preventDefault();depth=0;hint().style.display='none';const f=e.dataTransfer.files[0],it=e.dataTransfer.items&&e.dataTransfer.items[0];let hp=null;try{hp=it&&it.getAsFileSystemHandle?it.getAsFileSystemHandle():null}catch(_){}openDropped(f,hp)})})();
+async function openFile(){if(window.showOpenFilePicker){try{const[h]=await showOpenFilePicker({types:[{description:'Just3D project or OBJ',accept:{'text/plain':['.obj','.json']}}]});const t=await(await h.getFile()).text();openText(h.name,t,h);return}catch(e){if(e&&e.name==='AbortError')return}}
+ let i=document.getElementById('openIn');if(!i){i=document.createElement('input');i.type='file';i.id='openIn';i.accept='.obj,.json';i.hidden=true;document.body.appendChild(i);i.onchange=async()=>{const f=i.files[0];i.value='';if(!f)return;try{openText(f.name,await f.text(),null)}catch(_){toast('Could not read that file')}}}i.click()}
 function worldMeshes(){return objs.filter(o=>!o.hid).map(o=>{const m=evaluate(o),M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),used=[...new Set(m.f.flat())].sort((a,b)=>a-b),map=new Map(),V=[];
   used.forEach(i=>{const q=mulv(M,m.v[i]);map.set(i,V.length);V.push([q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2]])});
   return{name:(o.name||'Object').replace(/\s+/g,'_'),V,F:m.f.map(f=>f.map(i=>map.get(i))),C:m.f.map((f,fi)=>(o.fc&&o.fc[fi])||o.color||'#888888')}}).filter(m=>m.F.length)}
@@ -2246,7 +2257,10 @@ function showTip(){const t=$('#tip'),ok=$('#tipOk'),no=$('#tipNo'),L={};
  t.hidden=false;ok.focus();ok.onclick=close;t.onclick=e=>{if(e.target===t)close()};document.addEventListener('keydown',esc,true)}
 /* the program starts in the orthographic view, with the shortcut list on top */
 setSolo(1);$('#toast').hidden=true;
-(function(){let no=false;try{no=localStorage.getItem('simply3d.noTip')==='1'}catch(_){}if(!no)showTip()})();
+/* a file dropped on the program icon: the launcher writes it next to the page as open-*.js and starts us with #open=<that file> */
+let launchOpen=null;try{const m=/[#&]open=([\w.\-]+\.js)$/.exec(location.hash);if(m)launchOpen=m[1]}catch(_){}
+if(launchOpen){const sc=document.createElement('script');sc.src=launchOpen;sc.onload=()=>{try{const o=window.__J3D_OPEN;if(o&&typeof o.text==='string'){if(!OPEN_EXT.test(o.name||''))toast('Drop an .obj or .json file');else openText(o.name,o.text,null)}}catch(_){toast('Could not open that file')}try{history.replaceState(null,'',location.pathname+location.search)}catch(_){}};sc.onerror=()=>toast('Could not open that file');document.head.appendChild(sc)}
+else (function(){let no=false;try{no=localStorage.getItem('simply3d.noTip')==='1'}catch(_){}if(!no)showTip()})();
 </script></body></html>
 
 </body></html>
