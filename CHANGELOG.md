@@ -4,6 +4,12 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v127 — Knife Area
+- New **Knife Area** button in Modeling tools, directly under Knife. Drag a straight line across the surface, from one edge to another: only the faces that line crosses on the visible side are cut, along the line you drew. Nothing behind them is touched (the regular Knife slices the whole object).
+- The ends of the line snap to a point or edge close by (like Object Draw), so a line dragged edge to edge starts and stops exactly on those edges. Shift snaps the angle. If the line passes behind a hole or another part of the object, each visible stretch is cut on its own.
+- The tool stays on for the next line; right-click or Esc leaves it. Each cut is saved in the history (as an Imprint step), repeats on the mirrored side when Symmetrize is on, and comes back when a project is saved and reopened.
+- Under the hood the Imprint step can now cut an open line as well as a closed outline.
+
 ## v126 — Add loop edge keeps going
 - **Add loop edge** now stays active and chains: after an edge is added, its end point becomes the next start point, so every further click adds the next edge (A to B, then B to C, and so on). Click any other point that is not offered as a partner to start from there instead; click the start point again to drop it.
 - **Right-click leaves the tool** at any time (Esc still cancels the current start point first, and leaves the tool on the second press).

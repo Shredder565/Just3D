@@ -20,7 +20,7 @@ Polygon modeling, a non-destructive history stack, symmetry tools and sculpting 
 
 - **Two viewports** — a perspective view and an orthographic view side by side, each with its own camera and view cube. `Space` toggles perspective-only.
 - **Non-destructive history** — every operation is a step in a History stack. The current change is shown as an open card; earlier steps sit beneath it and can be reopened and edited.
-- **Polygon modeling** — points, edges and faces, move/rotate/scale, loop cut, knife, add loop edge, World Draw, Object Draw and Free Draw (draw an outline, right-click to close it into a face, or to cut it into an existing object), extrude (always outward), bevel, weld and target weld, duplicate, group.
+- **Polygon modeling** — points, edges and faces, move/rotate/scale, loop cut, knife, knife area, add loop edge, World Draw, Object Draw and Free Draw (draw an outline, right-click to close it into a face, or to cut it into an existing object), extrude (always outward), bevel, weld and target weld, duplicate, group.
 - **Symmetry** — Mirror Polygons (live symmetry editing, Alt+X), Symmetrize and *Symmetrize Object Changes*, which clones the edited half of an object to the other side without losing history. Paint and deleted faces carry over.
 - **Merge** — join two or more overlapping objects: interior faces are removed and the seam is welded.
 - **Face colours and rendering**, camera tools, and **sculpting** brushes.
