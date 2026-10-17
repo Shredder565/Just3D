@@ -25,18 +25,13 @@ jobs:
         run: |
           set -euo pipefail
           cp src/Just3D.html launcher/app.html
+          cp src/Just3D.html native/app.html
           mkdir -p "dist/Just3D-$TAG"
           (cd launcher && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -H=windowsgui" -o "../dist/Just3D-$TAG/Just3D-$TAG.exe" .)
+          (cd native && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -H=windowsgui" -o "../dist/Just3D-$TAG/Just3D-$TAG-native.exe" .)
           cp CHANGELOG.md "dist/Just3D-$TAG/CHANGELOG.txt"
           sed "s/@VER@/$TAG/g" tools/windows-README.txt > "dist/Just3D-$TAG/README.txt"
           (cd dist && zip -qr "Just3D-$TAG-windows.zip" "Just3D-$TAG")
-          # the native Windows app (own window, no browser)
-          cp src/Just3D.html native/app.html
-          mkdir -p "dist/Just3D-$TAG-native"
-          (cd native && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -H=windowsgui" -o "../dist/Just3D-$TAG-native/Just3D-$TAG-native.exe" .)
-          cp CHANGELOG.md "dist/Just3D-$TAG-native/CHANGELOG.txt"
-          sed "s/@VER@/$TAG/g" tools/native-README.txt > "dist/Just3D-$TAG-native/README.txt"
-          (cd dist && zip -qr "Just3D-$TAG-windows-native.zip" "Just3D-$TAG-native")
           # release notes = this version's section of the changelog
           awk -v t="## $TAG " 'index($0,t)==1{p=1;next} p&&/^## /{exit} p' CHANGELOG.md > dist/notes.md
           test -s dist/notes.md || echo "Just3D $TAG" > dist/notes.md
@@ -46,8 +41,8 @@ jobs:
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "dist/Just3D-$TAG-windows.zip" "dist/Just3D-$TAG-windows-native.zip" --clobber
+            gh release upload "$TAG" "dist/Just3D-$TAG-windows.zip" --clobber
             gh release edit "$TAG" --notes-file dist/notes.md
           else
-            gh release create "$TAG" "dist/Just3D-$TAG-windows.zip" "dist/Just3D-$TAG-windows-native.zip" --target "${{ github.sha }}" --title "Just3D $TAG" --notes-file dist/notes.md --latest
+            gh release create "$TAG" "dist/Just3D-$TAG-windows.zip" --target "${{ github.sha }}" --title "Just3D $TAG" --notes-file dist/notes.md --latest
           fi

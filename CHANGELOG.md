@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v133 — Affect Front Vertices moved to shelf 5; one zip with both Windows versions
+- The **Affect Front Vertices** button moved from shelf 1 (File row) to shelf 5, Experimental and proprietary.
+- The Windows download is now one zip, `Just3D-v133-windows.zip`, holding both the native Windows app (`Just3D-v133-native.exe`) and the original browser-window version (`Just3D-v133.exe`).
+
 ## v132 — Big models open and turn smoothly; native Windows app
 - **Big files:** OBJ files with a high megabyte count now open far faster and in much less memory. The OBJ is read straight from the file in slices with a "Reading ... %" message (the window stays alive), instead of one huge text string. Examples: a 5 MB / 90,000-face model opens in 0.8 s (was 3.3 s); a 29 MB / 490,000-face model in 6 s (was 35 s); a 116 MB / 2-million-face model in 23 s (it used to hang).
 - **Big models turn smoothly:** a model with 60,000 or more faces is kept on the graphics card as ready-made triangles and drawn by the card, so orbiting, panning, zooming and moving it is instant (before, every redraw took seconds). Clicking such a model selects it, and Move works on it. The picture matches the normal drawing. Editing, drawing, painting and cutting tools on a big model still work the normal (slower) way.
