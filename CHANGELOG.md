@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v126 — Add loop edge keeps going
+- **Add loop edge** now stays active and chains: after an edge is added, its end point becomes the next start point, so every further click adds the next edge (A to B, then B to C, and so on). Click any other point that is not offered as a partner to start from there instead; click the start point again to drop it.
+- **Right-click leaves the tool** at any time (Esc still cancels the current start point first, and leaves the tool on the second press).
+
 ## v125 — Add loop edge
 - New **Add loop edge** button in Modeling tools, directly under Knife. Click one point, then click another point on the same face: the face is cut in two by a new edge between them. Keep clicking to add more edges.
 - The yellow dot marks the first point and white dots show which points can be joined to it (the other corners of the faces it touches). A yellow line previews the edge. Points that are already joined by an edge, or are not on a shared face, are not offered. Esc or right-click cancels the first point; Esc again leaves the tool.
