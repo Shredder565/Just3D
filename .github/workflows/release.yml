@@ -1,5 +1,5 @@
 # Builds the Windows download and publishes a GitHub release whenever a version tag (v127, v128, ...) is pushed.
-# The release notes are that version's section of CHANGELOG.md. It can also be run by hand from the Actions tab (enter the tag).
+# The release notes are that version's section of CHANGELOG.md. It can also be run by hand from the Actions tab (enter the tag): it then builds the current main and creates the tag itself.
 name: Release
 on:
   push:
@@ -16,8 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
@@ -44,5 +42,5 @@ jobs:
             gh release upload "$TAG" "dist/Just3D-$TAG-windows.zip" --clobber
             gh release edit "$TAG" --notes-file dist/notes.md
           else
-            gh release create "$TAG" "dist/Just3D-$TAG-windows.zip" --title "Just3D $TAG" --notes-file dist/notes.md --latest
+            gh release create "$TAG" "dist/Just3D-$TAG-windows.zip" --target "${{ github.sha }}" --title "Just3D $TAG" --notes-file dist/notes.md --latest
           fi
