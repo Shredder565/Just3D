@@ -4,6 +4,11 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v136 — Scene buttons and keys: Remove object, Undo (U), Redo (Y), Save (Ctrl+S), Load (Ctrl+L)
+- The Scene group in **Transform and scene** now holds: **Remove object**, **Clear**, **Undo**, **Redo**, **Save** and **Load**. (Object mode moved up next to Points, Edges and Faces.)
+- **U** = Undo (Ctrl+Z still works). **Y** = Redo (Ctrl+Shift+Z and Ctrl+Y still work). **Ctrl+S** = Save. **Ctrl+L** = Load (opens a file; Ctrl+O still works). **Shift+Delete** = Remove object.
+- The Y axis lock moved from **Y** to **Shift+Y**, because Y is now Redo. X and Z are unchanged.
+
 ## v135 — Sculpt, Paint and Joints on huge models; every button under about 2 seconds
 Tested on a 700,000-point / 1,400,000-polygon model (the turtle) and a 1,000,000-point / 2,000,000-polygon model (freeza). Timings are from a software-rendered test machine; a real graphics card should be as fast or faster.
 - **Sculpting works on huge models.** Clay, Grab, Smooth, Crease, Flatten, Inflate and Pinch (with Subtract and Symmetry) now run on the same fast big-model path as Edit mode. Each step of a stroke takes about 0.2–0.4 s on both models. The brush ring follows the mouse without redrawing the model. Build-up resolution and Add detail are skipped on huge models (they would add millions more polygons).

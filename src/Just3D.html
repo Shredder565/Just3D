@@ -1518,7 +1518,7 @@ const CMDS=[
  {g:'Tools',l:'Move',k:'W',f:()=>setXf('move'),on:()=>xf==='move'},
  {g:'Tools',l:'Rotate',k:'H',f:()=>setXf('rot'),on:()=>xf==='rot'},
  {g:'Tools',l:'Scale',k:'R',f:()=>setXf('scale'),on:()=>xf==='scale'},
- ...['X','Y','Z'].map((a,i)=>({g:'Tools',l:'Lock to '+a+' axis',k:a,f:()=>{axisK=axisK===i?null:i;draw()},on:()=>axisK===i})),
+ ...['X','Y','Z'].map((a,i)=>({g:'Tools',l:'Lock to '+a+' axis',k:a==='Y'?'Shift+Y':a,f:()=>{axisK=axisK===i?null:i;draw()},on:()=>axisK===i})),
  {g:'Tools',l:'World (free move)',f:()=>{axisK=null;draw();toast('World: no axis lock, so moving is free in every direction')},on:()=>axisK===null},
  {g:'Component mode',l:'Object mode',k:'O',f:()=>{setTool(null);all()},on:()=>!editMode&&!knife&&!drawOn&&!odOn&&!ceOn},
  {g:'Component mode',l:'Points',k:'1',k2:'P',en:need,f:pick('pt'),on:()=>editMode&&sub==='pt'},
@@ -1556,6 +1556,7 @@ const CMDS=[
  {g:'Object',l:'Add teapot',f:addO('Teapot')},
  {g:'Object',l:'Add tree',f:addO('Tree')},
  {g:'Object',l:'Duplicate',k:'Shift+D',en:need,f:dupObj},
+ {g:'Object',l:'Remove object',k:'Shift+Delete',en:()=>!!objs[sel]||osel.size>0,f:delObj},
  {g:'File',l:'Create new model',en:need,f:createModel},
  {g:'Object',l:'Group selected',k:'Shift+G',en:need,f:groupSel},
  {g:'Object',l:'Ungroup',k:'Ctrl+Shift+G',en:()=>!!(objs[sel]&&objs[sel].g),f:ungroupSel},
@@ -1618,10 +1619,10 @@ const CMDS=[
  {g:'Sculpting',l:'Larger brush',k:']',f:()=>{sSize=Math.min(200,sSize+10);syncShelf();draw()}},
  {g:'Sculpting',l:'Add detail (subdivide)',k:'D',en:need,f:addDetail},
  {g:'Sculpting',l:'Reset sculpt',en:()=>{const en=editNode(objs[sel]);return !!en&&Object.keys(en.off).length>0},f:resetEdits},
- {g:'File',l:'Undo',k:'Ctrl+Z',k2:'U',f:undo},
- {g:'File',l:'Redo',k:'Ctrl+Shift+Z',k2:'Ctrl+Y',f:redo},
+ {g:'File',l:'Undo',k:'U',k2:'Ctrl+Z',f:undo},
+ {g:'File',l:'Redo',k:'Y',k2:'Ctrl+Shift+Z',k3:'Ctrl+Y',f:redo},
  {g:'File',l:'Save or load scene',k:'Ctrl+Shift+O',f:openScene},
- {g:'File',l:'Open file',k:'Ctrl+O',f:openFile},
+ {g:'File',l:'Open file',k:'Ctrl+L',k2:'Ctrl+O',f:openFile},
  {g:'File',l:'Save file as',k:'Ctrl+Shift+S',f:saveAs},
  {g:'File',l:'New file',k:'Shift+N',f:newFile},
  {g:'File',l:'Save file',k:'Ctrl+S',k2:'S',en:()=>!sculptOn,f:saveFile},
@@ -1906,7 +1907,7 @@ let shelfIdx=0;const BR=['#e5484d','#f2b01e','#3fb950','#2dc4ad','#4a7fd1','#b55
 const SHELVES=[
  {n:'Basic Modeling Tools',rows:[
   {n:'Primitives',items:[{c:'Add cube',t:'Cube',ic:'cube'},{c:'Add sphere',t:'Sphere',ic:'sphere'},{c:'Add torus',t:'Torus',ic:'torus'},{c:'Add trapezoid',t:'Trapezoid',ic:'trap'},{c:'Add teapot',t:'Teapot',ic:'teapot'},{c:'Add tree',t:'Tree',ic:'tree'}]},
-  {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid',ic:'grid'},{sp:1},{gl:'Component'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{gl:'Pivot'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X',ic:'axX'},{c:'Lock to Y axis',t:'Y',ic:'axY'},{c:'Lock to Z axis',t:'Z',ic:'axZ'},{c:'World (free move)',t:'World',ic:'world'},{sp:1},{gl:'Scene'},{c:'Object mode',t:'Object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save or load scene',t:'Save / load'}]},
+  {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid',ic:'grid'},{sp:1},{gl:'Component'},{c:'Object mode',t:'Object'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{gl:'Pivot'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X',ic:'axX'},{c:'Lock to Y axis',t:'Y',ic:'axY'},{c:'Lock to Z axis',t:'Z',ic:'axZ'},{c:'World (free move)',t:'World',ic:'world'},{sp:1},{gl:'Scene'},{c:'Remove object',t:'Remove object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save file',t:'Save'},{c:'Open file',t:'Load'}]},
   {n:'Modeling tools',items:[{c:'Loop cut'},{c:'Loop cut selected edges',t:'Cut'},{c:'Knife',ic:'knife'},{c:'Knife Area',t:'Knife Area',ic:'karea'},{c:'Add loop edge',t:'Add loop edge',ic:'ledge'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object changes',t:'Symmetrize Object Changes'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Duplicate',ic:'dup3'},{c:'Group selected',t:'Group',ic:'dup'},{c:'Delete',t:'Delete'},{sp:1},{gl:'Soft select'},{c:'Soft select',t:'Soft Select',ic:'soft'},{soft:'mode'},{soft:'curve'},{soft:'r'}]},
   {n:'Draw',items:[{c:'World Draw',t:'World Draw',ic:'draw'},{c:'Object Draw',t:'Object Draw',ic:'odraw'},{c:'Free Draw',t:'Free Draw',ic:'fdraw'}]},
   {n:'Rotoscope',items:[{c:'Rotoscope: load image',t:'Load image…'},{c:'Rotoscope: move and scale',t:'Move / Scale'},{c:'Rotoscope: show or hide',t:'Visible'},{c:'Rotoscope: remove image',t:'Remove'},{roto:'op'},{roto:'size'},{roto:'x'},{roto:'y'},{rname:1}]},
@@ -2655,7 +2656,7 @@ cv.addEventListener('pointermove',e=>{if(drag||!editMode||sub!=='loop'||!draw.ed
 /* one keyboard map for every command in the registry */
 addEventListener('keydown',e=>{if(e.target.matches&&e.target.matches('input:not([type]),input[type=text],input[type=number],textarea'))return;hideCtx();
  const combo=(e.ctrlKey||e.metaKey?'Ctrl+':'')+(e.shiftKey?'Shift+':'')+(e.altKey?'Alt+':'')+(e.key.length===1?e.key.toUpperCase():e.key==='Escape'?'Esc':e.key);
- const ms=CMDS.filter(c=>c.k===combo||c.k2===combo),c=ms.find(c=>!c.en||c.en())||ms[0];if(!c)return;e.preventDefault();if(!c.en||c.en())c.f();commit()});
+ const ms=CMDS.filter(c=>c.k===combo||c.k2===combo||c.k3===combo),c=ms.find(c=>!c.en||c.en())||ms[0];if(!c)return;e.preventDefault();if(!c.en||c.en())c.f();commit()});
 addEventListener('keydown',e=>{return;const k=e.key.toLowerCase();
  if(e.ctrlKey||e.metaKey){if(k==='a'&&editMode){e.preventDefault();const en=editNode(objs[sel]);if(en&&en.rep){selPts.clear();if(sub==='face')en.out.f.forEach((_,i)=>selPts.add(i));else en.rep.forEach((r,i)=>r===i&&selPts.add(i));pruneFront();panels();draw()}}return}
  if(k==='q')setXf('select');else if(k==='w')setXf('move');else if(k==='e')setXf('rot');
