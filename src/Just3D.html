@@ -347,15 +347,15 @@ const CONNECT={p:{},fn:(m,p,n)=>n.pairs?connectEdges(m,n.pairs):m};
 const TY={...GEN,...OPS,...FOPS,Edit:EDITOP,Imprint:IMPRINT,Connect:CONNECT};
 /* ---------- scene + dependency graph ---------- */
 const mk=t=>({type:t,on:true,out:null,dirty:true,off:t==='Edit'?{}:null,fl:null,p:Object.fromEntries(Object.entries(TY[t].p).map(([k,s])=>[k,s[0]]))});
-let cams=[],camSel=-1,camAct=-1,tgt=[0,0,0],gridOn=true,exNode=null,exSel=new Set();let uid=0,groups=[],gid2=0;const osel=new Set();const objs=[];let sel=0,mode=0,editMode=false,sub='pt',knife=false,kaOn=false,kn=null,drawOn=false,dw=null,odOn=false,odFree=false,od=null,odCand=null,ceOn=false,ce=null,ceCand=null,xf='select',axisK=null,multi=true,box=null,selEdges=new Set(),ringPrev=null,hoverK=null,paintOn=false,jointOn=false,sculptOn=false,sBrush='clay',sSize=60,sStr=.5,sHard=.35,sRes=6,sSub=false,sSym=false,sNow=false,sMode=null,sVF=null,sLast=null,sPos=null,sGrab=null,rig={joints:[]},rigSel=-1,jid=0,lastEdge=null,selPts=new Set(),stats={ran:0,hit:0};
+let cams=[],camSel=-1,camAct=-1,tgt=[0,0,0],gridOn=true,exNode=null,exSel=new Set();let uid=0,groups=[],gid2=0;const osel=new Set();const objs=[];let sel=0,mode=0,editMode=false,sub='pt',knife=false,kaOn=false,scOn=false,kn=null,drawOn=false,dw=null,odOn=false,odFree=false,od=null,odCand=null,ceOn=false,ce=null,ceCand=null,xf='select',axisK=null,multi=true,box=null,selEdges=new Set(),ringPrev=null,hoverK=null,paintOn=false,jointOn=false,sculptOn=false,sBrush='clay',sSize=60,sStr=.5,sHard=.35,sRes=6,sSub=false,sSym=false,sNow=false,sMode=null,sVF=null,sLast=null,sPos=null,sGrab=null,rig={joints:[]},rigSel=-1,jid=0,lastEdge=null,selPts=new Set(),stats={ran:0,hit:0};
 /* new objects go to the dead center of the scene: their bounding box is centered on the world origin */
 function centerNew(o){const m=evaluate(o),mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];m.f.flat().forEach(i=>{for(let k=0;k<3;k++){mn[k]=Math.min(mn[k],m.v[i][k]);mx[k]=Math.max(mx[k],m.v[i][k])}});if(mn[0]>mx[0])return o;o.pos=[0,1,2].map(k=>-+((mn[k]+mx[k])/2).toFixed(5));return o}
 function addObj(type,x,ops=[]){const o={name:type+(++uid),pos:[x,0,0],rot:[0,0,0],sc:[1,1,1],hue:0,color:['#3aa393','#c9783a','#4a7fd1','#c9a93a','#b5559c'][uid%5],fc:{},nodes:[mk(type),...ops.map(mk)]};objs.push(o);sel=objs.length-1;osel.clear();selPts.clear();return o}
 function dirtyFrom(o,i){for(let j=i;j<o.nodes.length;j++)o.nodes[j].dirty=true}
 const editNode=o=>{const n=o&&o.nodes[o.nodes.length-1];return n&&n.type==='Edit'?n:undefined};
 function ensureEdit(o){let n=editNode(o);if(!n){n=mk('Edit');o.nodes.push(n)}return n}
-function setTool(t){const same=t==='ce'?ceOn:t==='karea'?knife&&kaOn:t==='odraw'?odOn&&!odFree:t==='fdraw'?odOn&&odFree:t==='draw'?drawOn:t==='knife'?knife&&!kaOn:t==='paint'?paintOn:t==='joint'?jointOn:t==='sculpt'?sculptOn:(editMode&&sub===t);editMode=false;knife=false;kaOn=false;paintOn=false;jointOn=false;sculptOn=false;kn=null;drawOn=false;dw=null;odOn=false;odFree=false;od=null;odCand=null;ceOn=false;ce=null;ceCand=null;selPts.clear();
- if(!same&&t){if(t==='ce')ceOn=true;else if(t==='odraw')odOn=true;else if(t==='fdraw'){odOn=true;odFree=true}else if(t==='draw')drawOn=true;else if(t==='knife')knife=true;else if(t==='karea'){knife=true;kaOn=true}else if(t==='sculpt')sculptOn=true;else if(t==='joint')jointOn=true;else if(t==='paint')paintOn=true;else{editMode=true;sub=t;if(xf==='select')setXf('move')}}
+function setTool(t){const same=t==='sepcut'?scOn:t==='ce'?ceOn:t==='karea'?knife&&kaOn:t==='odraw'?odOn&&!odFree:t==='fdraw'?odOn&&odFree:t==='draw'?drawOn:t==='knife'?knife&&!kaOn&&!scOn:t==='paint'?paintOn:t==='joint'?jointOn:t==='sculpt'?sculptOn:(editMode&&sub===t);editMode=false;knife=false;kaOn=false;scOn=false;paintOn=false;jointOn=false;sculptOn=false;kn=null;drawOn=false;dw=null;odOn=false;odFree=false;od=null;odCand=null;ceOn=false;ce=null;ceCand=null;selPts.clear();
+ if(!same&&t){if(t==='ce')ceOn=true;else if(t==='odraw')odOn=true;else if(t==='fdraw'){odOn=true;odFree=true}else if(t==='draw')drawOn=true;else if(t==='knife')knife=true;else if(t==='karea'){knife=true;kaOn=true}else if(t==='sepcut'){knife=true;scOn=true}else if(t==='sculpt')sculptOn=true;else if(t==='joint')jointOn=true;else if(t==='paint')paintOn=true;else{editMode=true;sub=t;if(xf==='select')setXf('move')}}
  $('#tpt').classList.toggle('on',editMode&&sub==='pt');$('#tfc').classList.toggle('on',editMode&&sub==='face');$('#tkn').classList.toggle('on',knife);$('#tdg').classList.toggle('on',editMode&&sub==='edge');$('#tlp').classList.toggle('on',editMode&&sub==='loop');$('#tpn').classList.toggle('on',paintOn);ringPrev=null;hoverK=null}
 /* lazy evaluation: a node recomputes only if it or anything upstream changed */
 function evaluate(o){let cur=null;
@@ -588,7 +588,7 @@ function draw(){
     else{g.beginPath();A.ring.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.stroke()}});
    if(xe()==='scale'){g.fillStyle='#fff';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#888';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else if(xe()==='move'){g.fillStyle='#ffe066';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#5a4a00';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else{g.beginPath();g.arc(ps[0],ps[1],3.5,0,TAU);g.fillStyle='#fff';g.fill()}}}
  if(sculptOn&&sPos){g.strokeStyle=acc;g.lineWidth=1.5;g.beginPath();g.arc(sPos.x,sPos.y,sSize,0,TAU);g.stroke();g.globalAlpha=.5;g.beginPath();g.arc(sPos.x,sPos.y,sSize*.5,0,TAU);g.stroke();g.globalAlpha=1}
- if(box){g.setLineDash([4,3]);g.strokeStyle=box.hl?'#f2c230':box.sub?'#e5484d':acc;g.lineWidth=1;g.strokeRect(box.x0,box.y0,box.x1-box.x0,box.y1-box.y0);g.setLineDash([])}
+ if(box){g.setLineDash([4,3]);g.strokeStyle=box.hl?'#f2c230':box.sc?'#e0701b':box.sub?'#e5484d':acc;g.lineWidth=1;g.strokeRect(box.x0,box.y0,box.x1-box.x0,box.y1-box.y0);g.setLineDash([])}
  if(rig.joints.length){const jp=rigPose().P.map(p=>{const s=scr(view(p[0],p[1],p[2]));return[s[0],s[1]]});
   g.lineWidth=2;g.strokeStyle='#f2b01e';rig.joints.forEach((j,i)=>{if(j.parent>=0&&jp[j.parent]){g.beginPath();g.moveTo(jp[j.parent][0],jp[j.parent][1]);g.lineTo(jp[i][0],jp[i][1]);g.stroke()}});
   draw.jts=[];rig.joints.forEach((j,i)=>{g.beginPath();g.arc(jp[i][0],jp[i][1],i===rigSel?7:5,0,TAU);g.fillStyle=i===rigSel?'#fff':'#f2b01e';g.fill();g.strokeStyle='#000';g.lineWidth=1.5;g.stroke();draw.jts.push({i,x:jp[i][0],y:jp[i][1]})})}else draw.jts=[];
@@ -711,6 +711,56 @@ insertNodeKeepColors(o,nn);
  if(symEdit){const ax=symAxis(),M=NL.slice();M[ax]=-M[ax];const same=Math.abs(M[0]-NL[0])+Math.abs(M[1]-NL[1])+Math.abs(M[2]-NL[2])<1e-4||(Math.abs(M[0]+NL[0])+Math.abs(M[1]+NL[1])+Math.abs(M[2]+NL[2])<1e-4&&Math.abs(d)<1e-4);
   if(!same){const n2=mk('Slice');Object.assign(n2.p,{nx:+M[0].toFixed(4),ny:+M[1].toFixed(4),nz:+M[2].toFixed(4),d:+d.toFixed(4)});insertNodeKeepColors(o,n2)}}
  selPts.clear()}
+/* ---- Separate and Cut: drag a window; everything of the selected object inside it (all the way through, along the view direction) is cut off along the window's four sides and becomes its own object ---- */
+function sepCut(b){const o=objs[sel];box=null;if(!o){draw();return}
+ const x0=Math.min(b.x0,b.x1),x1=Math.max(b.x0,b.x1),y0=Math.min(b.y0,b.y1),y1=Math.max(b.y0,b.y1);
+ if(x1-x0<8||y1-y0<8){draw();toast('Drag a window over the part you want to cut off');return}
+ const sc=o.sc||[1,1,1];if(sc.some(v=>Math.abs(v)<1e-9)){draw();toast('This object is scaled to zero, so it cannot be cut');return}
+ const m=evaluate(o),M=odM(o),cr=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]].map(q=>pixRay(q[0],q[1])),cen=pixRay((x0+x1)/2,(y0+y1)/2),cross=(a,c)=>[a[1]*c[2]-a[2]*c[1],a[2]*c[0]-a[0]*c[2],a[0]*c[1]-a[1]*c[0]],dot=(a,c)=>a[0]*c[0]+a[1]*c[1]+a[2]*c[2];
+ const used=new Set(m.f.flat());let bb=[1e9,1e9,1e9,-1e9,-1e9,-1e9];used.forEach(i=>{for(let k=0;k<3;k++){bb[k]=Math.min(bb[k],m.v[i][k]);bb[k+3]=Math.max(bb[k+3],m.v[i][k])}});
+ const eps=Math.max(1e-9,Math.hypot(bb[3]-bb[0],bb[4]-bb[1],bb[5]-bb[2])*1e-7);
+ /* the four window sides as planes in the object's own space: inside = n.P + d >= 0 */
+ const planes=[];for(let k=0;k<4;k++){const a=cr[k],c=cr[(k+1)%4];let N,P0=a.o;
+  if(ortho)N=cross(a.d,[c.o[0]-a.o[0],c.o[1]-a.o[1],c.o[2]-a.o[2]]);else N=cross(a.d,c.d);
+  const L=Math.hypot(N[0],N[1],N[2]);if(L<1e-12)continue;N=N.map(v=>v/L);
+  const t=ortho?1e4:1,Pc=[cen.o[0]+cen.d[0]*t,cen.o[1]+cen.d[1]*t,cen.o[2]+cen.d[2]*t];if(dot(N,[Pc[0]-P0[0],Pc[1]-P0[1],Pc[2]-P0[2]])<0)N=N.map(v=>-v);
+  planes.push({n:mulvT(M,N),d:dot(N,[o.pos[0]-P0[0],o.pos[1]-P0[1],o.pos[2]-P0[2]])})}
+ if(planes.length<4){draw();toast('Could not set up the window from this view');return}
+ const nl=planes.map(p=>Math.hypot(p.n[0],p.n[1],p.n[2])||1);planes.forEach((p,k)=>{p.n=p.n.map(v=>v/nl[k]);p.d/=nl[k]});
+ const val=(p,P)=>p.n[0]*P[0]+p.n[1]*P[1]+p.n[2]*P[2]+p.d;
+ /* shared vertex pool; a cut point on an edge is always computed from the edge's endpoints in the same order, so both faces sharing the edge get exactly the same point */
+ const pool=[],pk=new Map(),vid=P=>{const q=P.map(v=>+v.toFixed(5)),k=pkey(q);let i=pk.get(k);if(i===undefined){i=pool.length;pool.push(q);pk.set(k,i)}return i};
+ const cutIds=new Set(),cutPt=(ia,ib,p)=>{let A=pool[ia],B=pool[ib];if(pkey(A)>pkey(B)){const t=A;A=B;B=t}const da=val(p,A),db=val(p,B),t=da/(da-db);const X=vid([A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t,A[2]+(B[2]-A[2])*t]);cutIds.add(X);return X};
+ let pieces=[];m.f.forEach((f,fi)=>{const ids=[];f.forEach(i=>{const q=vid(m.v[i]);if(!ids.length||ids[ids.length-1]!==q)ids.push(q)});if(ids.length>1&&ids[0]===ids[ids.length-1])ids.pop();if(ids.length>=3)pieces.push({f:ids,src:fi,inn:true})});
+ for(const p of planes){const next=[];for(const pc of pieces){if(!pc.inn){next.push(pc);continue}
+   const d=pc.f.map(i=>{const v=val(p,pool[i]);return Math.abs(v)<eps?0:v}),hasPos=d.some(v=>v>0),hasNeg=d.some(v=>v<0);
+   if(!hasNeg){next.push(pc);continue}if(!hasPos){pc.inn=false;next.push(pc);continue}
+   const ins=[],outs=[];for(let i=0;i<pc.f.length;i++){const j=(i+1)%pc.f.length,a=pc.f[i],c=pc.f[j];
+    if(d[i]>=0)ins.push(a);if(d[i]<=0)outs.push(a);
+    if((d[i]>0&&d[j]<0)||(d[i]<0&&d[j]>0)){const x=cutPt(a,c,p);ins.push(x);outs.push(x)}}
+   const clean=l=>{const r=[];l.forEach(i=>{if(!r.length||r[r.length-1]!==i)r.push(i)});if(r.length>1&&r[0]===r[r.length-1])r.pop();return r},ci=clean(ins),co=clean(outs);
+   if(ci.length>=3)next.push({f:ci,src:pc.src,inn:true});if(co.length>=3)next.push({f:co,src:pc.src,inn:false})}
+  pieces=next}
+ /* repair: a face that only touches a window side (or lies along it) is not cut, but its neighbour is, so the new point on their shared edge must be added to it as well, or a crack would open */
+ if(cutIds.size){const cs=Math.max(eps*1e3,Math.hypot(bb[3]-bb[0],bb[4]-bb[1],bb[5]-bb[2])/60),cell=P=>[Math.floor(P[0]/cs),Math.floor(P[1]/cs),Math.floor(P[2]/cs)],grid=new Map(),tol=3e-5+eps*10;
+  cutIds.forEach(i=>{const c=cell(pool[i]),k=c.join(',');(grid.get(k)||grid.set(k,[]).get(k)).push(i)});
+  for(const pc of pieces){const out=[];let changed=false;for(let i=0;i<pc.f.length;i++){const a=pc.f[i],c=pc.f[(i+1)%pc.f.length],A=pool[a],B=pool[c];out.push(a);
+    const lo=cell([Math.min(A[0],B[0])-tol,Math.min(A[1],B[1])-tol,Math.min(A[2],B[2])-tol]),hi=cell([Math.max(A[0],B[0])+tol,Math.max(A[1],B[1])+tol,Math.max(A[2],B[2])+tol]);
+    if((hi[0]-lo[0]+1)*(hi[1]-lo[1]+1)*(hi[2]-lo[2]+1)>4096)continue;
+    const ab=[B[0]-A[0],B[1]-A[1],B[2]-A[2]],L2=dot(ab,ab);if(L2<1e-18)continue;const hit=[];
+    for(let x=lo[0];x<=hi[0];x++)for(let y=lo[1];y<=hi[1];y++)for(let z=lo[2];z<=hi[2];z++){const g=grid.get(x+','+y+','+z);if(!g)continue;
+     for(const X of g){if(X===a||X===c)continue;const Q=pool[X],ap=[Q[0]-A[0],Q[1]-A[1],Q[2]-A[2]],t=dot(ap,ab)/L2;if(t<=1e-6||t>=1-1e-6)continue;
+      const e=[ap[0]-ab[0]*t,ap[1]-ab[1]*t,ap[2]-ab[2]*t];if(Math.hypot(e[0],e[1],e[2])<=tol)hit.push([t,X])}}
+    if(hit.length){hit.sort((u,v)=>u[0]-v[0]);hit.forEach(h=>{if(out[out.length-1]!==h[1])out.push(h[1])});changed=true}}
+   if(changed)pc.f=out}}
+ const inP=pieces.filter(q=>q.inn),outP=pieces.filter(q=>!q.inn);
+ if(!inP.length){draw();toast('Nothing of "'+(o.name||'object')+'" is inside that window');return}
+ if(!outP.length){draw();toast('The window covers the whole object, so there is nothing to separate from');return}
+ const build=L=>{const map=new Map(),V=[],F=[],C={};L.forEach(q=>{const f=q.f.map(i=>{if(!map.has(i)){map.set(i,V.length);V.push(pool[i].slice())}return map.get(i)});const c=o.fc&&o.fc[q.src];if(c)C[F.length]=c;F.push(f)});return{V,F,C}};
+ const A=build(outP),B=build(inP),gA=mk('Mesh'),gB=mk('Mesh');gA.mesh={v:A.V,f:A.F};gB.mesh={v:B.V,f:B.F};gA.dirty=true;gB.dirty=true;
+ const part={name:(o.name||'Object')+'_part',pos:o.pos.slice(),rot:o.rot.slice(),sc:sc.slice(),hue:o.hue||0,color:o.color,fc:B.C,nodes:[gB]};if(o.g!==undefined)part.g=o.g;
+ o.nodes=[gA];o.fc=A.C;const at=objs.indexOf(o);objs.splice(at+1,0,part);sel=at+1;osel.clear();selPts.clear();selEdges.clear();ringPrev=null;setTool(null);all();
+ toast('Separated '+B.F.length+' faces into "'+part.name+'". It is selected and ready to edit; "'+(o.name||'Object')+'" keeps the rest ('+A.F.length+' faces). Ctrl+Z undoes it.')}
 /* ---- World Draw: draw an outline on a world plane (drag draws a curve, a click adds a corner), right-click or Enter closes it into one flat polygon face ---- */
 /* the plane is the world plane (XY, XZ or YZ) that faces the camera most squarely, through the point the camera looks at */
 function dwPlane(){const d=unview(0,0,1);let k=0;if(Math.abs(d[1])>Math.abs(d[k]))k=1;if(Math.abs(d[2])>Math.abs(d[k]))k=2;return{k,c:+tgt[k].toFixed(4)}}
@@ -1240,8 +1290,9 @@ const CMDS=[
  {g:'Component mode',l:'Edges',k:'2',k2:'E',en:need,f:pick('edge'),on:()=>editMode&&sub==='edge'},
  {g:'Component mode',l:'Faces',k:'3',k2:'F',en:need,f:pick('face'),on:()=>editMode&&sub==='face'},
  {g:'Component mode',l:'Loop cut',k:'4',en:need,f:pick('loop'),on:()=>editMode&&sub==='loop'},
- {g:'Component mode',l:'Knife',k:'K',en:need,f:pick('knife'),on:()=>knife&&!kaOn},
+ {g:'Component mode',l:'Knife',k:'K',en:need,f:pick('knife'),on:()=>knife&&!kaOn&&!scOn},
  {g:'Component mode',l:'Knife Area',en:need,f:pick('karea'),on:()=>knife&&kaOn},
+ {g:'Experimental and proprietary',l:'Separate and Cut',en:need,f:pick('sepcut'),on:()=>scOn},
  {g:'Component mode',l:'Add loop edge',en:need,f:pick('ce'),on:()=>ceOn},
  {g:'Modeling',l:'World Draw',k:'N',f:()=>{setTool('draw');all()},on:()=>drawOn},
  {g:'Modeling',l:'Object Draw',f:()=>{setTool('odraw');all()},on:()=>odOn&&!odFree},
@@ -1579,6 +1630,7 @@ const SHELVES=[
   {n:'Render 2K',items:[{gl:'Aspect'},{rsel:'asp'},{gl:'Quality'},{rsel:'q'},{sp:1},{c:'Highlight to render',t:'Highlight to Render'},{c:'Render 2K (GPU)',t:'Render 2K · GPU'},{c:'Ray trace 2K (CPU)',t:'Ray Trace 2K · CPU'},{sp:1},{c:'Show last render',t:'Show Render'},{c:'Save last render',t:'Save Render'}]}]},
  {n:'Navigating',items:[{gl:'Camera'},{c:'Front view',t:'Front'},{c:'Back view',t:'Back'},{c:'Left view',t:'Left'},{c:'Right view',t:'Right'},{c:'Top view',t:'Top'},{c:'Bottom view',t:'Bottom'},{c:'Zoom in'},{c:'Zoom out'},{c:'Reset camera',t:'Reset'},{sp:1},{gl:'Cameras'},{c:'Add camera',t:'Add Camera'},{c:'Look through camera',t:'Look Through'},{c:'Back to perspective view',t:'Persp. View'},{sp:1},{gl:'Rigging'},{c:'Joint tool (click to place)',t:'Joint'},{c:'Bind skin to skeleton',t:'Bind skin'},{c:'Remove skin'},{c:'Delete joint'},{c:'Reset pose'}]},
  {n:'Sculpting',items:[{gl:'Brushes'},{c:'Clay (build up)',t:'Clay'},{c:'Grab (move)',t:'Move'},{c:'Smooth'},{c:'Crease'},{c:'Flatten'},{c:'Inflate'},{c:'Pinch'},{sp:1},{c:'Subtract (reverse brush)',t:'Subtract'},{c:'Symmetry (X mirror)',t:'Symmetry'},{sp:1},{gl:'Radius'},{c:'Smaller brush',t:'−'},{rng:'size'},{c:'Larger brush',t:'+'},{gl:'Intensity'},{rng:'str'},{gl:'Falloff'},{rng:'hard'},{gl:'Resolution'},{rng:'res'},{sp:1},{gl:'Detail'},{c:'Add detail (subdivide)',t:'Add detail'},{c:'Reset sculpt'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{sp:1},{c:'Undo'},{c:'Redo'}]}
+ ,{n:'Experimental and proprietary',rows:[{n:'Cut apart',items:[{c:'Separate and Cut',t:'Separate and Cut',ic:'sepc'}]}]}
 ];
 SHELVES.forEach(S=>{if(S.rows)S.items=S.rows.flatMap(r=>r.items)});
 /* small pictures on the primitive buttons */
@@ -1592,6 +1644,7 @@ const ICONS={
  bullseye:'<circle cx="12" cy="12" r="9.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="5.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2" fill="#e5484d" stroke="#e5484d" stroke-width="1"/>',
  draw:'<path d="M3.2 21V13.2a6.4 6.4 0 0 1 12.8 0V21Z" fill="#3b6fb6" fill-opacity=".35" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-dasharray="3.2 2"/><circle cx="3.2" cy="21" r="1.7" fill="currentColor"/><circle cx="16" cy="21" r="1.7" fill="currentColor"/><path d="M17.2 3.2l3.6 3.6-7.6 7.6-4 .4.4-4z" fill="#e0b541" stroke="#5a430d" stroke-width="1.1" stroke-linejoin="round"/><path d="M15.6 4.8l3.6 3.6" stroke="#5a430d" stroke-width="1"/>',
  ledge:'<path d="M3.5 5.5h17v13h-17z" fill="#e9eef4" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M3.5 18.5L20.5 5.5" stroke="#e0701b" stroke-width="2" stroke-linecap="round"/><circle cx="3.5" cy="18.5" r="2.4" fill="#e0701b" stroke="#fff" stroke-width="1"/><circle cx="20.5" cy="5.5" r="2.4" fill="#e0701b" stroke="#fff" stroke-width="1"/>',
+ sepc:'<path d="M3 4h11v9H3z" fill="#e9eef4" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M14 4l7 3v9l-7-3z" fill="#d9dee5" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><rect x="8" y="9" width="13" height="11" rx="1" fill="#f4a35c" stroke="#e0701b" stroke-width="1.6" stroke-dasharray="2.6 1.8"/>',
  karea:'<path d="M3.5 4.5h17v15h-17z" fill="#e9eef4" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M12 4.5v15M3.5 12h17" stroke="currentColor" stroke-width="1" opacity=".55"/><path d="M1.8 16L22.2 8" stroke="#e0701b" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 2"/><circle cx="3.5" cy="15.3" r="2.3" fill="#e0701b" stroke="#fff" stroke-width="1"/><circle cx="20.5" cy="8.7" r="2.3" fill="#e0701b" stroke="#fff" stroke-width="1"/>',
  knife:'<path d="M2 17H9.2M14.8 17H22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="10.2" y="1.6" width="3.6" height="6" rx="1" fill="#8a5a2b" stroke="#4a3018" stroke-width=".8"/><rect x="8.6" y="7.4" width="6.8" height="1.5" rx=".5" fill="#9aa4ae" stroke="#4a5560" stroke-width=".8"/><path d="M9.2 9.2H14.8V21.8C10.8 20.8 9.2 15.6 9.2 9.2Z" fill="#dfe5ea" stroke="#4a5560" stroke-width=".9" stroke-linejoin="round"/><path d="M5.6 20.4l-1.6 1.4M18.4 20.4l1.6 1.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>',
  mirror:'<defs><radialGradient id="jgM1" cx=".68" cy=".3" r=".85"><stop offset="0" stop-color="#f8cfa6"/><stop offset=".55" stop-color="#d98a4e"/><stop offset="1" stop-color="#8f4c1e"/></radialGradient><radialGradient id="jgM2" cx=".32" cy=".3" r=".85"><stop offset="0" stop-color="#f8cfa6"/><stop offset=".55" stop-color="#d98a4e"/><stop offset="1" stop-color="#8f4c1e"/></radialGradient></defs><path d="M12 1.5V22.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2.2 1.8"/><circle cx="6.3" cy="12" r="4.9" fill="url(#jgM1)" stroke="#6b3a14" stroke-width=".8"/><circle cx="17.7" cy="12" r="4.9" fill="url(#jgM2)" stroke="#6b3a14" stroke-width=".8" opacity=".78"/>',
@@ -2127,6 +2180,7 @@ if(e.button===2){drag.rc=true;return}
  if(drawOn&&e.button===0&&!e.altKey){dwDown(e);return}
  if(ceOn&&e.button===0&&!e.altKey){ceDown(e);return}
  if(odOn&&e.button===0&&!e.altKey){odDown(e);return}
+ if(scOn&&e.button===0&&!e.altKey){const x=e.clientX-r0.left,y=e.clientY-r0.top;box={x0:x,y0:y,x1:x,y1:y,sc:true};drag.sbx=true;draw();return}
  if(knife&&e.button===0&&!e.altKey){kn={x0:e.clientX-r0.left,y0:e.clientY-r0.top,x1:e.clientX-r0.left,y1:e.clientY-r0.top};drag.kn=true;return}
  if(sculptOn&&e.button===0&&!e.altKey){sculptStart(e);return}
  if(jointOn&&e.button===0&&!e.altKey){jointClick(e);return}
@@ -2150,7 +2204,7 @@ if(e.button===2){drag.rc=true;return}
   else startBox(e,x,y)}
  else if(!editMode&&draw.polys&&objs[sel]){const x=e.clientX-r0.left,y=e.clientY-r0.top;for(let k=draw.polys.length-1;k>=0;k--){const p=draw.polys[k];if(p.oi===sel&&inPoly(x,y,p.pts)){drag.ot={z:p.z};break}}}});
 cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.abs(dx)+Math.abs(dy);
- if(drag.hl){const r=cv.getBoundingClientRect();box.x1=e.clientX-r.left;box.y1=e.clientY-r.top;draw();return}
+ if(drag.hl||drag.sbx){const r=cv.getBoundingClientRect();box.x1=e.clientX-r.left;box.y1=e.clientY-r.top;draw();return}
  if(drag.dw){dwMove(e);return}
  if(drag.od){odMove(e);return}
  if(drag.ro){rotoDrag(e);return}
@@ -2173,7 +2227,7 @@ cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,
   (sub==='face'?facePts(en):selPts).forEach(i=>{const q=en.off[i]||(en.off[i]=[0,0,0]);q[0]+=w[0];q[1]+=w[1];q[2]+=w[2]});
   drag.x=e.clientX;drag.y=e.clientY;dirtyFrom(so,so.nodes.indexOf(en));draw();return}
  panX+=dx;panY+=dy;drag.x=e.clientX;drag.y=e.clientY;draw()});
-cv.addEventListener('pointerup',e=>{if(drag&&drag.hl){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,mv=drag.moved>=5,b=box;drag=null;
+cv.addEventListener('pointerup',e=>{if(drag&&drag.sbx){const b=box;box=null;drag=null;if(b)sepCut(b);else draw();return}if(drag&&drag.hl){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,mv=drag.moved>=5,b=box;drag=null;
   if(mv){finishHighlight({x0:Math.min(b.x0,b.x1),y0:Math.min(b.y0,b.y1),x1:Math.max(b.x0,b.x1),y1:Math.max(b.y0,b.y1)});return}
   let oi=-1;const P=draw.polys||[];for(let k=P.length-1;k>=0;k--)if(inPoly(x,y,P[k].pts)){oi=P[k].oi;break}
   if(oi<0){box=null;draw();toast('Click an object, or drag a box around the part you want');return}
@@ -2228,7 +2282,7 @@ cv.addEventListener('dblclick',e=>{if(editMode&&(sub==='pt'||sub==='face')&&objs
 let rcD=null;
 cv.addEventListener('pointerdown',e=>{rcD={x:e.clientX,y:e.clientY,m:0}});
 cv.addEventListener('pointermove',e=>{if(rcD)rcD.m=Math.max(rcD.m,Math.hypot(e.clientX-rcD.x,e.clientY-rcD.y))});
-cv.addEventListener('contextmenu',e=>{e.preventDefault();if(rcD&&rcD.m>5)return;if(ceOn){setTool(null);all();toast('Add loop edge off');return}if(kaOn&&knife){setTool(null);all();toast('Knife Area off');return}if(drawOn){dwClose();return}if(odOn){odClose();return}showCtx(e.clientX,e.clientY)});
+cv.addEventListener('contextmenu',e=>{e.preventDefault();if(rcD&&rcD.m>5)return;if(scOn){setTool(null);all();toast('Separate and Cut off');return}if(ceOn){setTool(null);all();toast('Add loop edge off');return}if(kaOn&&knife){setTool(null);all();toast('Knife Area off');return}if(drawOn){dwClose();return}if(odOn){odClose();return}showCtx(e.clientX,e.clientY)});
 cv.addEventListener('pointermove',e=>{if(ceOn){ceHover(e);return}if(odOn&&!(drag&&drag.od)){odHover(e);return}if(!drawOn||!dw||!dw.pts.length||(drag&&drag.dw))return;const r=cv.getBoundingClientRect();dw.hov={x:e.clientX-r.left,y:e.clientY-r.top,v:curV};draw()});
 $('#ctx').addEventListener('click',e=>{const t=e.target.closest('[data-ci],[data-cs]');if(!t)return;
  if(t.dataset.cs){const o=objs[sel];hideCtx();if(o){o.color=t.dataset.cs;all()}return}

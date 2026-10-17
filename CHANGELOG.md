@@ -4,6 +4,12 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v130 — Shelf 5: Experimental and proprietary, Separate and Cut
+- New shelf **5 – Experimental and proprietary**, with a new **Separate and Cut** button.
+- **Separate and Cut:** select an object, press the button and drag a window over the part you want (a foot on an imported human model, say). The object is cut along the four sides of your window and everything inside becomes its own object, selected and ready to edit. The original keeps the rest.
+- The cut goes all the way through along the view direction, so use a view where the part is clear of the others (Front, Side...). Faces the window edge crosses are split exactly along the edge, so the two pieces fit back together with no cracks. Face colours are kept on both pieces. Cut ends are left open (no cap).
+- Both pieces become plain geometry (like Freeze); the new piece keeps the original's position, rotation and scale. Undo, redo, save and load all work. Right-click or Esc leaves the tool.
+
 ## v129 — Taskbar icon
 - The Windows launcher now puts the Just3D icon on the Just3D window itself, so the taskbar and Alt+Tab show the Just3D logo instead of the browser's generic globe icon. (Edge ignored the page icon for windows opened from a local file; v104's page-icon fix was not enough.)
 - The launcher stays running quietly in the background while a Just3D window is open (it does this only to keep the icon applied) and exits a few seconds after the window closes.
