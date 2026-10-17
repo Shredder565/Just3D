@@ -758,7 +758,7 @@ function sepCut(b){const o=objs[sel];box=null;if(!o){draw();return}
  if(!outP.length){draw();toast('The window covers the whole object, so there is nothing to separate from');return}
  const build=L=>{const map=new Map(),V=[],F=[],C={};L.forEach(q=>{const f=q.f.map(i=>{if(!map.has(i)){map.set(i,V.length);V.push(pool[i].slice())}return map.get(i)});const c=o.fc&&o.fc[q.src];if(c)C[F.length]=c;F.push(f)});return{V,F,C}};
  const A=build(outP),B=build(inP),gA=mk('Mesh'),gB=mk('Mesh');gA.mesh={v:A.V,f:A.F};gB.mesh={v:B.V,f:B.F};gA.dirty=true;gB.dirty=true;
- const part={name:(o.name||'Object')+'_part',pos:o.pos.slice(),rot:o.rot.slice(),sc:sc.slice(),hue:o.hue||0,color:o.color,fc:B.C,nodes:[gB]};if(o.g!==undefined)part.g=o.g;
+ const part={name:(o.name||'Object')+'_part',pos:o.pos.slice(),rot:o.rot.slice(),sc:sc.slice(),hue:o.hue||0,color:o.color,fc:B.C,nodes:[gB],g:0};/* its own free-standing object: not in the original's group, so moving one never moves the other */
  o.nodes=[gA];o.fc=A.C;const at=objs.indexOf(o);objs.splice(at+1,0,part);sel=at+1;osel.clear();selPts.clear();selEdges.clear();ringPrev=null;setTool(null);all();
  toast('Separated '+B.F.length+' faces into "'+part.name+'". It is selected and ready to edit; "'+(o.name||'Object')+'" keeps the rest ('+A.F.length+' faces). Ctrl+Z undoes it.')}
 /* ---- World Draw: draw an outline on a world plane (drag draws a curve, a click adds a corner), right-click or Enter closes it into one flat polygon face ---- */

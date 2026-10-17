@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v131 — Separate and Cut: the new piece is free-standing
+- The piece cut off by **Separate and Cut** is now a completely independent object. Before, it joined the original's group (for example the "Model" group of an imported file), so it was listed under it and moved together with it. Now it is not in any group, so moving, rotating or deleting one never affects the other.
+
 ## v130 — Shelf 5: Experimental and proprietary, Separate and Cut
 - New shelf **5 – Experimental and proprietary**, with a new **Separate and Cut** button.
 - **Separate and Cut:** select an object, press the button and drag a window over the part you want (a foot on an imported human model, say). The object is cut along the four sides of your window and everything inside becomes its own object, selected and ready to edit. The original keeps the rest.
