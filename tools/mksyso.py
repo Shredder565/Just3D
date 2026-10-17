@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Builds launcher/rsrc_windows_amd64.syso (the Windows exe icon) from assets/icon256.png.
-No external tools needed except Pillow:  python3 tools/mksyso.py
+"""Builds the Windows resource object (exe icon, optionally an application manifest) from assets/icon256.png.
+No external tools needed except Pillow:
+  python3 tools/mksyso.py                                   -> launcher/rsrc_windows_amd64.syso (icon only)
+  python3 tools/mksyso.py native/rsrc_windows_amd64.syso assets/native.manifest   (icon + manifest, for the native app)
 Icons <256px are stored as 32-bit BMP (DIB); the 256px icon as PNG (Windows Vista+ convention)."""
-import struct, io, os
+import struct, io, os, sys
 from PIL import Image
 
 root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
@@ -35,6 +37,8 @@ for i, (s, d) in enumerate(images, 1):
 # resource tree layout: root(types) -> per-type dir(ids) -> per-id dir(lang) -> data entry
 LANG = 0x0409
 leaves = [(3, i, d) for i, (s, d) in enumerate(images, 1)] + [(14, 1, grp)]
+if len(sys.argv) > 2:
+    leaves.append((24, 1, open(sys.argv[2], 'rb').read()))   # RT_MANIFEST
 types = {}
 for t, i, d in leaves: types.setdefault(t, []).append((i, d))
 tkeys = sorted(types)
@@ -84,6 +88,6 @@ out += raw
 for r in relocs: out += struct.pack('<IIH', r, 0, 3)   # IMAGE_REL_AMD64_ADDR32NB against symbol 0
 out += struct.pack('<8sIhHBB', b'.rsrc', 0, 1, 0, 3, 0)
 out += struct.pack('<I', 4)
-dest = os.path.join(root, 'launcher', 'rsrc_windows_amd64.syso')
+dest = sys.argv[1] if len(sys.argv) > 1 else os.path.join(root, 'launcher', 'rsrc_windows_amd64.syso')
 open(dest, 'wb').write(out)
 print('wrote', dest, len(out), 'bytes,', len(images), 'icons')

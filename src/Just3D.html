@@ -428,8 +428,50 @@ function gpuPolys(polys,acc){const A=hexRgb(acc).map(v=>v/255);
    if(editMode&&sub==='face'&&p.oi===sel&&selPts.has(p.fi))c=[c[0]*.4+A[0]*.6,c[1]*.4+A[1]*.6,c[2]*.4+A[2]*.6,al];GP.tri(p.pts,p.zs,c,p.tri)}
   else if(editMode&&m===2&&sub==='face'&&p.oi===sel&&selPts.has(p.fi))GP.tri(p.pts,p.zs,[A[0],A[1],A[2],.45*al],p.tri);
   if(wire){const c=isel?[A[0],A[1],A[2],al]:[.63,.67,.72,.55*al],n=p.pts.length;for(let i=0;i<n;i++){const j=(i+1)%n;GP.line(p.pts[i],p.zs[i],p.pts[j],p.zs[j],c)}}}}
+/* ---- big models: a mesh with many faces is kept on the graphics card as ready-made triangles and moved/projected by the card itself, so turning the view stays fast. Used for plain viewing and moving (Object mode, shaded); editing, drawing and cutting tools on it fall back to the normal path. ---- */
+const HEAVY_MIN=60000;
+function heavyProg(gl){if(GL.hprog)return GL.hprog;
+ const sh=(t,src)=>{const o=gl.createShader(t);gl.shaderSource(o,src);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o},pr=gl.createProgram();
+ gl.attachShader(pr,sh(gl.VERTEX_SHADER,'attribute vec3 p;attribute vec3 n;attribute vec4 c;uniform vec2 res;uniform mat3 A;uniform vec3 t;uniform mat3 NM;uniform vec4 cam;uniform float ort;uniform float sel;varying vec4 vc;'+
+  'void main(){vec3 v=A*p+t;float d,z;if(ort>0.5){d=cam.x;z=clamp(v.z/100.0,-0.99,0.99);}else{d=max(0.05,v.z+cam.x);z=max(-0.99,1.0-0.045/d);}'+
+  'float sx=res.x*0.5+cam.z+cam.y*v.x/d;float sy=res.y*0.5+cam.w-cam.y*v.y/d;gl_Position=vec4(sx/res.x*2.0-1.0,1.0-sy/res.y*2.0,z,1.0);'+
+  'vec3 nv=normalize(NM*n);float sh=abs(-0.4*nv.x+0.6*nv.y-0.7*nv.z);vc=vec4(min(vec3(1.0),c.rgb*(0.3+0.7*sh)*sel),1.0);}'));
+ gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,'precision mediump float;varying vec4 vc;void main(){gl_FragColor=vc;}'));
+ gl.bindAttribLocation(pr,0,'p');gl.bindAttribLocation(pr,1,'n');gl.bindAttribLocation(pr,2,'c');gl.linkProgram(pr);if(!gl.getProgramParameter(pr,gl.LINK_STATUS))throw new Error('link');
+ GL.hprog=pr;GL.hu={};['res','A','t','NM','cam','ort','sel'].forEach(k=>GL.hu[k]=gl.getUniformLocation(pr,k));GL.heavy=new WeakMap();return pr}
+/* the triangles of mesh m (object space, flat shaded: per-vertex face normal and face colour); 24 bytes per vertex */
+function heavyBuild(gl,o,m){const F=m.f,V=m.v;let nt=0;for(const f of F)if(f.length>=3)nt+=f.length-2;
+ const buf=new ArrayBuffer(nt*3*24),fl=new Float32Array(buf),i16=new Int16Array(buf),u8=new Uint8Array(buf),col=new Map(),rgb=h=>{let c=col.get(h);if(!c){c=hexRgb(h);col.set(h,c)}return c};let w=0;
+ for(let fi=0;fi<F.length;fi++){const f=F[fi],n=f.length;if(n<3)continue;
+  let nx=0,ny=0,nz=0;for(let k=0;k<n;k++){const u=V[f[k]],q=V[f[(k+1)%n]];nx+=(u[1]-q[1])*(u[2]+q[2]);ny+=(u[2]-q[2])*(u[0]+q[0]);nz+=(u[0]-q[0])*(u[1]+q[1])}
+  const L=Math.hypot(nx,ny,nz)||1,qx=Math.round(nx/L*32767),qy=Math.round(ny/L*32767),qz=Math.round(nz/L*32767),C=rgb((o.fc&&o.fc[fi])||o.color),tris=n===3?null:n===4?null:triFace(f,V);
+  const put=j=>{const a=V[f[j]],b=w*6,q=w*12,r=w*24;fl[b]=a[0];fl[b+1]=a[1];fl[b+2]=a[2];i16[q+6]=qx;i16[q+7]=qy;i16[q+8]=qz;u8[r+20]=C[0];u8[r+21]=C[1];u8[r+22]=C[2];u8[r+23]=255;w++};
+  if(n===3){put(0);put(1);put(2)}else if(n===4){put(0);put(1);put(2);put(0);put(2);put(3)}else for(const t of tris){put(t[0]);put(t[1]);put(t[2])}}
+ const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,new Uint8Array(buf,0,w*24),gl.STATIC_DRAW);gl.bindBuffer(gl.ARRAY_BUFFER,null);return{vbo,count:w}}
+function heavyEntry(o,m,oi,cy,sy,cp,sp){let gl;try{gl=GL.gl;heavyProg(gl)}catch(_){return null}
+ let fs=0,fn=0;for(const k in o.fc){fn++;const v=o.fc[k];fs=(fs*31+(+k)*7+v.charCodeAt(1)*3+v.charCodeAt(3)*5+v.charCodeAt(5))|0}
+ const sig=o.color+'|'+fn+'|'+fs;let e=GL.heavy.get(o);
+ if(!e||e.m!==m||e.sig!==sig){if(e)gl.deleteBuffer(e.vbo);try{const b=heavyBuild(gl,o,m);e={m,sig,vbo:b.vbo,count:b.count}}catch(_){GL.heavy.delete(o);return null}GL.heavy.set(o,e)}
+ const sc=o.sc||[1,1,1],R=rotMat(o.rot),Rv=[[cy,0,sy],[sy*sp,cp,-cy*sp],[-sy*cp,sp,cy*cp]],A=mulM(Rv,mulM(R,diag(sc))),NM=mulM(Rv,mulM(R,diag(sc.map(v=>Math.abs(v)<1e-9?1:1/v)))),
+  t=mulv(Rv,[o.pos[0]-tgt[0],o.pos[1]-tgt[1],o.pos[2]-tgt[2]]),col=M=>new Float32Array([M[0][0],M[1][0],M[2][0],M[0][1],M[1][1],M[2][1],M[0][2],M[1][2],M[2][2]]);
+ return{vbo:e.vbo,count:e.count,A:col(A),NM:col(NM),t:new Float32Array(t),sel:(oi===sel||osel.has(o))?1:.88,ort:ortho?1:0,cam:new Float32Array([dist,draw.F,panX,panY])}}
+function gpuHeavy(gl,W,H){gl.useProgram(GL.hprog);const u=GL.hu;gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.BLEND);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);
+ gl.uniform2f(u.res,W,H);gl.enableVertexAttribArray(0);gl.enableVertexAttribArray(1);gl.enableVertexAttribArray(2);
+ for(const e of GP.H){gl.bindBuffer(gl.ARRAY_BUFFER,e.vbo);gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);gl.vertexAttribPointer(1,3,gl.SHORT,true,24,12);gl.vertexAttribPointer(2,4,gl.UNSIGNED_BYTE,true,24,20);
+  gl.uniformMatrix3fv(u.A,false,e.A);gl.uniformMatrix3fv(u.NM,false,e.NM);gl.uniform3fv(u.t,e.t);gl.uniform4fv(u.cam,e.cam);gl.uniform1f(u.ort,e.ort);gl.uniform1f(u.sel,e.sel);gl.drawArrays(gl.TRIANGLES,0,e.count)}
+ gl.disableVertexAttribArray(2);gl.disable(gl.POLYGON_OFFSET_FILL);gl.bindBuffer(gl.ARRAY_BUFFER,null)}
+/* the nearest big-model surface under a pixel (a ray against the triangles, once per click): {oi, z} or null */
+function heavyHit(x,y){const hv=draw.heavy||[];if(!hv.length)return null;const r=pixRay(x,y),fw=unview(0,0,1);let best=null;
+ for(const oi of hv){const o=objs[oi];if(!o)continue;const m=evaluate(o),V=m.v,ro=odPt(o,r.o),rd=odDir(o,r.d);let bt=Infinity;
+  for(const f of m.f){const n=f.length,a=V[f[0]];for(let k=1;k<n-1;k++){const b=V[f[k]],c=V[f[k+1]];
+   const e1x=b[0]-a[0],e1y=b[1]-a[1],e1z=b[2]-a[2],e2x=c[0]-a[0],e2y=c[1]-a[1],e2z=c[2]-a[2],px=rd[1]*e2z-rd[2]*e2y,py=rd[2]*e2x-rd[0]*e2z,pz=rd[0]*e2y-rd[1]*e2x,det=e1x*px+e1y*py+e1z*pz;if(Math.abs(det)<1e-14)continue;
+   const iv=1/det,sx=ro[0]-a[0],sy=ro[1]-a[1],sz=ro[2]-a[2],u=(sx*px+sy*py+sz*pz)*iv;if(u<-1e-6||u>1+1e-6)continue;
+   const qx=sy*e1z-sz*e1y,qy=sz*e1x-sx*e1z,qz=sx*e1y-sy*e1x,v=(rd[0]*qx+rd[1]*qy+rd[2]*qz)*iv;if(v<-1e-6||u+v>1+1e-6)continue;const t=(e2x*qx+e2y*qy+e2z*qz)*iv;if(t>1e-9&&t<bt)bt=t}}
+  if(bt<Infinity){const P=odW(o,[ro[0]+rd[0]*bt,ro[1]+rd[1]*bt,ro[2]+rd[2]*bt]),d=[P[0]-r.o[0],P[1]-r.o[1],P[2]-r.o[2]],tw=(d[0]*r.d[0]+d[1]*r.d[1]+d[2]*r.d[2])/(r.d[0]*r.d[0]+r.d[1]*r.d[1]+r.d[2]*r.d[2]);
+   if(!best||tw<best.t)best={oi,t:tw,z:(P[0]-tgt[0])*fw[0]+(P[1]-tgt[1])*fw[1]+(P[2]-tgt[2])*fw[2]}}}
+ return best}
 function gpuFlush(W,H,dpr){const gl=GL.gl,vp=hexRgb(getComputedStyle(document.documentElement).getPropertyValue('--vp').trim()||'#000000').map(v=>v/255),w=Math.round(W*dpr),h=Math.round(H*dpr);if(glc.width!==w||glc.height!==h){glc.width=w;glc.height=h}glc.style.width=W+'px';glc.style.height=H+'px';
- gl.viewport(0,0,w,h);gl.clearColor(vp[0],vp[1],vp[2],1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);if(GP.I&&GP.I.length)gpuImgs(gl,W,H);gl.useProgram(GL.prog);gl.uniform2f(GL.uRes,W,H);
+ gl.viewport(0,0,w,h);gl.clearColor(vp[0],vp[1],vp[2],1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);if(GP.I&&GP.I.length)gpuImgs(gl,W,H);if(GP.H&&GP.H.length)gpuHeavy(gl,W,H);gl.useProgram(GL.prog);gl.uniform2f(GL.uRes,W,H);
  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.bindBuffer(gl.ARRAY_BUFFER,GL.vbo);
  gl.enableVertexAttribArray(0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(0,3,gl.FLOAT,false,28,0);gl.vertexAttribPointer(1,4,gl.FLOAT,false,28,12);
  if(GP.T.length){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(GP.T),gl.DYNAMIC_DRAW);gl.drawArrays(gl.TRIANGLES,0,GP.T.length/7);gl.disable(gl.POLYGON_OFFSET_FILL)}
@@ -498,7 +540,7 @@ function draw(){
  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr)}
  const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
  const cs=getComputedStyle(document.documentElement),acc=cs.getPropertyValue('--acc').trim(),gridc=cs.getPropertyValue('--grid').trim();
- const useGPU=gpuOn&&!!GL&&!GL.lost;glc.style.display=useGPU?'block':'none';if(useGPU){GP.T.length=0;GP.L.length=0}
+ const useGPU=gpuOn&&!!GL&&!GL.lost;glc.style.display=useGPU?'block':'none';if(useGPU){GP.T.length=0;GP.L.length=0}GP.H=[];draw.heavy=[];let heavyN=0;const heavyOn=useGPU&&!editMode&&!sculptOn&&!paintOn&&!jointOn&&!drawOn&&!odOn&&!ceOn&&(!knife||scOn);
  const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch),F=camAct>=0&&cams[camAct]?H*cams[camAct].f/24:Math.min(W,H)*1.1;draw.F=F;draw.W=W;draw.H=H;
  const view=(x,y,z)=>{x-=tgt[0];y-=tgt[1];z-=tgt[2];const x1=x*cy+z*sy,z1=-x*sy+z*cy;return[x1,y*cp-z1*sp,y*sp+z1*cp]};
  const scr=v=>{const d=ortho?dist:v[2]+dist;return[W/2+panX+F*v[0]/d,H/2+panY-F*v[1]/d]};
@@ -514,7 +556,9 @@ function draw(){
  const polys=[],centers=[];
  objs.forEach((o,oi)=>{
   if(o.hid){centers.push([-1e9,-1e9]);return}
-  const m=evaluate(o),M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),V=m.v.map(v=>{const q=mulv(M,v);return view(q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2])}),S=V.map(scr);
+  const m=evaluate(o);
+  if(heavyOn&&m.f.length>=HEAVY_MIN&&om(o)===0&&oa(o)>=1){const he=heavyEntry(o,m,oi,cy,sy,cp,sp);if(he){GP.H.push(he);draw.heavy.push(oi);heavyN+=m.f.length;centers.push(scr(view(...o.pos)));return}}
+  const M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),V=m.v.map(v=>{const q=mulv(M,v);return view(q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2])}),S=V.map(scr);
   centers.push(scr(view(...o.pos)));
   m.f.forEach((f,fi)=>{if(!ortho&&f.some(i=>V[i][2]+dist<.05))return;const a=V[f[0]],b=V[f[1]],c=V[f[2]];
    let nx=(b[1]-a[1])*(c[2]-a[2])-(b[2]-a[2])*(c[1]-a[1]),ny=(b[2]-a[2])*(c[0]-a[0])-(b[0]-a[0])*(c[2]-a[2]),nz=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
@@ -541,7 +585,7 @@ function draw(){
   if(sw3&&en3.out){g.save();for(const p of polys){if(p.oi!==sel)continue;const f=en3.out.f[p.fi];if(!f)continue;let t=0;f.forEach(i=>{t+=sw3.get(en3.rep[i])||0});t/=f.length;if(t<.02)continue;
    const cx=p.pts.reduce((a,q)=>a+q[0],0)/p.pts.length,cy=p.pts.reduce((a,q)=>a+q[1],0)/p.pts.length;if(!vis(cx,cy,p.z))continue;
    g.globalAlpha=.55;g.fillStyle=softHeat(t);g.beginPath();p.pts.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath();g.fill()}g.restore()}}
- $('#stat').textContent=`${polys.length} polys · ${useGPU?'GPU':'CPU'} render · graph: ${stats.ran} node(s) evaluated, ${stats.hit} cached`+' · '+XF[xf]+(ortho?' · Orthographic':'')+(drag&&drag.zm?' · Zooming (middle mouse)':'')+(axisK===null?'':' on '+'XYZ'[axisK])+(sculptOn?' · Sculpt ('+sBrush+(sSub?', subtract':'')+(sSym?', X symmetry':'')+'): drag on the surface (Shift smooths, Ctrl reverses, [ ] change the radius, Alt+drag orbits)':jointOn?' · Joint tool: click empty space to add a joint under the selected one, click a joint to select it':paintOn?' · Paint: click or drag over faces (Shift erases, Ctrl+click picks the color)':kaOn&&knife?' · Knife Area: drag a straight line from edge to edge across the surface. Only the faces the line crosses are cut (nothing behind them), starting and stopping where the line does. Shift snaps the angle.':ceOn?' · Add loop edge: click a point, then another point on the same face to cut the face with a new edge between them. Edges keep chaining from the last point you clicked; right-click leaves the tool, Esc cancels the current start point.':odOn?' · '+(odFree?'Free Draw: drag on the object to draw a curve that follows its surface, with points placed exactly where you draw (no snapping)':'Object Draw: drag on the object to draw a curve that follows its surface (it snaps to points and edges)')+', click to add a corner, then right-click (or Enter) to cut it into the mesh. Backspace undoes the last stroke, Esc cancels, Alt+drag orbits':drawOn?' · World Draw on the '+(['YZ','XZ','XY'][dw?dw.k:dwPlane().k])+' plane: drag to draw a curve, click to add a corner, then right-click (or Enter) to close the shape. Backspace undoes the last stroke, Esc cancels, Alt+drag orbits':knife?' · Knife: drag a line across the object (Shift snaps the angle, Alt+drag orbits)':editMode?(sub==='loop'?' · Loop cut: hover an edge to preview the ring, click to insert it (tune cuts and position in the stack)':' · click or box-select '+(sub==='face'?'faces':sub==='edge'?'edges':'points')+' (Shift or Multi adds, Ctrl+A all, Esc clears, X/Y/Z lock an axis)'):'');stats={ran:0,hit:0};
+ $('#stat').textContent=`${polys.length+heavyN} polys · ${useGPU?'GPU':'CPU'} render · graph: ${stats.ran} node(s) evaluated, ${stats.hit} cached`+' · '+XF[xf]+(ortho?' · Orthographic':'')+(drag&&drag.zm?' · Zooming (middle mouse)':'')+(axisK===null?'':' on '+'XYZ'[axisK])+(sculptOn?' · Sculpt ('+sBrush+(sSub?', subtract':'')+(sSym?', X symmetry':'')+'): drag on the surface (Shift smooths, Ctrl reverses, [ ] change the radius, Alt+drag orbits)':jointOn?' · Joint tool: click empty space to add a joint under the selected one, click a joint to select it':paintOn?' · Paint: click or drag over faces (Shift erases, Ctrl+click picks the color)':kaOn&&knife?' · Knife Area: drag a straight line from edge to edge across the surface. Only the faces the line crosses are cut (nothing behind them), starting and stopping where the line does. Shift snaps the angle.':ceOn?' · Add loop edge: click a point, then another point on the same face to cut the face with a new edge between them. Edges keep chaining from the last point you clicked; right-click leaves the tool, Esc cancels the current start point.':odOn?' · '+(odFree?'Free Draw: drag on the object to draw a curve that follows its surface, with points placed exactly where you draw (no snapping)':'Object Draw: drag on the object to draw a curve that follows its surface (it snaps to points and edges)')+', click to add a corner, then right-click (or Enter) to cut it into the mesh. Backspace undoes the last stroke, Esc cancels, Alt+drag orbits':drawOn?' · World Draw on the '+(['YZ','XZ','XY'][dw?dw.k:dwPlane().k])+' plane: drag to draw a curve, click to add a corner, then right-click (or Enter) to close the shape. Backspace undoes the last stroke, Esc cancels, Alt+drag orbits':knife?' · Knife: drag a line across the object (Shift snaps the angle, Alt+drag orbits)':editMode?(sub==='loop'?' · Loop cut: hover an edge to preview the ring, click to insert it (tune cuts and position in the stack)':' · click or box-select '+(sub==='face'?'faces':sub==='edge'?'edges':'points')+' (Shift or Multi adds, Ctrl+A all, Esc clears, X/Y/Z lock an axis)'):'');stats={ran:0,hit:0};
  if(rotoEdit&&ortho&&draw.roto)$('#stat').textContent+=' · Rotoscope: drag the image to move it, drag a yellow corner to scale it';
  if(kn){g.setLineDash([6,4]);g.strokeStyle=acc;g.lineWidth=2;g.beginPath();g.moveTo(kn.x0,kn.y0);g.lineTo(kn.x1,kn.y1);g.stroke();g.setLineDash([]);for(const [x,y] of [[kn.x0,kn.y0],[kn.x1,kn.y1]]){g.beginPath();g.arc(x,y,4,0,TAU);g.fillStyle=acc;g.fill()}}
  if(drawOn)dwOverlay(g,acc,view,scr);
@@ -1442,7 +1486,7 @@ function restore(s){const sc=JSON.parse(s);if(!sc||!Array.isArray(sc.objs))throw
   nodes:(o.nodes||[]).filter(n=>TY[n.type]).map(n=>{const k=mk(n.type);Object.assign(k.p,n.p||{});k.on=n.on!==false;if(n.off)k.off=n.off;k.fl=n.fl||null;if(n.edge)k.edge=n.edge;if(n.mesh)k.mesh=n.mesh;if(n.path)k.path=n.path;if(n.pairs)k.pairs=n.pairs;return k})}));
  if(!next.every(o=>o.nodes.length&&GEN[o.nodes[0].type]))throw new Error('bad scene');
  objs.length=0;next.forEach(o=>objs.push(o));rig.joints=(sc.rig||[]).map(j=>({name:j.name,p:j.p,parent:j.parent,rot:j.rot||[0,0,0]}));groups=(sc.groups||[]).map(g=>({id:g.id,name:g.name,open:g.open!==false}));gid2=groups.reduce((m,g)=>Math.max(m,g.id),0);cams=(sc.cams||[]).map(c=>({name:c.name||'camera',tgt:c.tgt||[0,0,0],yaw:c.yaw||0,pitch:c.pitch||0,dist:c.dist||9,pan:c.pan||[0,0],f:c.f||35}));if(camSel>=cams.length)camSel=-1;if(camAct>=cams.length){camAct=-1;tgt=[0,0,0]}osel.clear();rigSel=-1;sel=Math.min(sel,Math.max(0,objs.length-1));selPts.clear();selEdges.clear();ringPrev=null;all()}
-function commit(){softCache=null;const s=snap();if(s!==lastSnap){undoSt.push(lastSnap);undoSel.push(preSel||selState());if(undoSt.length>100){undoSt.shift();undoSel.shift()}redoSt.length=0;redoSel.length=0;lastSnap=s}updateFname()}
+function commit(){softCache=null;const s=snap();if(s!==lastSnap){undoSt.push(lastSnap);undoSel.push(preSel||selState());if(undoSt.length>100){undoSt.shift();undoSel.shift()}while(undoSt.length>1&&undoSt.reduce((a,x)=>a+x.length,0)+lastSnap.length>6e8){undoSt.shift();undoSel.shift()}redoSt.length=0;redoSel.length=0;lastSnap=s}updateFname()}
 function updateFname(){const e=document.getElementById('fname'),n=curFile.name||'Untitled',dirty=!!curFile.name&&lastSnap!==curFile.saved;
  if(e){e.textContent=n;e.classList.toggle('dirty',dirty);e.title=(curFile.name?'This project is saved as '+curFile.name:'Not saved yet. Use Save As to name the file.')+(dirty?' (changes since the last save)':'')}
  document.title=n+(dirty?' *':'')+' - Just3D'}
@@ -1486,17 +1530,17 @@ async function saveFile(){if(!objs.length){toast('Nothing to save');return}if(!c
  anchorSave(curFile.name,text);markSaved();toast('Saved '+curFile.name+' (downloaded again; your browser may add a number to the name)')}
 /* opening a file: the Open button, a file dropped on the window, or a file dropped on the program icon all end up here */
 const OPEN_EXT=/\.(obj|json|txt)$/i;
-function openText(name,text,handle){if(loadScene(text)){setFile(name,handle||null);return true}return false}
+function openText(name,text,handle){if(/\.obj$/i.test(name||'')&&text.slice(0,4096).indexOf('#PROTOXSI ')<0)return importObjFile(name,new TextEncoder().encode(text),handle);if(loadScene(text)){setFile(name,handle||null);return true}return false}
 async function openDropped(f,hp){if(!f)return false;if(!OPEN_EXT.test(f.name||'')){toast('Drop an .obj or .json file ('+(f.name||'that file')+' is not one)');return false}
- try{const t=await f.text();let h=null;try{h=hp?await hp:null;if(h&&h.kind!=='file')h=null}catch(_){h=null}return openText(f.name,t,h)}catch(_){toast('Could not read that file');return false}}
+ try{let h=null;try{h=hp?await hp:null;if(h&&h.kind!=='file')h=null}catch(_){h=null}return await openFileObj(f,h)}catch(_){toast('Could not read that file');return false}}
 (function(){let depth=0;const hint=()=>{let d=document.getElementById('dropHint');if(!d){d=document.createElement('div');d.id='dropHint';d.textContent='Drop to open';d.style.cssText='position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;font:600 22px system-ui,sans-serif;color:#fff;background:rgba(40,110,220,.35);border:3px dashed #8bb8ff;pointer-events:none';document.body.appendChild(d)}return d};
  const hasFiles=e=>e.dataTransfer&&[...(e.dataTransfer.types||[])].includes('Files');
  window.addEventListener('dragenter',e=>{if(!hasFiles(e))return;e.preventDefault();depth++;hint().style.display='flex'});
  window.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();e.dataTransfer.dropEffect='copy'});
  window.addEventListener('dragleave',e=>{if(!hasFiles(e))return;depth=Math.max(0,depth-1);if(!depth)hint().style.display='none'});
  window.addEventListener('drop',e=>{if(!hasFiles(e))return;e.preventDefault();depth=0;hint().style.display='none';const f=e.dataTransfer.files[0],it=e.dataTransfer.items&&e.dataTransfer.items[0];let hp=null;try{hp=it&&it.getAsFileSystemHandle?it.getAsFileSystemHandle():null}catch(_){}openDropped(f,hp)})})();
-async function openFile(){if(window.showOpenFilePicker){try{const[h]=await showOpenFilePicker({types:[{description:'Just3D project or OBJ',accept:{'text/plain':['.obj','.json']}}]});const t=await(await h.getFile()).text();openText(h.name,t,h);return}catch(e){if(e&&e.name==='AbortError')return}}
- let i=document.getElementById('openIn');if(!i){i=document.createElement('input');i.type='file';i.id='openIn';i.accept='.obj,.json';i.hidden=true;document.body.appendChild(i);i.onchange=async()=>{const f=i.files[0];i.value='';if(!f)return;try{openText(f.name,await f.text(),null)}catch(_){toast('Could not read that file')}}}i.click()}
+async function openFile(){if(window.showOpenFilePicker){try{const[h]=await showOpenFilePicker({types:[{description:'Just3D project or OBJ',accept:{'text/plain':['.obj','.json']}}]});await openFileObj(await h.getFile(),h);return}catch(e){if(e&&e.name==='AbortError')return}}
+ let i=document.getElementById('openIn');if(!i){i=document.createElement('input');i.type='file';i.id='openIn';i.accept='.obj,.json';i.hidden=true;document.body.appendChild(i);i.onchange=async()=>{const f=i.files[0];i.value='';if(!f)return;try{await openFileObj(f,null)}catch(_){toast('Could not read that file')}}}i.click()}
 function worldMeshes(){return objs.filter(o=>!o.hid).map(o=>{const m=evaluate(o),M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),used=[...new Set(m.f.flat())].sort((a,b)=>a-b),map=new Map(),V=[];
   used.forEach(i=>{const q=mulv(M,m.v[i]);map.set(i,V.length);V.push([q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2]])});
   return{name:(o.name||'Object').replace(/\s+/g,'_'),V,F:m.f.map(f=>f.map(i=>map.get(i))),C:m.f.map((f,fi)=>(o.fc&&o.fc[fi])||o.color||'#888888')}}).filter(m=>m.F.length)}
@@ -1513,12 +1557,47 @@ function exportFile(local){const send=local===true?(n,t)=>new Promise(res=>{loca
   ms.forEach(m=>m.F.forEach((f,fi)=>{const c=hexRgb(m.C[fi]);f.forEach(i=>{out+=m.V[i].map(r).join(' ')+' '+c[0]+' '+c[1]+' '+c[2]+'\n'})}));let base=0;ms.forEach(m=>m.F.forEach(f=>{out+=f.length+' '+f.map((_,k)=>base+k).join(' ')+'\n';base+=f.length}))}
  else{const[ob,mt]=buildObj(ms,false);send('scene.obj',ob).then(()=>send('scene.mtl',mt));return}
  send('scene.'+ext,out)}
-function importObj(t){const V=[],objsF=[];let cur=null;
- t.split(/\r?\n/).forEach(l=>{const w=l.trim().split(/\s+/);if(w[0]==='v')V.push(w.slice(1,4).map(Number));else if(w[0]==='o'||w[0]==='g'){cur={name:w.slice(1).join('_')||'Imported',F:[]};objsF.push(cur)}
-  else if(w[0]==='f'){if(!cur){cur={name:'Imported',F:[]};objsF.push(cur)}const f=w.slice(1).map(x=>{let i=parseInt(x);return i<0?V.length+i:i-1});if(f.length>=3&&f.every(i=>i>=0&&i<V.length))cur.F.push(f)}});
- const list=objsF.filter(o=>o.F.length);if(!list.length)throw new Error('no faces');
- list.forEach(o=>{const used=[...new Set(o.F.flat())],map=new Map();used.forEach((i,k)=>map.set(i,k));const ob=addObj('Mesh',0);ob.name=o.name;ob.nodes[0].mesh={v:used.map(i=>V[i]),f:o.F.map(f=>f.map(i=>map.get(i)))};ob.nodes[0].dirty=true;ob.color=ob.color});
- all()}
+/* OBJ reader: works straight on the file's bytes (no giant string, no line splitting), so very large files load fast and in little memory; it can run in slices so the window stays alive and shows progress */
+function ObjParser(u8){const n=u8.length,P10=[1,1e1,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9,1e10,1e11,1e12,1e13,1e14,1e15,1e16,1e17,1e18,1e19,1e20,1e21,1e22];
+ let pos=0,nv=0,V=new Float64Array(3*4096),objsF=[],cur=null;const tmp=[];
+ const num=()=>{while(pos<n&&(u8[pos]===32||u8[pos]===9))pos++;let neg=false,c=u8[pos];if(c===45){neg=true;pos++}else if(c===43)pos++;
+  let m=0,fr=0,dig=0;while(pos<n&&(c=u8[pos])>=48&&c<=57){if(dig<17){m=m*10+(c-48);dig++}else fr--;pos++}
+  if(u8[pos]===46){pos++;while(pos<n&&(c=u8[pos])>=48&&c<=57){if(dig<17){m=m*10+(c-48);dig++;fr++}pos++}}
+  let e=0;if(u8[pos]===101||u8[pos]===69){pos++;let en=false;if(u8[pos]===45){en=true;pos++}else if(u8[pos]===43)pos++;while(pos<n&&(c=u8[pos])>=48&&c<=57){e=e*10+(c-48);pos++}if(en)e=-e}
+  let ex=e-fr,v=m;if(ex<0){v=ex>=-22?m/P10[-ex]:m*Math.pow(10,ex)}else if(ex>0){v=ex<=22?m*P10[ex]:m*Math.pow(10,ex)}
+  while(pos<n&&u8[pos]!==32&&u8[pos]!==9&&u8[pos]!==10&&u8[pos]!==13)pos++;return neg?-v:v};
+ const eol=()=>{while(pos<n&&u8[pos]!==10)pos++;pos++};
+ const step=lim=>{const end=Math.min(n,pos+lim);
+  while(pos<end){let c=u8[pos];while((c===32||c===9||c===13)&&pos<n)c=u8[++pos];if(pos>=n)break;const c2=u8[pos+1],sp=c2===32||c2===9;
+   if(c===118&&sp){pos++;const x=num(),y=num(),z=num();if(nv*3+3>V.length){const W=new Float64Array(V.length*2);W.set(V);V=W}V[nv*3]=x||0;V[nv*3+1]=y||0;V[nv*3+2]=z||0;nv++;eol()}
+   else if(c===102&&sp){pos++;tmp.length=0;let ok=true;
+    for(;;){while(pos<n&&(u8[pos]===32||u8[pos]===9))pos++;const ch=u8[pos];if(pos>=n||ch===10||ch===13)break;
+     let neg=false,q=ch;if(q===45){neg=true;pos++}let v=0,dg=0;while(pos<n&&(q=u8[pos])>=48&&q<=57){v=v*10+(q-48);pos++;dg++}
+     while(pos<n&&u8[pos]!==32&&u8[pos]!==9&&u8[pos]!==10&&u8[pos]!==13)pos++;
+     if(!dg){ok=false;continue}const idx=neg?nv-v:v-1;if(idx<0||idx>=nv)ok=false;tmp.push(idx)}
+    if(ok&&tmp.length>=3){if(!cur){cur={name:'Imported',F:[]};objsF.push(cur)}cur.F.push(tmp.slice())}eol()}
+   else if((c===111||c===103)&&sp){pos++;let a=pos;while(pos<n&&u8[pos]!==10&&u8[pos]!==13)pos++;const nm=new TextDecoder().decode(u8.subarray(a,pos)).trim().split(/\s+/).join('_');cur={name:nm||'Imported',F:[]};objsF.push(cur);eol()}
+   else eol()}
+  return pos>=n};
+ const finish=()=>{const list=objsF.filter(o=>o.F.length);if(!list.length)throw new Error('no faces');
+  const stamp=new Int32Array(nv).fill(-1),lmap=new Int32Array(nv);
+  list.forEach((o,oi)=>{const vs=[],F=o.F;for(let a=0;a<F.length;a++){const f=F[a];for(let k=0;k<f.length;k++){const i=f[k];if(stamp[i]!==oi){stamp[i]=oi;lmap[i]=vs.length;vs.push([V[3*i],V[3*i+1],V[3*i+2]])}f[k]=lmap[i]}}
+   const ob=addObj('Mesh',0);ob.name=o.name;ob.nodes[0].mesh={v:vs,f:F};ob.nodes[0].dirty=true;ob.color=ob.color});
+  return list.length};
+ return{step,finish,total:n,at:()=>pos}}
+function importObj(t){const P=ObjParser(new TextEncoder().encode(t));while(!P.step(1e12));P.finish();all()}
+/* opening an OBJ file: read in slices with a progress message, so a very large model does not freeze the window */
+async function importObjFile(name,u8,handle){const P=ObjParser(u8);let last=0;
+ try{toast('Reading '+name+' ...');while(!P.step(3e6)){const t=performance.now();if(t-last>200){last=t;toast('Reading '+name+' ... '+Math.round(P.at()/P.total*100)+'%')}await new Promise(r=>setTimeout(r))}
+  toast('Building the model ...');await new Promise(r=>setTimeout(r));const k=P.finish();commit();$('#dlg').hidden=true;setFile(name,handle||null);all();
+  const fc=objs.slice(-k).reduce((a,o)=>a+evaluate(o).f.length,0);toast('Opened '+name+' ('+fc.toLocaleString()+' faces'+(k>1?', '+k+' objects':'')+')');return true}
+ catch(err){toast(err&&err.message==='no faces'?'That OBJ file has no faces':'Could not read that file');return false}}
+async function openFileObj(f,handle){if(!f)return false;
+ try{if(/\.obj$/i.test(f.name||'')){const u8=new Uint8Array(await f.arrayBuffer());let head='';const hl=Math.min(u8.length,4096);for(let i=0;i<hl;i++)head+=String.fromCharCode(u8[i]);
+   if(head.indexOf('#PROTOXSI ')<0)return await importObjFile(f.name,u8,handle);
+   const t=new TextDecoder().decode(u8);if(loadScene(t)){setFile(f.name,handle||null);return true}return false}
+  const t=await f.text();if(loadScene(t)){setFile(f.name,handle||null);return true}return false}
+ catch(_){toast('Could not read that file (it may be too large for this browser)');return false}}
 function loadScene(s){try{const mk0=s.indexOf('#PROTOXSI '),full=s;if(mk0>=0)s=s.slice(mk0+10,s.indexOf('\n',mk0)<0?undefined:s.indexOf('\n',mk0));else if(/^\s*(v|f|o)\s/m.test(s)&&!/^\s*\{/.test(s)){importObj(s);commit();$('#dlg').hidden=true;toast('OBJ imported');return true}restore(s);rotoUnpack(full);commit();$('#dlg').hidden=true;toast('Scene loaded');return true}catch(_){toast('That text is not a valid scene');return false}}
 /* ---- projection toggle and view cube ---- */
 const VC=[{n:'Front',c:[0,0,-1],u:[1,0,0],v:[0,1,0],y:0,p:0},{n:'Back',c:[0,0,1],u:[-1,0,0],v:[0,1,0],y:Math.PI,p:0},
@@ -2202,7 +2281,7 @@ if(e.button===2){drag.rc=true;return}
   if(h&&tw){drag.tw=h;if(twSrc==null){twSrc=h.i;selPts.clear();selPts.add(h.i);draw()}else if(h.i!==twSrc){twDo(twSrc,h.i);drag.tw=null;drag.moved=99}}
   else if(h){if(e.ctrlKey||e.metaKey){selPts.delete(h.i)}else if(e.shiftKey){selPts.add(h.i)}else if(add(e)){selPts.has(h.i)?selPts.delete(h.i):selPts.add(h.i)}else if(!selPts.has(h.i)){selPts.clear();selPts.add(h.i)}drag.pt=h;draw()}
   else startBox(e,x,y)}
- else if(!editMode&&draw.polys&&objs[sel]){const x=e.clientX-r0.left,y=e.clientY-r0.top;for(let k=draw.polys.length-1;k>=0;k--){const p=draw.polys[k];if(p.oi===sel&&inPoly(x,y,p.pts)){drag.ot={z:p.z};break}}}});
+ else if(!editMode&&draw.polys&&objs[sel]){const x=e.clientX-r0.left,y=e.clientY-r0.top;for(let k=draw.polys.length-1;k>=0;k--){const p=draw.polys[k];if(p.oi===sel&&inPoly(x,y,p.pts)){drag.ot={z:p.z};break}}if(!drag.ot&&draw.heavy&&draw.heavy.includes(sel)){const hh=heavyHit(x,y);if(hh&&hh.oi===sel)drag.ot={z:hh.z}}}});
 cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.abs(dx)+Math.abs(dy);
  if(drag.hl||drag.sbx){const r=cv.getBoundingClientRect();box.x1=e.clientX-r.left;box.y1=e.clientY-r.top;draw();return}
  if(drag.dw){dwMove(e);return}
@@ -2250,6 +2329,7 @@ cv.addEventListener('pointerup',e=>{if(drag&&drag.sbx){const b=box;box=null;drag
  if(drag&&drag.clr){if(drag.moved<5&&!e.shiftKey){selPts.clear();selEdges.clear();all()}}else if(drag&&!editMode&&drag.moved<5&&draw.centers){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
   const ch=(draw.camPts||[]).find(c=>Math.hypot(c.x-x,c.y-y)<14);if(ch){camSel=ch.i;panels();draw();drag=null;return}
   let best=-1,bd=0;if(draw.polys)for(let k=draw.polys.length-1;k>=0;k--){const pp=draw.polys[k];if(inPoly(x,y,pp.pts)){best=pp.oi;break}}
+  if(best<0&&draw.heavy&&draw.heavy.length){const hh=heavyHit(x,y);if(hh)best=hh.oi}
   if(best<0){bd=1e9;draw.centers.forEach((c,i)=>{const d=Math.hypot(c[0]-x,c[1]-y);if(d<bd){bd=d;best=i}});if(bd>=40)best=-1}
   if(best<0&&!add(e)&&!e.ctrlKey&&!e.metaKey&&(sel>=0||osel.size||camSel>=0)){sel=-1;camSel=-1;osel.clear();selPts.clear();all()}
   if(best>=0){camSel=-1;if(add(e)||e.ctrlKey||e.metaKey){const oo=objs[best];if(best===sel){if(osel.size){const nx=[...osel][0],ix=objs.indexOf(nx);osel.delete(nx);if(ix>=0)sel=ix}}else if(osel.has(oo))osel.delete(oo);else osel.add(oo)}else{sel=best;osel.clear()}selPts.clear();all()}}drag=null});
@@ -2315,6 +2395,8 @@ setSolo(1);$('#toast').hidden=true;
 let launchOpen=null;try{const m=/[#&]open=([\w.\-]+\.js)$/.exec(location.hash);if(m)launchOpen=m[1]}catch(_){}
 if(launchOpen){const sc=document.createElement('script');sc.src=launchOpen;sc.onload=()=>{try{const o=window.__J3D_OPEN;if(o&&typeof o.text==='string'){if(!OPEN_EXT.test(o.name||''))toast('Drop an .obj or .json file');else openText(o.name,o.text,null)}}catch(_){toast('Could not open that file')}try{history.replaceState(null,'',location.pathname+location.search)}catch(_){}};sc.onerror=()=>toast('Could not open that file');document.head.appendChild(sc)}
 else (function(){let no=false;try{no=localStorage.getItem('simply3d.noTip')==='1'}catch(_){}if(!no)showTip()})();
+/* the native Windows app shows this page in its own window and exposes j3dTitle so the window title follows the page title */
+try{const tt=document.querySelector('title');if(tt)new MutationObserver(()=>{try{window.j3dTitle&&window.j3dTitle(document.title)}catch(_){}}).observe(tt,{childList:true,characterData:true,subtree:true})}catch(_){}
 </script></body></html>
 
 </body></html>

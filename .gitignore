@@ -2,3 +2,4 @@ launcher/app.html
 dist/
 *.exe
 *.zip
+native/app.html
