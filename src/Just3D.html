@@ -580,7 +580,8 @@ function setGpu(on){if(!on&&GL&&!GL.lost){let big=0;try{objs.forEach(o=>{big=Mat
 const ROTO={front:null,side:null,top:null},RAX={front:{u:[1,0,0],v:[0,1,0],n:'Front / Back'},side:{u:[0,0,1],v:[0,1,0],n:'Right / Left'},top:{u:[1,0,0],v:[0,0,1],n:'Top / Bottom'}};
 let rotoEdit=false,rotoLast='';
 /* the plane the orthographic view is looking at */
-function rotoPlane(){const c=curV===1?{yaw,pitch}:VW[1].cam,q=Math.PI/2;if(Math.abs(c.pitch)>Math.PI/4)return'top';return Math.abs(Math.round(c.yaw/q))%2===0?'front':'side'}
+function rotoPlaneOf(c){const q=Math.PI/2;if(Math.abs(c.pitch)>Math.PI/4)return'top';return Math.abs(Math.round(c.yaw/q))%2===0?'front':'side'}
+function rotoPlane(){return rotoPlaneOf(curV===1?{yaw,pitch}:VW[1].cam)}
 function rotoQuad(s,pl){const A=RAX[pl],hw=s.w/2,hh=s.w*s.ih/s.iw/2,P=(a,b)=>{const x=s.ox+a*hw,y=s.oy+b*hh;return[A.u[0]*x+A.v[0]*y,A.u[1]*x+A.v[1]*y,A.u[2]*x+A.v[2]*y]};return[P(-1,1),P(1,1),P(1,-1),P(-1,-1)]}
 function rotoVal(k){const s=ROTO[rotoPlane()];return k==='op'?(s?Math.round(s.op*100):60):k==='size'?(s?s.w:6):k==='x'?(s?s.ox:0):(s?s.oy:0)}
 function rotoLabel(){const pl=rotoPlane(),s=ROTO[pl];return RAX[pl].n+': '+(s?s.name+(s.vis?'':' (hidden)'):'no image')}
@@ -593,11 +594,11 @@ async function rotoOpen(){
  try{if(window.showOpenFilePicker){const[h]=await showOpenFilePicker({id:'just3d-rotoscope',multiple:false,types:[{description:'Images',accept:{'image/*':['.png','.jpg','.jpeg','.gif','.webp','.bmp']}}]});rotoLoad(await h.getFile());return}}
  catch(err){if(err&&err.name==='AbortError')return}
  rotoFile.click()}
-function rotoLoad(file){const url=URL.createObjectURL(file),im=new Image();
+function rotoLoad(file,plane){const url=URL.createObjectURL(file),im=new Image();
  im.onload=()=>{URL.revokeObjectURL(url);const k=Math.min(1,2048/Math.max(im.naturalWidth,im.naturalHeight)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.naturalWidth*k));c.height=Math.max(1,Math.round(im.naturalHeight*k));c.getContext('2d').drawImage(im,0,0,c.width,c.height);
-  const pl=rotoPlane(),old=ROTO[pl],asp=c.height/c.width;
+  const pl=plane||rotoPlane(),old=ROTO[pl],asp=c.height/c.width;
   ROTO[pl]={img:c,iw:c.width,ih:c.height,name:file.name,w:old?old.w:+(asp>1?6/asp:6).toFixed(2),ox:old?old.ox:0,oy:old?old.oy:0,op:old?old.op:.6,vis:true};
-  rotoSync();draw();toast('Rotoscope image set for the '+RAX[pl].n+' view. Use Move / Scale to place it.')};
+  rotoSync();draw();toast('Rotoscope image set for the '+RAX[pl].n+' view (it always sits behind the model). Use Move / Scale to place it.')};
  im.onerror=()=>{URL.revokeObjectURL(url);toast('That file could not be read as an image.')};im.src=url}
 function rotoToggleEdit(){const s=ROTO[rotoPlane()];if(!s){toast('Load a rotoscope image first.');return}if(!rotoEdit&&!s.vis)s.vis=true;rotoEdit=!rotoEdit;rotoSync();draw();if(rotoEdit)toast('Drag the image to move it, drag a yellow corner to scale it. Zooming and rotating the scene never move it.')}
 function rotoVis(){const s=ROTO[rotoPlane()];if(!s)return;s.vis=!s.vis;if(!s.vis)rotoEdit=false;rotoSync();draw()}
@@ -622,13 +623,13 @@ function gpuImgs(gl,W,H){try{
   GL.ip={pr,uRes:gl.getUniformLocation(pr,'res'),uTx:gl.getUniformLocation(pr,'tx'),uAl:gl.getUniformLocation(pr,'al'),buf:gl.createBuffer(),tex:new Map()}}
  const I=GL.ip;gl.useProgram(I.pr);gl.uniform2f(I.uRes,W,H);gl.uniform1i(I.uTx,0);gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
  gl.bindBuffer(gl.ARRAY_BUFFER,I.buf);gl.enableVertexAttribArray(0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(0,2,gl.FLOAT,false,16,0);gl.vertexAttribPointer(1,2,gl.FLOAT,false,16,8);
- for(const{s,Q}of GP.I){let t=I.tex.get(s.img);
+ for(const{s,Q,G,n}of GP.I){let t=I.tex.get(s.img);
   if(!t){t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,s.img);
    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
    if(typeof WebGL2RenderingContext!=='undefined'&&gl instanceof WebGL2RenderingContext){gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR)}else gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
    I.tex.set(s.img,t)}
   gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,t);gl.uniform1f(I.uAl,s.op);
-  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([Q[0][0],Q[0][1],0,0,Q[1][0],Q[1][1],1,0,Q[2][0],Q[2][1],1,1,Q[0][0],Q[0][1],0,0,Q[2][0],Q[2][1],1,1,Q[3][0],Q[3][1],0,1]),gl.DYNAMIC_DRAW);gl.drawArrays(gl.TRIANGLES,0,6)}
+  if(G){gl.bufferData(gl.ARRAY_BUFFER,G,gl.DYNAMIC_DRAW);gl.drawArrays(gl.TRIANGLES,0,n)}else{gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([Q[0][0],Q[0][1],0,0,Q[1][0],Q[1][1],1,0,Q[2][0],Q[2][1],1,1,Q[0][0],Q[0][1],0,0,Q[2][0],Q[2][1],1,1,Q[3][0],Q[3][1],0,1]),gl.DYNAMIC_DRAW);gl.drawArrays(gl.TRIANGLES,0,6)}}
  }catch(err){GP.I.length=0}}
 /* every point of a mesh to the screen in one pass, into flat number arrays (screen x, screen y, depth); uses the current view */
 function projMesh(o,m,W,H,F){const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch),V=m.v,n=V.length,PX=new Float32Array(n),PY=new Float32Array(n),PZ=new Float32Array(n),Rv=[[cy,0,sy],[sy*sp,cp,-cy*sp],[-sy*cp,sp,cy*cp]],A=mulM(Rv,mulM(rotMat(o.rot),diag(o.sc||[1,1,1]))),T=mulv(Rv,[o.pos[0]-tgt[0],o.pos[1]-tgt[1],o.pos[2]-tgt[2]]),
@@ -667,7 +668,18 @@ function draw(){
  /* big models: every point of a mesh to the screen in one pass, into flat number arrays (screen x, screen y, depth) */
  const projAll=(o,m)=>projMesh(o,m,W,H,F);
  /* rotoscope image: a plane fixed in world space, so it follows every zoom and pan with the model; drawn first, behind everything */
- GP.I=[];if(ortho){draw.roto=null;const pl=rotoPlane();if(pl!==rotoLast){rotoLast=pl;rotoSync()}const rs=ROTO[pl];
+ GP.I=[];if(!ortho){draw.roto=null;
+  /* the perspective view shows every rotoscope plane too, drawn first and without depth, so the model is always in front of them */
+  for(const pl of ['front','side','top']){const rs=ROTO[pl];if(!rs||!rs.vis)continue;const C=rotoQuad(rs,pl),N=12,pt=[];let ok=true;
+   for(let j=0;j<=N&&ok;j++)for(let i=0;i<=N;i++){const a=i/N,b=j/N,w=[0,1,2].map(k=>(C[0][k]*(1-a)+C[1][k]*a)*(1-b)+(C[3][k]*(1-a)+C[2][k]*a)*b),v=view(w[0],w[1],w[2]);if(v[2]+dist<.05){ok=false;break}pt.push(scr(v))}
+   if(!ok)continue;const tri=[];
+   for(let j=0;j<N;j++)for(let i=0;i<N;i++){const k=j*(N+1)+i,A=pt[k],B=pt[k+1],C2=pt[k+N+2],D=pt[k+N+1],u0=i/N,u1=(i+1)/N,v0=j/N,v1=(j+1)/N;
+    tri.push([A,B,C2,u0,v0,u1,v0,u1,v1],[A,C2,D,u0,v0,u1,v1,u0,v1])}
+   if(useGPU){const G=new Float32Array(tri.length*12);tri.forEach((t,n)=>{for(let q=0;q<3;q++){const o=n*12+q*4;G[o]=t[q][0];G[o+1]=t[q][1];G[o+2]=t[3+q*2];G[o+3]=t[4+q*2]}});GP.I.push({s:rs,G,n:tri.length*3})}
+   else{g.save();g.globalAlpha=rs.op;for(const t of tri){const[P0,P1,P2]=t,[u0,v0,u1,v1,u2,v2]=t.slice(3).map((x,q)=>q%2?x*rs.ih:x*rs.iw),det=(u1-u0)*(v2-v0)-(u2-u0)*(v1-v0);if(!det)continue;
+     const a=((P1[0]-P0[0])*(v2-v0)-(P2[0]-P0[0])*(v1-v0))/det,c=((P2[0]-P0[0])*(u1-u0)-(P1[0]-P0[0])*(u2-u0))/det,b=((P1[1]-P0[1])*(v2-v0)-(P2[1]-P0[1])*(v1-v0))/det,d=((P2[1]-P0[1])*(u1-u0)-(P1[1]-P0[1])*(u2-u0))/det;
+     g.save();g.beginPath();g.moveTo(P0[0],P0[1]);g.lineTo(P1[0],P1[1]);g.lineTo(P2[0],P2[1]);g.closePath();g.clip();g.transform(a,b,c,d,P0[0]-a*u0-c*v0,P0[1]-b*u0-d*v0);g.drawImage(rs.img,0,0,rs.iw,rs.ih);g.restore()}g.restore()}}}
+ if(ortho){draw.roto=null;const pl=rotoPlane();if(pl!==rotoLast){rotoLast=pl;rotoSync()}const rs=ROTO[pl];
   if(rs){const Q=rotoQuad(rs,pl).map(w=>scr(view(w[0],w[1],w[2])));draw.roto={pl,Q,s:rs};
    if(rs.vis&&Math.abs((Q[1][0]-Q[0][0])*(Q[3][1]-Q[0][1])-(Q[1][1]-Q[0][1])*(Q[3][0]-Q[0][0]))>1){
     if(useGPU)GP.I.push({s:rs,Q});else{g.save();g.globalAlpha=rs.op;g.transform((Q[1][0]-Q[0][0])/rs.iw,(Q[1][1]-Q[0][1])/rs.iw,(Q[3][0]-Q[0][0])/rs.ih,(Q[3][1]-Q[0][1])/rs.ih,Q[0][0],Q[0][1]);g.drawImage(rs.img,0,0,rs.iw,rs.ih);g.restore()}}}}
@@ -1738,10 +1750,13 @@ async function openDropped(f,hp){if(!f)return false;if(!OPEN_EXT.test(f.name||''
  try{let h=null;try{h=hp?await hp:null;if(h&&h.kind!=='file')h=null}catch(_){h=null}return await openFileObj(f,h)}catch(_){toast('Could not read that file');return false}}
 (function(){let depth=0;const hint=()=>{let d=document.getElementById('dropHint');if(!d){d=document.createElement('div');d.id='dropHint';d.textContent='Drop to open';d.style.cssText='position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;font:600 22px system-ui,sans-serif;color:#fff;background:rgba(40,110,220,.35);border:3px dashed #8bb8ff;pointer-events:none';document.body.appendChild(d)}return d};
  const hasFiles=e=>e.dataTransfer&&[...(e.dataTransfer.types||[])].includes('Files');
+ const isImg=f=>!!f&&(/^image\//.test(f.type||'')||/\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name||''));
+ /* an image dropped on a viewport becomes the rotoscope for the side that viewport is looking at; dropped elsewhere it goes to the orthographic view's side */
+ const dropRoto=(f,e)=>{let pl=null;for(let k=0;k<2;k++){const v=VW[k];if(k===1&&soloV===0)continue;const r=v.cv.getBoundingClientRect();if(r.width&&e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){pl=k===1?rotoPlaneOf(curV===1?{yaw,pitch}:VW[1].cam):rotoPlaneOf(curV===0?{yaw,pitch}:VW[0].cam);break}}rotoLoad(f,pl||undefined)};
  window.addEventListener('dragenter',e=>{if(!hasFiles(e))return;e.preventDefault();depth++;hint().style.display='flex'});
  window.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();e.dataTransfer.dropEffect='copy'});
  window.addEventListener('dragleave',e=>{if(!hasFiles(e))return;depth=Math.max(0,depth-1);if(!depth)hint().style.display='none'});
- window.addEventListener('drop',e=>{if(!hasFiles(e))return;e.preventDefault();depth=0;hint().style.display='none';const f=e.dataTransfer.files[0],it=e.dataTransfer.items&&e.dataTransfer.items[0];let hp=null;try{hp=it&&it.getAsFileSystemHandle?it.getAsFileSystemHandle():null}catch(_){}openDropped(f,hp)})})();
+ window.addEventListener('drop',e=>{if(!hasFiles(e))return;e.preventDefault();depth=0;hint().style.display='none';const f=e.dataTransfer.files[0];if(isImg(f)){dropRoto(f,e);return}const it=e.dataTransfer.items&&e.dataTransfer.items[0];let hp=null;try{hp=it&&it.getAsFileSystemHandle?it.getAsFileSystemHandle():null}catch(_){}openDropped(f,hp)})})();
 async function openFile(){if(window.showOpenFilePicker){try{const[h]=await showOpenFilePicker({types:[{description:'Just3D project or OBJ',accept:{'text/plain':['.obj','.json']}}]});await openFileObj(await h.getFile(),h);return}catch(e){if(e&&e.name==='AbortError')return}}
  let i=document.getElementById('openIn');if(!i){i=document.createElement('input');i.type='file';i.id='openIn';i.accept='.obj,.json';i.hidden=true;document.body.appendChild(i);i.onchange=async()=>{const f=i.files[0];i.value='';if(!f)return;try{await openFileObj(f,null)}catch(_){toast('Could not read that file')}}}i.click()}
 function worldMeshes(){return objs.filter(o=>!o.hid).map(o=>{const m=evaluate(o),M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),nv=m.v.length,used=new Uint8Array(nv),map=new Int32Array(nv).fill(-1),V=[];

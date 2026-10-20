@@ -4,6 +4,11 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v137 — Drag an image into a viewport to use it as a rotoscope
+- Drop a picture (PNG, JPG, GIF, WebP or BMP) onto the Perspective or Orthographic viewport and it becomes the rotoscope image for the side that viewport is looking at (Front/Back, Right/Left or Top/Bottom). Dropped anywhere else in the window, it goes to the Orthographic view's side. OBJ and project files still open as before.
+- The rotoscope image always sits behind the model: it is drawn first with no depth, so the model is never hidden by it.
+- The Perspective view now shows the rotoscope planes too (before, only the Orthographic view did), in both the GPU and the non-GPU render paths. The image is saved and loaded with the project as before.
+
 ## v136 — Scene buttons and keys: Remove object, Undo (U), Redo (Y), Save (Ctrl+S), Load (Ctrl+L)
 - The Scene group in **Transform and scene** now holds: **Remove object**, **Clear**, **Undo**, **Redo**, **Save** and **Load**. (Object mode moved up next to Points, Edges and Faces.)
 - **U** = Undo (Ctrl+Z still works). **Y** = Redo (Ctrl+Shift+Z and Ctrl+Y still work). **Ctrl+S** = Save. **Ctrl+L** = Load (opens a file; Ctrl+O still works). **Shift+Delete** = Remove object.
