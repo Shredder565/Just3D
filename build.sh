@@ -18,5 +18,7 @@ cp "dist/pkg/Just3D-$VER.exe" "dist/both-$VER/Just3D-$VER/"
 ( cd native && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -H=windowsgui" -o "../dist/both-$VER/Just3D-$VER/Just3D-$VER-native.exe" . )
 cp CHANGELOG.md "dist/both-$VER/Just3D-$VER/CHANGELOG.txt"
 sed "s/@VER@/$VER/g" tools/windows-README.txt > "dist/both-$VER/Just3D-$VER/README.txt"
+cp tools/Create-Just3D-shortcuts.cmd "dist/both-$VER/Just3D-$VER/Create-Just3D-shortcuts.cmd"
+cp assets/just3d.ico "dist/both-$VER/Just3D-$VER/Just3D.ico"
 ( cd "dist/both-$VER" && rm -f "../Just3D-$VER-windows.zip" && zip -qr "../Just3D-$VER-windows.zip" "Just3D-$VER" )
 echo "built dist/Just3D-$VER-windows.zip (native + original)"

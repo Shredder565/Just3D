@@ -4,6 +4,11 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v140 — Desktop, Start menu and Quick Launch icons with the lighter-clothed lady
+- The exe icons already carried the lighter artwork from v138, but a shortcut or pin made from an older version keeps its older picture (each version has its own file name and Windows caches icons).
+- The zip now includes **Create-Just3D-shortcuts.cmd**: double-click it and it makes a "Just3D" shortcut on your Desktop, in the Start menu and in Quick Launch, pointing at the native exe in the folder and using the new icon, then asks Windows to refresh its icon cache. Run it again after moving the folder or updating.
+- The zip also includes **Just3D.ico** (the same picture) in case you want to set an icon by hand.
+
 ## v139 — Shelves 2–5 sit minimized next to the open shelf
 - The shelf header (for example **1 Basic Modeling Tools**) now has the other shelves as small numbered buttons **2 3 4 5** to its right, in the same window.
 - Click a number and that shelf takes the place of the open one; the shelf you were on shrinks to its number in the row. So clicking **2** replaces shelf 1 with shelf 2 and **1** becomes a small button, and so on for 3, 4 and 5. Hover a number to see the shelf's name.
