@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v138 — The icon lady stands out against the dark blue
+- Her clothes are lighter: the dark blue armor is now light steel and the dark red cape and boots are bright red. Skin, hair, the sword's blue glow and the energy beam are unchanged.
+- Updated everywhere the artwork appears: the logo in the top bar, the browser tab icon, the project page, and the icon on both Windows exes (Just3D-v138.exe and Just3D-v138-native.exe, including the taskbar icon).
+
 ## v137 — Drag an image into a viewport to use it as a rotoscope
 - Drop a picture (PNG, JPG, GIF, WebP or BMP) onto the Perspective or Orthographic viewport and it becomes the rotoscope image for the side that viewport is looking at (Front/Back, Right/Left or Top/Bottom). Dropped anywhere else in the window, it goes to the Orthographic view's side. OBJ and project files still open as before.
 - The rotoscope image always sits behind the model: it is drawn first with no depth, so the model is never hidden by it.
