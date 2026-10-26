@@ -4,6 +4,13 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v141 — Click the middle of the view cube to focus on the selection; pan the orthographic view
+- **Focus:** click the centre of the view cube (a ring lights up and the tip says "Focus on the selection") and the viewport centres and zooms onto what is highlighted: a face, edges, points, or the selected object(s). The direction of view does not change. Works in both the Perspective and Orthographic cubes.
+- Clicking a side of the cube still turns the view to that side, and now fits the highlighted face, edges or points instead of the whole object whenever something is selected in edit mode.
+- A very small selection (a single point) is only centred; the zoom is left alone.
+- **Orthographic view:** Alt + left-drag and right-drag now pan the view (before they did nothing there, so in edit mode, where dragging on empty space draws a selection box, there was no way to move the view). Dragging on empty space with the left button in object mode still pans.
+- Checked the Move tool with the left mouse button in all six orthographic directions (Front, Back, Right, Left, Top, Bottom), in split and single view, on the object, on selected points and on faces, with the centre handle, each axis arrow and by dragging the body: all of them moved as expected.
+
 ## v140 — Desktop, Start menu and Quick Launch icons with the lighter-clothed lady
 - The exe icons already carried the lighter artwork from v138, but a shortcut or pin made from an older version keeps its older picture (each version has its own file name and Windows caches icons).
 - The zip now includes **Create-Just3D-shortcuts.cmd**: double-click it and it makes a "Just3D" shortcut on your Desktop, in the Start menu and in Quick Launch, pointing at the native exe in the folder and using the new icon, then asks Windows to refresh its icon cache. Run it again after moving the folder or updating.

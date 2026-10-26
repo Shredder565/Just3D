@@ -1832,7 +1832,12 @@ function setProj(o){if(o!==ortho)toast('The left view is always perspective and 
 /* Orbit with no limit: the view can go over the top and keep turning. grab = right-drag: the surface nearest you follows the mouse (right moves it right, down moves it down). Past straight up or down the view is upside down, so the left/right sense flips with the sign of cos(pitch) to keep the surface following the mouse. */
 function orbitBy(dx,dy,k,grab){const up=Math.cos(pitch)>=0?1:-1;yaw+=dx*k*up*(grab?-1:1);pitch+=dy*k*(grab?-1:1);pitch=((pitch+Math.PI)%TAU+TAU)%TAU-Math.PI}
 /* points of the selected object(s) in world space, used to centre and zoom the view onto them */
-function selWorldPts(){const set=[objs[sel],...osel].filter((o,i,a)=>o&&!o.hid&&objs.includes(o)&&a.indexOf(o)===i),P=[];
+function selWorldPts(){
+ /* with points, edges or faces selected in edit mode, the fit is around just those; otherwise around the selected object(s) */
+ {const o=objs[sel];if(editMode&&o&&!o.hid&&selPts.size){const en=editNode(o);
+  if(en&&en.out&&en.rep){const reps=[...(sub==='face'?facePts(en):selPts)].filter(i=>en.out.v[i]);
+   if(reps.length){const M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1]));return reps.map(i=>{const q=mulv(M,en.out.v[i]);return[q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2]]})}}}}
+ const set=[objs[sel],...osel].filter((o,i,a)=>o&&!o.hid&&objs.includes(o)&&a.indexOf(o)===i),P=[];
  set.forEach(o=>{const m=evaluate(o),M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1]));[...new Set(m.f.flat())].forEach(i=>{const q=mulv(M,m.v[i]);P.push([q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2]])})});return P}
 /* centre + distance that fit the selected object in the view looking from (y,p); null when nothing is selected */
 function fitFor(y,p){if(camAct>=0)return null;const P=selWorldPts();if(!P.length)return null;
@@ -1841,7 +1846,8 @@ function fitFor(y,p){if(camAct>=0)return null;const P=selWorldPts();if(!P.length
  P.forEach(q=>{const x=q[0]-c[0],yy=q[1]-c[1],z=q[2]-c[2],x1=x*cy+z*sy,z1=-x*sy+z*cy,vx=x1,vy=yy*cp-z1*sp,vz=yy*sp+z1*cp;
   const dx=F*Math.abs(vx)/(W*.4),dy=F*Math.abs(vy)/(H*.4);
   if(VW[curV].ortho)d=Math.max(d,dx,dy);else d=Math.max(d,dx-vz,dy-vz,.3-vz)});
- return{c,d:Math.max(.3,Math.min(80,d))}}
+ const span=Math.max(mx[0]-mn[0],mx[1]-mn[1],mx[2]-mn[2]);
+ return{c,d:span<.05?dist:Math.max(.3,Math.min(80,d))}}
 function viewTo(y,p){const fit=fitFor(y,p);
  if(VW[curV].ortho){yaw=y;pitch=p;if(fit){tgt=fit.c;dist=fit.d;panX=0;panY=0}draw();return}
  const vk=curV,y0=yaw,p0=pitch,dy=(((y-y0+Math.PI)%TAU)+TAU)%TAU-Math.PI,t0=performance.now(),d0=dist,t00=tgt.slice(),px0=panX,py0=panY;
@@ -1859,14 +1865,18 @@ function drawCube(){const c=$('#vcube'),d=devicePixelRatio||1,S=110,K=30;if(c.wi
   g.fillStyle=i===vcH?acc:pn;g.fill();g.strokeStyle=ln;g.lineWidth=1;g.stroke();
   let pux=K*U[0],puy=-K*U[1];const pvx=K*V[0],pvy=-K*V[1];
   if(pux*(-pvy)-puy*(-pvx)<0){pux=-pux;puy=-puy}
-  g.save();g.transform(pux/20,puy/20,-pvx/20,-pvy/20,S/2+K*C[0],S/2-K*C[1]);g.fillStyle=i===vcH?'#fff':tx;g.font='600 9px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(f.n,0,0);g.restore()})}
+  g.save();g.transform(pux/20,puy/20,-pvx/20,-pvy/20,S/2+K*C[0],S/2-K*C[1]);g.fillStyle=i===vcH?'#fff':tx;g.font='600 9px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(f.n,0,0);g.restore()});
+ if(vcH===-2){g.beginPath();g.arc(S/2,S/2,S*.14,0,Math.PI*2);g.strokeStyle=acc;g.lineWidth=2.5;g.stroke();g.beginPath();g.arc(S/2,S/2,2.5,0,Math.PI*2);g.fillStyle=acc;g.fill()}}
+/* the middle of the view cube focuses on whatever is selected (the face, edges, points or object), keeping the current direction of view */
+const vcCtr=(e,vk)=>{const r=VW[vk].vc.getBoundingClientRect();return Math.hypot(e.clientX-r.left-r.width/2,e.clientY-r.top-r.height/2)<r.width*.14};
+function focusSel(){if(camAct>=0){toast('Leave the camera view first');return false}if(!selWorldPts().length){toast('Select something to focus on');return false}viewTo(yaw,pitch);toast('Focused on the '+(editMode&&selPts.size?(sub==='face'?'selected face':'selection'):'selected object'));return true}
 const vcPick=e=>{const r=$('#vcube').getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;let h=-1,bz=1e9;vcFaces.forEach(f=>{if(inPoly(x,y,f.pts)&&f.z<bz){bz=f.z;h=f.i}});return h};
 [0,1].forEach(vk=>{const A=VW[vk].vc.addEventListener.bind(VW[vk].vc);VW[vk].vc.addEventListener=(t,fn)=>A(t,ev=>{const k0=curV;activate(vk);try{fn(ev)}finally{activate(k0)}});
-VW[vk].vc.addEventListener('pointerdown',e=>{VW[vk].vc.setPointerCapture(e.pointerId);vcD={x:e.clientX,y:e.clientY,m:0,h:vcPick(e)}});
+VW[vk].vc.addEventListener('pointerdown',e=>{VW[vk].vc.setPointerCapture(e.pointerId);vcD={x:e.clientX,y:e.clientY,m:0,h:vcPick(e),ctr:vcCtr(e,vk)}});
 VW[vk].vc.addEventListener('pointermove',e=>{if(vcD){const dx=e.clientX-vcD.x,dy=e.clientY-vcD.y;vcD.m+=Math.abs(dx)+Math.abs(dy);
   if(vcD.m>4){if(ortho){vcD.x=e.clientX;vcD.y=e.clientY;return}orbitBy(dx,dy,.01,false);vcD.x=e.clientX;vcD.y=e.clientY;draw()}return}
- const h=vcPick(e);if(h!==vcH){vcH=h;drawCube()}});
-VW[vk].vc.addEventListener('pointerup',()=>{if(vcD&&vcD.m<=4&&vcD.h>=0){const f=VC[vcD.h];viewTo(f.y,f.p)}vcD=null});
+ const ct=vcCtr(e,vk),h=ct?-2:vcPick(e);VW[vk].vc.title=ct?'Focus on the selection':'';if(h!==vcH){vcH=h;drawCube()}});
+VW[vk].vc.addEventListener('pointerup',()=>{if(vcD&&vcD.m<=4){if(vcD.ctr&&focusSel()){}else if(vcD.h>=0){const f=VC[vcD.h];viewTo(f.y,f.p)}}vcD=null;vcH=-1;drawCube()});
 VW[vk].vc.addEventListener('pointerleave',()=>{if(!vcD&&vcH!==-1){vcH=-1;drawCube()}});
 VW[vk].vc.addEventListener('contextmenu',e=>{e.preventDefault();showCtx(e.clientX,e.clientY)});
 });
@@ -2586,7 +2596,7 @@ cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,
  if(drag.od){odMove(e);return}
  if(drag.ro){rotoDrag(e);return}
  if(drag.sc){sculptMove(e);return}
- if(drag.rc||drag.orb){if(ortho){drag.x=e.clientX;drag.y=e.clientY;return}orbitBy(dx,dy,.008,drag.rc);drag.x=e.clientX;drag.y=e.clientY;draw();return}
+ if(drag.rc||drag.orb){if(ortho){panX+=dx;panY+=dy;drag.x=e.clientX;drag.y=e.clientY;draw();return}orbitBy(dx,dy,.008,drag.rc);drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.zm){dist=Math.max(.3,Math.min(80,dist*Math.exp((dy-dx)*.008)));drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.exm&&exNode&&draw.exm){const m=draw.exm,s2=((e.clientX-drag.x)*m.ux+(e.clientY-drag.y)*m.uy)/m.pxu/drag.exm.ks;exNode.p.dist=Math.max(-5,Math.min(5,+(drag.exm.d0+s2).toFixed(3)));const so=objs[sel],i=so.nodes.indexOf(exNode);dirtyFrom(so,i);evaluate(so);draw();return}
  if(drag.jn)return;
