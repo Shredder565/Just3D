@@ -1,0 +1,12 @@
+# What just3d_ai_server_triposr.py needs on top of PyTorch (install torch first, see setup_triposr.bat).
+# Same as TripoSR's requirements.txt, minus the parts only its demo app uses (gradio, moderngl, xatlas),
+# and with torchmcubes (needs a C++ compiler) replaced by scikit-image (mcubes_shim.py).
+omegaconf==2.3.0
+Pillow==10.1.0
+einops==0.7.0
+transformers==4.35.0
+trimesh==4.0.5
+huggingface-hub>=0.19,<0.26
+scikit-image>=0.21,<0.25
+numpy<2
+imageio>=2.31,<3
