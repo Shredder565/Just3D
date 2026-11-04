@@ -4,6 +4,11 @@ Newest first. Version numbers are the published build numbers of Just3D.
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v142 — One numbered tab per sub shelf, colour tabs for every group, and Group weld
+- **Numbered shelves reorganized.** Every sub shelf now has its own numbered tab at the top of the left panel, and each tab shows its number and what it is for: **1 Primitives, 2 Transform and scene, 3 Modeling tools, 4 Draw, 5 Rotoscope, 6 Coloring, 7 Render 2K, 8 Navigating, 9 Sculpting, 10 Experimental and proprietary**. Click a number to open that shelf; hover a tab for a one-line description. (The File buttons stay in the top bar.) The old 2/3/4/5 minimized buttons are gone, and the shelf that was number 5 (Experimental) is now number 10.
+- **Colour tabs.** Every group has its own colour so groups are easy to tell apart: its label is a coloured tab and its buttons carry the same coloured edge. Pivot is yellow, Axis lock is red, Component green, Tools blue, Scene purple, Soft select orange, Camera blue, Cameras green, Rigging purple, and so on. The numbered tabs are coloured too, and the open one fills with its colour. Groups without a label (in Modeling tools) change colour at each gap.
+- **Group weld** (Modeling tools, next to Target Weld): with points, edges or faces selected, it merges all of them into one single point at the centre of the group; faces and edges that collapse are removed. Ctrl+Z undoes it, and it works with symmetry on. Select two or more points or edges, or one or more faces.
+
 ## v141 — Click the middle of the view cube to focus on the selection; pan the orthographic view
 - **Focus:** click the centre of the view cube (a ring lights up and the tip says "Focus on the selection") and the viewport centres and zooms onto what is highlighted: a face, edges, points, or the selected object(s). The direction of view does not change. Works in both the Perspective and Orthographic cubes.
 - Clicking a side of the cube still turns the view to that side, and now fits the highlighted face, edges or points instead of the whole object whenever something is selected in edit mode.
