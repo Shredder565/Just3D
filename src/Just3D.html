@@ -2707,14 +2707,19 @@ document.addEventListener('click',e=>{const id=e.target.id;if(id==='bun')undo();
 document.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.nk!==undefined){const o=objs[sel],nn=o&&o.nodes[+t.dataset.nk];if(nn)t.value=nn.p[t.dataset.kk]}});
 document.addEventListener('change',()=>commit());
 addEventListener('pointerup',()=>setTimeout(commit,0));
+/* How far from the clicked row a point may be and still count as being in the row: at most the old 1% of the model height, but never more than 0.45 of the distance to the neighbouring row, so a dense model does not pick up the line beneath (or above) as well. */
+function rowTol(vals,targets,base){const u=[...new Set(vals.map(v=>Math.round(v*1e5)))].sort((a,b)=>a-b).map(v=>v/1e5);let t=base;
+ targets.forEach(x=>{let lo=-Infinity,hi=Infinity;for(let k=0;k<u.length;k++){const d=u[k]-x;if(d>1e-4){hi=u[k]-x;break}}
+  for(let k=u.length-1;k>=0;k--){const d=x-u[k];if(d>1e-4){lo=x-u[k];break}}
+  const g=Math.min(lo,hi);if(isFinite(g))t=Math.min(t,g*.45)});return Math.max(t,1e-5)}
 function rowSelect(e){const so=objs[sel],en=so&&editNode(so);if(!en||!en.out||!en.rep)return false;
  const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,V=en.out.v,F=en.out.f;let ys=Infinity,yb=-Infinity;V.forEach(v=>{ys=Math.min(ys,v[1]);yb=Math.max(yb,v[1])});const tol=Math.max(1e-4,(yb-ys)*.01);
  if(sub==='pt'){let h=null;if(draw.hed&&draw.hed.pb)h=hugePick(x,y);else for(const p of draw.pts||[])if(Math.hypot(p.x-x,p.y-y)<11&&(!h||p.z<h.z))h=p;
-  const a=h?[h.i]:[...selPts];if(!a.length)return false;const rows=a.map(i=>V[i][1]);if(!e.shiftKey)selPts.clear();
-  V.forEach((v,i)=>{if(en.rep[i]===i&&rows.some(t=>Math.abs(v[1]-t)<=tol))selPts.add(i)});all();toast(selPts.size+' point(s) in the row selected');return true}
+  const a=h?[h.i]:[...selPts];if(!a.length)return false;const rows=a.map(i=>V[i][1]),rt=rowTol(V.filter((_,i)=>en.rep[i]===i).map(v=>v[1]),rows,tol);if(!e.shiftKey)selPts.clear();
+  V.forEach((v,i)=>{if(en.rep[i]===i&&rows.some(t=>Math.abs(v[1]-t)<=rt))selPts.add(i)});all();toast(selPts.size+' point(s) in the row selected');return true}
  if(sub==='face'){let a=null;const P=draw.polys||[];if(draw.hed){const q=hugeFaceAt(x,y);if(q)a=[q.fi]}else for(let k=P.length-1;k>=0;k--){const q=P[k];if(q.oi===sel&&inPoly(x,y,q.pts)){a=[q.fi];break}}
-  if(!a)a=[...selPts];if(!a.length)return false;const cy=f=>f.reduce((t,i)=>t+V[i][1],0)/f.length,rows=a.map(i=>F[i]&&cy(F[i])).filter(t=>t!==undefined);if(!e.shiftKey)selPts.clear();
-  F.forEach((f,i)=>{if(rows.some(t=>Math.abs(cy(f)-t)<=tol*1.5))selPts.add(i)});all();toast(selPts.size+' face(s) in the row selected');return true}
+  if(!a)a=[...selPts];if(!a.length)return false;const cy=f=>f.reduce((t,i)=>t+V[i][1],0)/f.length,rows=a.map(i=>F[i]&&cy(F[i])).filter(t=>t!==undefined),rt=rowTol(F.map(cy),rows,tol*1.5);if(!e.shiftKey)selPts.clear();
+  F.forEach((f,i)=>{if(rows.some(t=>Math.abs(cy(f)-t)<=rt))selPts.add(i)});all();toast(selPts.size+' face(s) in the row selected');return true}
  return false}
 cv.addEventListener('dblclick',e=>{if(editMode&&(sub==='pt'||sub==='face')&&objs[sel]){rowSelect(e);return}
  if(!editMode||sub!=='edge'||!draw.edges)return;const r=cv.getBoundingClientRect(),h=nearEdge(e.clientX-r.left,e.clientY-r.top);if(!h)return;

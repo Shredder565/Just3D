@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v145 — Double-click row select no longer grabs the neighbouring row
+- Double-clicking a point (or face) to select everything in its row could also pick up the row beneath it on denser models, because the match distance was a fixed 1% of the model height. It now adapts to the real spacing between rows, so only the row you clicked is selected (Shift+double-click still adds to the selection).
+
 ## v144 — Smooth keeps the shape; every edge can be deleted
 - **Smooth now keeps your object's shape.** It no longer rounds a cube into a sphere. It only evens out the surface: stray points and bumps on flat or curved areas are pulled back in line, sharp edges and corners (and open borders) stay put, and the size doesn't shrink. The Smooth card has *amount* and *sharp* (the angle above which an edge counts as a crease; raise it to smooth harder edges too).
 - **Edges that wouldn't delete now delete.** Edges on the seams between the sides of a cube (sides built separately, wound the other way) were refused, and so were edges on the border of an open model. Seam edges now join the polygons beside them; a border edge removes the one polygon that holds it. Ctrl+Z brings them back.
