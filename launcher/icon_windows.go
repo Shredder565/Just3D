@@ -7,8 +7,8 @@ import (
 )
 
 // Edge/Chrome app windows opened from a file:// page often show the browser's generic globe in the
-// taskbar instead of the page icon. The exe already carries the Just3D icon (resource id 1), so the
-// launcher stays alive for as long as a Just3D window exists and puts that icon on the window itself.
+// taskbar instead of the page icon. The exe already carries the NOVA 3D icon (resource id 1), so the
+// launcher stays alive for as long as a NOVA 3D window exists and puts that icon on the window itself.
 
 var (
 	user32      = syscall.NewLazyDLL("user32.dll")
@@ -54,7 +54,7 @@ func enumProc(hwnd uintptr, _ uintptr) uintptr {
 	title := make([]uint16, 256)
 	n, _, _ = pGetTitle.Call(hwnd, uintptr(unsafe.Pointer(&title[0])), uintptr(len(title)))
 	t := utf16s(title, n)
-	if !containsJust3D(t) {
+	if !containsNova(t) {
 		return 1
 	}
 	seenThisRun++
@@ -68,8 +68,8 @@ func enumProc(hwnd uintptr, _ uintptr) uintptr {
 	return 1
 }
 
-func containsJust3D(s string) bool {
-	const k = "Just3D"
+func containsNova(s string) bool {
+	const k = "NOVA 3D"
 	for i := 0; i+len(k) <= len(s); i++ {
 		if s[i:i+len(k)] == k {
 			return true
@@ -84,7 +84,7 @@ func loadIcon(size uintptr) uintptr {
 	return ic
 }
 
-// keepIcon returns once the Just3D window has been closed (or none ever appeared).
+// keepIcon returns once the NOVA 3D window has been closed (or none ever appeared).
 func keepIcon() {
 	curBig = loadIcon(64)
 	sm, _, _ := pMetric.Call(smCxSmIcon)

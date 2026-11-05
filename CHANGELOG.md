@@ -1,8 +1,14 @@
 # Changelog
 
-Newest first. Version numbers are the published build numbers of Just3D.
+Newest first. Version numbers are the published build numbers of NOVA 3D (formerly Just3D).
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
+
+## v143 — Renamed NOVA 3D, Smooth, Symmetrize object, and symmetry that catches every edit
+- **The program is now called NOVA 3D**: new header logo, window and page titles, program icon (desktop / quick-launch icon too), exe and zip names (`NOVA3D-vNN…`), README and shortcut script (`Create-NOVA3D-shortcuts.cmd` makes a "NOVA 3D" shortcut). Your saved settings and palettes carry over.
+- **Smooth** (Modeling tools): rounds the surface of a cube or sphere so it looks like a clean new sphere. The Smooth card on the right has *amount*, *levels* (optional extra subdivision for a finer skin) and *round* (pull toward the fitted ellipsoid). The size stays the same, open edges stay put, face colours are kept, and deleting the card undoes it (`Alt+S`).
+- **Symmetrize Object** (right under Symmetrize, `Alt+Y`; replaces "Symmetrize object changes"): if you delete one half of a sphere or any model, this mirrors the half that remains across the plane and welds the seam. With no X/Y/Z chosen it works out the open plane by itself, so a sphere cut along Y works too. Symmetrize uses the same detection.
+- **Symmetrize now repeats every edit.** Dragging points, edges or faces directly, and the sculpt brushes (Clay, Smooth, Inflate, Pinch…, Grab included), were not mirrored or were mirrored on X only; they now follow the Symmetrize plane (X, Y or Z).
 
 ## v142 — One numbered tab per sub shelf, colour tabs for every group, and Group weld
 - **Numbered shelves reorganized.** Every sub shelf now has its own numbered tab at the top of the left panel, and each tab shows its number and what it is for: **1 Primitives, 2 Transform and scene, 3 Modeling tools, 4 Draw, 5 Rotoscope, 6 Coloring, 7 Render 2K, 8 Navigating, 9 Sculpting, 10 Experimental and proprietary**. Click a number to open that shelf; hover a tab for a one-line description. (The File buttons stay in the top bar.) The old 2/3/4/5 minimized buttons are gone, and the shelf that was number 5 (Experimental) is now number 10.

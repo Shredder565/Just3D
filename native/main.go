@@ -1,6 +1,6 @@
 //go:build windows
 
-// Just3D, native Windows build: the same program (Just3D.html, embedded) shown in its own Windows window
+// NOVA 3D, native Windows build: the same program (Just3D.html, embedded) shown in its own Windows window
 // by the Microsoft WebView2 component that ships with Windows 10/11. No browser window, no address bar,
 // its own taskbar icon, and files dropped on the exe or on the window open straight away.
 package main
@@ -61,7 +61,7 @@ func main() {
 		AutoFocus: true,
 		DataPath:  filepath.Join(dir, "WebView2"),
 		WindowOptions: webview2.WindowOptions{
-			Title: "Just3D", Width: w, Height: h, IconId: 1, Center: true,
+			Title: "NOVA 3D", Width: w, Height: h, IconId: 1, Center: true,
 		},
 	})
 	if wv == nil {
@@ -128,7 +128,7 @@ func hasWebView2() bool {
 	return false
 }
 
-// fallback: no WebView2 runtime, so show the page in an Edge/Chrome app window instead (same as Just3D.exe).
+// fallback: no WebView2 runtime, so show the page in an Edge/Chrome app window instead (same as NOVA3D.exe).
 func fallback(url, dir string) {
 	prof := filepath.Join(dir, "profile")
 	_ = os.MkdirAll(prof, 0o755)
