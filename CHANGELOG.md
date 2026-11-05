@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v146 — Affect Front Vertices hides the back half correctly on every shape
+- **Affect Front Vertices** decides which polygons face away from the camera by looking at how the shape is really oriented, not at the way each polygon happened to be wound. Shapes built from separate pieces (the sides of a cube, the trapezoid) used to hide the wrong polygons or leave the side polygons showing; now only polygons that truly face the camera stay (a cube seen straight on shows just its front side, a sphere shows exactly its front half), and the points and edges behind them are hidden and cannot be picked. Polygons seen exactly edge-on count as facing away.
+- Very large models (60,000+ polygons, drawn by the graphics card) now hide their back-facing polygons too.
+
 ## v145 — Double-click row select no longer grabs the neighbouring row
 - Double-clicking a point (or face) to select everything in its row could also pick up the row beneath it on denser models, because the match distance was a fixed 1% of the model height. It now adapts to the real spacing between rows, so only the row you clicked is selected (Shift+double-click still adds to the selection).
 

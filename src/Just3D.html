@@ -505,13 +505,13 @@ function gpuPolys(polys,acc){const A=hexRgb(acc).map(v=>v/255);
 const HEAVY_MIN=60000;
 function heavyProg(gl){if(GL.hprog)return GL.hprog;
  const sh=(t,src)=>{const o=gl.createShader(t);gl.shaderSource(o,src);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o},pr=gl.createProgram();
- gl.attachShader(pr,sh(gl.VERTEX_SHADER,'attribute vec3 p;attribute vec3 n;attribute vec4 c;uniform vec2 res;uniform mat3 A;uniform vec3 t;uniform mat3 NM;uniform vec4 cam;uniform float ort;uniform float sel;varying vec4 vc;'+
+ gl.attachShader(pr,sh(gl.VERTEX_SHADER,'attribute vec3 p;attribute vec3 n;attribute vec4 c;uniform vec2 res;uniform mat3 A;uniform vec3 t;uniform mat3 NM;uniform vec4 cam;uniform float ort;uniform float sel;uniform float cul;varying vec4 vc;'+
   'void main(){vec3 v=A*p+t;float d,z;if(ort>0.5){d=cam.x;z=clamp(v.z/100.0,-0.99,0.99);}else{d=max(0.05,v.z+cam.x);z=max(-0.99,1.0-0.045/d);}'+
   'float sx=res.x*0.5+cam.z+cam.y*v.x/d;float sy=res.y*0.5+cam.w-cam.y*v.y/d;gl_Position=vec4(sx/res.x*2.0-1.0,1.0-sy/res.y*2.0,z,1.0);'+
-  'vec3 nv=normalize(NM*n);float sh=abs(-0.4*nv.x+0.6*nv.y-0.7*nv.z);vc=vec4(min(vec3(1.0),c.rgb*(0.3+0.7*sh)*sel),1.0);}'));
+  'vec3 nv=normalize(NM*n);if(cul>0.5){float fc=ort>0.5?nv.z:dot(nv,vec3(v.xy,v.z+cam.x))/max(0.05,length(vec3(v.xy,v.z+cam.x)));if(fc>-0.001)gl_Position=vec4(3.0,3.0,3.0,1.0);}float sh=abs(-0.4*nv.x+0.6*nv.y-0.7*nv.z);vc=vec4(min(vec3(1.0),c.rgb*(0.3+0.7*sh)*sel),1.0);}'));
  gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,'precision mediump float;varying vec4 vc;void main(){gl_FragColor=vc;}'));
  gl.bindAttribLocation(pr,0,'p');gl.bindAttribLocation(pr,1,'n');gl.bindAttribLocation(pr,2,'c');gl.linkProgram(pr);if(!gl.getProgramParameter(pr,gl.LINK_STATUS))throw new Error('link');
- GL.hprog=pr;GL.hu={};['res','A','t','NM','cam','ort','sel'].forEach(k=>GL.hu[k]=gl.getUniformLocation(pr,k));GL.heavy=new WeakMap();GL.hsel=new WeakMap();return pr}
+ GL.hprog=pr;GL.hu={};['res','A','t','NM','cam','ort','sel','cul'].forEach(k=>GL.hu[k]=gl.getUniformLocation(pr,k));GL.heavy=new WeakMap();GL.hsel=new WeakMap();return pr}
 /* the triangles of mesh m (object space, flat shaded: per-vertex face normal and face colour); 24 bytes per vertex. list = only these faces; tint = blend this colour in (selected faces) */
 function heavyWriter(buf,o,m,tint){const V=m.v,F=m.f,fl=new Float32Array(buf),i16=new Int16Array(buf),u8=new Uint8Array(buf),col=new Map(),rgb=h=>{let c=col.get(h);if(!c){c=hexRgb(h);col.set(h,c)}return c};
  return(fi,w)=>{const f=F[fi];if(!f)return w;const n=f.length;if(n<3)return w;
@@ -575,7 +575,7 @@ function heavyEntry(o,m,oi,cy,sy,cp,sp,selList){let gl;try{gl=GL.gl;heavyProg(gl
  {try{const c=heavyCPU(o,m,sig);if(!e){e={vbo:gl.createBuffer(),c:null,ver:-1};e.drop=()=>gl.deleteBuffer(e.vbo);hPut(GL.heavy,o,sig,e)}e.m=m;heavySync(gl,e,c)}catch(_){console.warn('big model draw failed',_&&_.stack||_);if(e)hDel(GL.heavy,o,e);return null}}
  const sc=o.sc||[1,1,1],R=rotMat(o.rot),Rv=[[cy,0,sy],[sy*sp,cp,-cy*sp],[-sy*cp,sp,cy*cp]],A=mulM(Rv,mulM(R,diag(sc))),NM=mulM(Rv,mulM(R,diag(sc.map(v=>Math.abs(v)<1e-9?1:1/v)))),
   t=mulv(Rv,[o.pos[0]-tgt[0],o.pos[1]-tgt[1],o.pos[2]-tgt[2]]),col=M=>new Float32Array([M[0][0],M[1][0],M[2][0],M[0][1],M[1][1],M[2][1],M[0][2],M[1][2],M[2][2]]);
- const he={vbo:e.vbo,count:e.count,A:col(A),NM:col(NM),t:new Float32Array(t),sel:(oi===sel||osel.has(o))?1:.88,ort:ortho?1:0,cam:new Float32Array([dist,draw.F,panX,panY])};
+ const he={vbo:e.vbo,count:e.count,A:col(A),NM:col(NM),t:new Float32Array(t),sel:(oi===sel||osel.has(o))?1:.88,ort:ortho?1:0,cul:(frontOnly&&editMode&&oi===sel)?1:0,cam:new Float32Array([dist,draw.F,panX,panY])};
  if(!selList||!selList.length)return he;
  /* selected faces of a big model: a small second buffer drawn over the first in the accent colour */
  let h=selList.length;for(const i of selList)h=(h*31+i)|0;const key=h+'|'+sig;let se=GL.hsel.get(hKey(o));
@@ -584,7 +584,7 @@ function heavyEntry(o,m,oi,cy,sy,cp,sp,selList){let gl;try{gl=GL.gl;heavyProg(gl
 function gpuHeavy(gl,W,H){gl.useProgram(GL.hprog);const u=GL.hu;gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.BLEND);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);
  gl.uniform2f(u.res,W,H);gl.enableVertexAttribArray(0);gl.enableVertexAttribArray(1);gl.enableVertexAttribArray(2);
  for(const e of GP.H){gl.bindBuffer(gl.ARRAY_BUFFER,e.vbo);gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);gl.vertexAttribPointer(1,3,gl.SHORT,true,24,12);gl.vertexAttribPointer(2,4,gl.UNSIGNED_BYTE,true,24,20);
-  gl.uniformMatrix3fv(u.A,false,e.A);gl.uniformMatrix3fv(u.NM,false,e.NM);gl.uniform3fv(u.t,e.t);gl.uniform4fv(u.cam,e.cam);gl.uniform1f(u.ort,e.ort);gl.uniform1f(u.sel,e.sel);gl.drawArrays(gl.TRIANGLES,0,e.count)}
+  gl.uniformMatrix3fv(u.A,false,e.A);gl.uniformMatrix3fv(u.NM,false,e.NM);gl.uniform3fv(u.t,e.t);gl.uniform4fv(u.cam,e.cam);gl.uniform1f(u.ort,e.ort);gl.uniform1f(u.sel,e.sel);gl.uniform1f(u.cul,e.cul||0);gl.drawArrays(gl.TRIANGLES,0,e.count)}
  gl.disableVertexAttribArray(2);gl.disable(gl.POLYGON_OFFSET_FILL);gl.bindBuffer(gl.ARRAY_BUFFER,null)}
 /* the nearest big-model surface under a pixel (a ray against the triangles, once per click): {oi, z} or null */
 function heavyHit(x,y,only){const hv=draw.heavy||[];if(!hv.length)return null;const r=pixRay(x,y),fw=unview(0,0,1);let best=null;
@@ -720,14 +720,14 @@ function draw(){
   if(o.hid){centers.push([-1e9,-1e9]);return}
   const m=evaluate(o);
   if((heavyOn||hedOK)&&m.f.length>=HEAVY_MIN){const fs=hedOK&&editMode&&oi===sel&&sub==='face'?[...selPts].filter(i=>i<m.f.length):null,he=heavyEntry(o,m,oi,cy,sy,cp,sp,fs);if(he){if(Array.isArray(he))GP.H.push(...he);else GP.H.push(he);draw.heavy.push(oi);heavyN+=m.f.length;if(hedOK){const rec={o,m,oi};hvAll.push(rec);if(oi===sel)hedO=rec}centers.push(scr(view(...o.pos)));return}}
-  const M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),V=m.v.map(v=>{const q=mulv(M,v);return view(q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2])}),S=V.map(scr);
+  const M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),V=m.v.map(v=>{const q=mulv(M,v);return view(q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2])}),S=V.map(scr);let frontFlips=null;
   centers.push(scr(view(...o.pos)));
   m.f.forEach((f,fi)=>{if(!ortho&&f.some(i=>V[i][2]+dist<.05))return;const a=V[f[0]],b=V[f[1]],c=V[f[2]];
    let nx=(b[1]-a[1])*(c[2]-a[2])-(b[2]-a[2])*(c[1]-a[1]),ny=(b[2]-a[2])*(c[0]-a[0])-(b[0]-a[0])*(c[2]-a[2]),nz=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
    nx=ny=nz=0;for(let k=0;k<f.length;k++){const u=V[f[k]],w=V[f[(k+1)%f.length]];nx+=(u[1]-w[1])*(u[2]+w[2]);ny+=(u[2]-w[2])*(u[0]+w[0]);nz+=(u[0]-w[0])*(u[1]+w[1])}
    if(frontOnly&&editMode&&oi===sel){/* Affect Front Vertices: hide the polygons that face away from the camera (the viewer looks along +z in this space; in perspective the camera sits at z = -dist) */
     let cx=0,cy=0,cz=0;f.forEach(i=>{cx+=V[i][0];cy+=V[i][1];cz+=V[i][2]});cx/=f.length;cy/=f.length;cz/=f.length;
-    if((ortho?nz:nx*cx+ny*cy+nz*(cz+dist))*BACKSIGN>0)return}
+    const fl=((frontFlips||(frontFlips=faceFlips(m)))[fi]?-1:1)*((o.sc||[1,1,1]).filter(q=>q<0).length%2?-1:1);if((ortho?nz:nx*cx+ny*cy+nz*(cz+dist))*BACKSIGN*fl/((Math.hypot(nx,ny,nz)||1)*(ortho?1:Math.hypot(cx,cy,cz+dist)||1))>-.001)return} /* a polygon seen exactly edge-on counts as facing away */
    const nl=Math.hypot(nx,ny,nz)||1,sh=Math.abs((-.4*nx+.6*ny-.7*nz)/nl);
    polys.push({z:f.reduce((s,i)=>s+V[i][2],0)/f.length,pts:f.map(i=>S[i]),zs:f.map(i=>V[i][2]),sh,oi,fi,tri:f.length>4?triFace(f,m.v):null})})});
  polys.sort((p,q)=>q.z-p.z);const bigD=hvAll.map(r=>{r.P=projAll(r.o,r.m);return{PX:r.P.PX,PY:r.P.PY,PZ:r.P.PZ,f:r.m.f}});if((editMode||sculptOn||paintOn)&&!((sculptOn||paintOn)&&drag&&(drag.sc||drag.pn)&&draw.zb&&bigD.length&&draw.zb.big))buildDepth(polys,W,H,bigD);else if(!(editMode||sculptOn||paintOn))draw.zb=null;
@@ -1518,6 +1518,22 @@ function paintFaces(clear){const o=objs[sel];if(!o)return;if(clear){o.fc={};draw
 function resetEdits(){const o=objs[sel],en=editNode(o);if(!en)return;en.off={};dirtyFrom(o,o.nodes.indexOf(en));all()}
 /* Affect Front Vertices: while on, selecting points or faces only picks what faces the camera (what is visible, not hidden behind other surfaces) */
 let frontOnly=false;const BACKSIGN=1;
+/* Which polygons are wound the wrong way round? Some shapes (the sides of a cube, a trapezoid) are built from pieces wound opposite to their neighbours, which would make a back-face test hide the wrong polygons. Neighbouring polygons are brought into agreement across every shared edge, then each connected piece is turned so its normals point away from its middle. Returns a flag per polygon (1 = flip), cached per mesh. */
+const _flipC=new WeakMap();
+function faceFlips(m){let r=_flipC.get(m);if(r)return r;const c=canonOf(m),F=m.f,n=F.length;r=new Uint8Array(n);
+ const E=new Map(),eK=(a,b)=>a<b?a*4194304+b:b*4194304+a;
+ for(let i=0;i<n;i++){const f=F[i],L=f.length;for(let k=0;k<L;k++){const a=c[f[k]],b=c[f[(k+1)%L]];if(a===b||a<0||b<0)continue;const q=eK(a,b);let e=E.get(q);if(!e){e=[];E.set(q,e)}e.push(i)}}
+ const dirOf=(i,x,y)=>{const f=F[i],L=f.length;for(let k=0;k<L;k++){const a=c[f[k]],b=c[f[(k+1)%L]];if(a===x&&b===y)return 1;if(a===y&&b===x)return 0}return -1};
+ const seen=new Uint8Array(n);
+ for(let s0=0;s0<n;s0++){if(seen[s0])continue;const comp=[s0],st=[s0];seen[s0]=1;
+  while(st.length){const i=st.pop(),f=F[i],L=f.length;for(let k=0;k<L;k++){const x=c[f[k]],y=c[f[(k+1)%L]];if(x===y||x<0||y<0)continue;const fs=E.get(eK(x,y));if(!fs||fs.length!==2)continue;const j=fs[0]===i?fs[1]:fs[0];if(seen[j])continue;
+   const eff=dirOf(i,x,y)^r[i],dj=dirOf(j,x,y);if(dj<0)continue;r[j]=dj^(1-eff);seen[j]=1;comp.push(j);st.push(j)}}
+  /* turn the whole piece so that its normals point away from its middle */
+  const mid=[0,0,0];let cnt=0;comp.forEach(i=>F[i].forEach(v=>{const p=m.v[v];mid[0]+=p[0];mid[1]+=p[1];mid[2]+=p[2];cnt++}));mid[0]/=cnt;mid[1]/=cnt;mid[2]/=cnt;
+  let sum=0;comp.forEach(i=>{const f=F[i],L=f.length;let nx=0,ny=0,nz=0,cx=0,cy=0,cz=0;for(let k=0;k<L;k++){const u=m.v[f[k]],w=m.v[f[(k+1)%L]];nx+=(u[1]-w[1])*(u[2]+w[2]);ny+=(u[2]-w[2])*(u[0]+w[0]);nz+=(u[0]-w[0])*(u[1]+w[1]);cx+=u[0];cy+=u[1];cz+=u[2]}
+   const d=nx*(cx/L-mid[0])+ny*(cy/L-mid[1])+nz*(cz/L-mid[2]);sum+=r[i]?-d:d});
+  if(sum<0)comp.forEach(i=>r[i]^=1)}
+ _flipC.set(m,r);return r}
 function pruneFront(){if(!frontOnly||!editMode)return;
  if(sub==='pt'){const v=draw.hed&&draw.hed.pb?hugeVisSet():new Set((draw.pts||[]).map(p=>p.i));[...selPts].forEach(i=>{if(!v.has(i))selPts.delete(i)})}
  else if(sub==='face'&&draw.hed){}
