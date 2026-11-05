@@ -308,19 +308,23 @@ FOPS.Symmetrize={p:{axis:[0,0,2,1],dir:[1,-1,1,2],offset:[0,-3,3,.01],merge:[.02
 /* Delete: removes the selected faces and nothing else. Vertex numbers stay the same so point edits made later still line up. */
 FOPS.Delete={p:{},fn:(m,p,n)=>{const d=new Set(n.fl||[]);return{v:m.v,f:m.f.filter((_,i)=>!d.has(i))}}};
 /* Dissolve edges / points: removing an edge joins the two polygons on either side of it into one; removing a point joins every polygon around it into one. Only what was selected goes: every other point, edge and polygon stays, and vertex numbers don't change. dissolveEdges / dissolveVerts also return, for each resulting polygon, the old polygon whose colour it keeps. */
-function dissolveEdges(m,list){const c=canonOf(m),W=m.f.map((f,i)=>({p:f.slice(),src:i}));let done=0;
+function dissolveEdges(m,list){const c=canonOf(m),W=m.f.map((f,i)=>({p:f.slice(),src:i}));let done=0,gone=0;
  for(let q=0;q+1<list.length;q+=2){const cx=c[list[q]],cy=c[list[q+1]];if(cx===undefined||cy===undefined||cx<0||cy<0||cx===cy)continue;
-  let A=-1,B=-1,ka=-1,kb=-1; /* the two polygons that hold this edge, one in each direction */
-  for(let i=0;i<W.length;i++){const f=W[i];if(!f)continue;const n=f.p.length;for(let k=0;k<n;k++){const u=c[f.p[k]],v=c[f.p[(k+1)%n]];
-   if(u===cx&&v===cy){if(A<0){A=i;ka=k}}else if(u===cy&&v===cx){if(B<0){B=i;kb=k}}}}
-  if(A<0||B<0||A===B)continue;
+  /* the two polygons that hold this edge. Normally they run it in opposite directions; a polygon wound the other way (a seam between two sides built separately) is flipped first so it can still be joined */
+  const H=[];for(let i=0;i<W.length&&H.length<2;i++){const f=W[i];if(!f)continue;const n=f.p.length;for(let k=0;k<n;k++){const u=c[f.p[k]],v=c[f.p[(k+1)%n]];
+   if(u===cx&&v===cy){H.push({i,k,fw:true});break}if(u===cy&&v===cx){H.push({i,k,fw:false});break}}}
+  if(H.length===1){W[H[0].i]=null;done++;gone++;continue} /* an edge on the border of the model has only one polygon: removing the edge removes that polygon */
+  if(H.length<2)continue;
+  if(H[0].fw===H[1].fw){const j=H[1].i,r=W[j].p.slice().reverse(),n0=r.length;W[j]={p:r,src:W[j].src};let kk=-1;for(let k=0;k<n0;k++){const u=c[r[k]],v=c[r[(k+1)%n0]];if((u===cx&&v===cy)||(u===cy&&v===cx)){kk=k;break}}if(kk<0)continue;H[1]={i:j,k:kk,fw:!H[1].fw}}
+  if(!H[0].fw)H.reverse();
+  const A=H[0].i,B=H[1].i,ka=H[0].k,kb=H[1].k;
   const fa=W[A].p,fb=W[B].p,na=fa.length,nb=fb.length;
   const Ap=fa.slice(ka+1).concat(fa.slice(0,ka+1)); /* starts at y, ends at x */
   const Bp=fb.slice(kb+1).concat(fb.slice(0,kb+1)); /* starts at x, ends at y */
   const merged=Ap.concat(Bp.slice(1,-1));
   if(merged.length<3)continue;
   W[A]={p:merged,src:W[A].src};W[B]=null;done++}
- const out=W.filter(Boolean);return{f:out.map(x=>x.p),map:out.map(x=>x.src),done}}
+ const out=W.filter(Boolean);return{f:out.map(x=>x.p),map:out.map(x=>x.src),done,gone}}
 function dissolveVerts(m,list){const c=canonOf(m),W=m.f.map((f,i)=>({p:f.slice(),src:i}));let done=0;
  [...new Set(list.map(i=>c[i]))].forEach(cv=>{if(cv===undefined||cv<0)return;
   const idx=[];W.forEach((f,i)=>{if(f&&f.p.some(x=>c[x]===cv))idx.push(i)});if(!idx.length)return;
@@ -379,51 +383,29 @@ FOPS.Subdivide={p:{},fn:m=>{const V=m.v.map(v=>v.slice()),F=[],mp=new Map();
  const mid=(a,b)=>{const k=a<b?a+'_'+b:b+'_'+a;let i=mp.get(k);if(i===undefined){const A=m.v[a],B=m.v[b];i=V.length;V.push([(A[0]+B[0])/2,(A[1]+B[1])/2,(A[2]+B[2])/2]);mp.set(k,i)}return i};
  m.f.forEach(f=>{const n=f.length,ms=f.map((a,k)=>mid(a,f[(k+1)%n])),c=[0,0,0];f.forEach(i=>{c[0]+=m.v[i][0];c[1]+=m.v[i][1];c[2]+=m.v[i][2]});const ci=V.length;V.push([c[0]/n,c[1]/n,c[2]/n]);
   f.forEach((a,k)=>F.push([a,ms[k],ci,ms[(k+n-1)%n]]))});return{v:V,f:F}}};
-/* Smooth: relaxes the surface so a cube rounds off toward a sphere and a lumpy sphere becomes a clean one. amount = how much (0 to 1), levels = optional Catmull-Clark subdivisions first for a finer skin, round = extra pull toward the fitted ellipsoid. The result is scaled back to the original size, open edges stay put and face colours are kept. */
-function ccSub(m){const key=v=>Math.round(v[0]*1e5)+','+Math.round(v[1]*1e5)+','+Math.round(v[2]*1e5),cid=new Map(),P=[],map=new Int32Array(m.v.length).fill(-1);
- const used=new Uint8Array(m.v.length);m.f.forEach(f=>f.forEach(i=>used[i]=1));
- m.v.forEach((v,i)=>{if(!used[i])return;const k=key(v);let c=cid.get(k);if(c===undefined){c=P.length;P.push(v);cid.set(k,c)}map[i]=c});
- const F=[],src=[];m.f.forEach((f,fi)=>{const g=[];f.forEach(i=>{const c=map[i];if(!g.length||g[g.length-1]!==c)g.push(c)});while(g.length>1&&g[0]===g[g.length-1])g.pop();if(g.length>=3&&new Set(g).size===g.length){F.push(g);src.push(fi)}});
- const FP=F.map(g=>{const c=[0,0,0];g.forEach(i=>{c[0]+=P[i][0];c[1]+=P[i][1];c[2]+=P[i][2]});return[c[0]/g.length,c[1]/g.length,c[2]/g.length]});
- const E=new Map(),ek=(a,b)=>a<b?a*4194304+b:b*4194304+a;
- F.forEach((g,fi)=>{const n=g.length;for(let k=0;k<n;k++){const a=g[k],b=g[(k+1)%n],q=ek(a,b);let e=E.get(q);if(!e){e={a,b,f:[]};E.set(q,e)}e.f.push(fi)}});
- const V=[],ep=new Map(),vp=new Array(P.length),vf=P.map(()=>[]),ve=P.map(()=>[]);
- F.forEach((g,fi)=>g.forEach(i=>vf[i].push(fi)));
- E.forEach((e,q)=>{ve[e.a].push(e);ve[e.b].push(e)});
- const avg=(L,fn)=>{const c=[0,0,0];L.forEach(x=>{const p=fn(x);c[0]+=p[0];c[1]+=p[1];c[2]+=p[2]});return[c[0]/L.length,c[1]/L.length,c[2]/L.length]};
- for(let i=0;i<P.length;i++){if(!vf[i].length)continue;const es=ve[i],open=es.filter(e=>e.f.length!==2),n=vf[i].length,p=P[i];
-  if(open.length===0){const Fa=avg(vf[i],fi=>FP[fi]),R=avg(es,e=>{const o=P[e.a===i?e.b:e.a];return[(o[0]+p[0])/2,(o[1]+p[1])/2,(o[2]+p[2])/2]});
-   vp[i]=[0,1,2].map(k=>(Fa[k]+2*R[k]+(n-3)*p[k])/n)}
-  else if(open.length===2){const a=P[open[0].a===i?open[0].b:open[0].a],b=P[open[1].a===i?open[1].b:open[1].a];vp[i]=[0,1,2].map(k=>(a[k]+6*p[k]+b[k])/8)}
-  else vp[i]=p.slice()}
- const vi=new Int32Array(P.length).fill(-1);for(let i=0;i<P.length;i++)if(vp[i]){vi[i]=V.length;V.push(vp[i])}
- E.forEach((e,q)=>{const A=P[e.a],B=P[e.b];let pt;if(e.f.length===2){const f1=FP[e.f[0]],f2=FP[e.f[1]];pt=[0,1,2].map(k=>(A[k]+B[k]+f1[k]+f2[k])/4)}else pt=[0,1,2].map(k=>(A[k]+B[k])/2);ep.set(q,V.length);V.push(pt)});
- const fi0=V.length;FP.forEach(c=>V.push(c));
- const NF=[],NS=[];F.forEach((g,fi)=>{const n=g.length;for(let k=0;k<n;k++){NF.push([vi[g[k]],ep.get(ek(g[k],g[(k+1)%n])),fi0+fi,ep.get(ek(g[(k+n-1)%n],g[k]))]);NS.push(src[fi])}});
- return{v:V,f:NF,src:NS}}
-/* Relax: moves every point toward the average of its neighbours, repeated n times. Open edges stay where they are, so only the surface rounds off. */
-function relaxMesh(m,n){const key=v=>Math.round(v[0]*1e5)+','+Math.round(v[1]*1e5)+','+Math.round(v[2]*1e5),cid=new Map(),P=[],map=new Int32Array(m.v.length).fill(-1);
+/* Smooth: evens out the surface without changing the shape. Each point moves toward the average of its neighbours and then back out a little (Taubin smoothing), so the object does not shrink. Points on open edges and on sharp edges and corners (sharper than "sharp" degrees) stay where they are, so a cube stays a cube while lumps, dents and stray points on its faces are flattened. amount = how many passes (0 to 1). Topology, colours and size are untouched. */
+function smoothMesh(m,amount,sharp){const key=v=>Math.round(v[0]*1e5)+','+Math.round(v[1]*1e5)+','+Math.round(v[2]*1e5),cid=new Map(),P=[],map=new Int32Array(m.v.length).fill(-1);
  m.f.forEach(f=>f.forEach(i=>{if(map[i]>=0)return;const k=key(m.v[i]);let c=cid.get(k);if(c===undefined){c=P.length;P.push(m.v[i].slice());cid.set(k,c)}map[i]=c}));
- const nb=P.map(()=>new Set()),E=new Map(),fixed=new Uint8Array(P.length);
- m.f.forEach(f=>{const g=f.map(i=>map[i]);for(let k=0;k<g.length;k++){const a=g[k],b=g[(k+1)%g.length];if(a===b)continue;nb[a].add(b);nb[b].add(a);const q=a<b?a*4194304+b:b*4194304+a;E.set(q,(E.get(q)||0)+1)}});
- E.forEach((c,q)=>{if(c!==2){fixed[Math.floor(q/4194304)]=1;fixed[q%4194304]=1}});
- const N=nb.map(s=>[...s]);let A=P,B=P.map(v=>v.slice());
- for(let it=0;it<n;it++){for(let i=0;i<A.length;i++){const p=A[i],q=B[i],L=N[i];if(fixed[i]||!L.length){q[0]=p[0];q[1]=p[1];q[2]=p[2];continue}let x=0,y=0,z=0;for(let j=0;j<L.length;j++){const o=A[L[j]];x+=o[0];y+=o[1];z+=o[2]}const k=1/L.length;q[0]=p[0]+(x*k-p[0])*.5;q[1]=p[1]+(y*k-p[1])*.5;q[2]=p[2]+(z*k-p[2])*.5}const t=A;A=B;B=t}
+ const G=m.f.map(f=>f.map(i=>map[i])),nb=P.map(()=>new Set()),E=new Map(),fixed=new Uint8Array(P.length),eK=(a,b)=>a<b?a*4194304+b:b*4194304+a;
+ const FN=G.map(g=>{let x=0,y=0,z=0;for(let k=0;k<g.length;k++){const u=P[g[k]],w=P[g[(k+1)%g.length]];x+=(u[1]-w[1])*(u[2]+w[2]);y+=(u[2]-w[2])*(u[0]+w[0]);z+=(u[0]-w[0])*(u[1]+w[1])}const l=Math.hypot(x,y,z)||1;return[x/l,y/l,z/l]});
+ G.forEach((g,fi)=>{for(let k=0;k<g.length;k++){const a=g[k],b=g[(k+1)%g.length];if(a===b)continue;nb[a].add(b);nb[b].add(a);const q=eK(a,b);let e=E.get(q);if(!e){e=[];E.set(q,e)}e.push(fi)}});
+ const cs=Math.cos(sharp*Math.PI/180),HE=new Map();
+ E.forEach((fs,q)=>{let hard=false;if(fs.length===2){const n1=FN[fs[0]],n2=FN[fs[1]];hard=n1[0]*n2[0]+n1[1]*n2[1]+n1[2]*n2[2]<cs}if(fs.length!==2)fixed[Math.floor(q/4194304)]=fixed[q%4194304]=1;else if(hard)HE.set(q,1)});
+ /* a real crease is a long connected line of sharp edges (the outline of a cube, say); a small cluster of sharp edges around one stray point is just a spike or dent, so it is dropped and that point gets smoothed */
+ const inc=P.map(()=>[]);HE.forEach((_,q)=>{inc[Math.floor(q/4194304)].push(q%4194304);inc[q%4194304].push(Math.floor(q/4194304))});
+ const comp=new Int32Array(P.length).fill(-1);
+ for(let i=0;i<P.length;i++){if(!inc[i].length||comp[i]>=0)continue;const st=[i],vs=[i];comp[i]=i;while(st.length){const x=st.pop();inc[x].forEach(y=>{if(comp[y]<0){comp[y]=i;st.push(y);vs.push(y)}})}
+  if(vs.length<24){const S=new Set(vs);[...HE.keys()].forEach(q=>{if(S.has(Math.floor(q/4194304)))HE.delete(q)})}}
+ HE.forEach((_,q)=>{fixed[Math.floor(q/4194304)]=1;fixed[q%4194304]=1});
+ const N=nb.map(s=>[...s]),n=Math.round(amount*40);let A=P,B=P.map(v=>v.slice());
+ const pass=k=>{for(let i=0;i<A.length;i++){const p=A[i],q=B[i],L=N[i];if(fixed[i]||!L.length){q[0]=p[0];q[1]=p[1];q[2]=p[2];continue}let x=0,y=0,z=0;for(let j=0;j<L.length;j++){const o=A[L[j]];x+=o[0];y+=o[1];z+=o[2]}const t=1/L.length;q[0]=p[0]+(x*t-p[0])*k;q[1]=p[1]+(y*t-p[1])*k;q[2]=p[2]+(z*t-p[2])*k}const t=A;A=B;B=t};
+ for(let it=0;it<n;it++){pass(.5);pass(-.53)}
  return m.v.map((v,i)=>map[i]>=0?A[map[i]].slice():v)}
-FOPS.Smooth={p:{amount:[.6,0,1,.05],levels:[0,0,2,1],round:[.5,0,1,.05]},fn:(m,p)=>{const L=Math.max(0,Math.min(2,Math.round(p.levels))),rd=Math.max(0,Math.min(1,p.round)),it=Math.round(Math.max(0,Math.min(1,p.amount))*100);
- const bb=M=>{const mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9],u=new Set(M.f.flat());u.forEach(i=>{const v=M.v[i];for(let k=0;k<3;k++){if(v[k]<mn[k])mn[k]=v[k];if(v[k]>mx[k])mx[k]=v[k]}});return[mn,mx]};
- if(!m.f.length)return m;const b0=bb(m);let r={v:m.v,f:m.f,src:m.f.map((_,i)=>i)};
- for(let l=0;l<L;l++){if(r.f.length>40000)break;const q=ccSub(r);r={v:q.v,f:q.f,src:q.src.map(s=>r.src[s])}}
- if(it>0)r={v:relaxMesh(r,it),f:r.f,src:r.src};
- const b1=bb(r),c0=[0,1,2].map(k=>(b0[0][k]+b0[1][k])/2),c1=[0,1,2].map(k=>(b1[0][k]+b1[1][k])/2),h0=[0,1,2].map(k=>(b0[1][k]-b0[0][k])/2),h1=[0,1,2].map(k=>(b1[1][k]-b1[0][k])/2),
-  sc=[0,1,2].map(k=>h1[k]>1e-9?h0[k]/h1[k]:1),shrunk=sc.some(x=>Math.abs(x-1)>1e-6);
- const V=r.v.map(v=>{let w=shrunk?[0,1,2].map(k=>c0[k]+(v[k]-c1[k])*sc[k]):v;
-  if(rd>0){const d=[0,1,2].map(k=>h0[k]>1e-9?(w[k]-c0[k])/h0[k]:0),l=Math.hypot(d[0],d[1],d[2]);if(l>1e-9){const t=1/l;w=[0,1,2].map(k=>w[k]+(c0[k]+h0[k]*d[k]*t-w[k])*rd)}}return w});
- return{v:V,f:r.f,src:r.src}}};
+FOPS.Smooth={p:{amount:[.6,0,1,.05],sharp:[35,0,180,1]},fn:(m,p)=>{if(!m.f.length)return m;return{v:smoothMesh(m,Math.max(0,Math.min(1,p.amount)),p.sharp),f:m.f,src:m.f.map((_,i)=>i)}}};
 function smoothObj(){const o=objs[sel];if(!o)return;const m=evaluate(o);if(!m.f.length){toast('Nothing to smooth');return}
  if(m.f.reduce((a,f)=>a+f.length,0)>30000){toast('This model is already very dense, so smoothing it would be slow.');return}
  const nn=mk('Smooth');insertNodeKeepColors(o,nn);dirtyFrom(o,o.nodes.indexOf(nn));selPts.clear();selEdges.clear();ringPrev=null;all();
- toast('Smoothed. Change amount, levels and roundness in the Smooth card (right panel); delete the card to undo.')}
+ toast('Surface smoothed; the shape is kept. Change amount and the sharp-edge angle in the Smooth card (right panel); delete the card to undo.')}
 FOPS.Skin={p:{falloff:[2,.5,6,.1],blend:[3,1,6,1]},fn:(m,p,n)=>{const o=n.owner,J=rig.joints;if(!o||!J.length)return m;
  const{P,W}=rigPose(),Mo=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),NB=Math.round(p.blend),kid=J.map((j,i)=>J.findIndex(k=>k.parent===i)),segB=J.map((j,i)=>kid[i]>=0?J[kid[i]].p:j.p);
  return mv(m,v=>{const q=mulv(Mo,v),w=[q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2]],ws=[];
@@ -1564,9 +1546,9 @@ function deleteEdges(){const o=objs[sel];if(!inEd()||!selEdges.size)return;const
  const add=(a,b)=>{const k=ek(a,b);if(a===b||seen.has(k))return;seen.add(k);list.push(a,b)};
  [...selEdges].forEach(k=>{const[a,b]=k.split('_').map(Number);add(a,b);if(symEdit){const ma=mirPt(a),mb=mirPt(b);if(ma!==undefined&&mb!==undefined)add(ma,mb)}});
  const m=evaluate(o),r=dissolveEdges(m,list);
- if(!r.done){toast('Nothing deleted: an edge can only be removed where two polygons meet. Edges on the border of the model have no polygon to join.');return}
+ if(!r.done){toast('Nothing deleted: those edges could not be removed.');return}
  remapColors(o,r.map);const nn=mk('DissolveEdges');nn.fl=list;placeNode(o,nn);selPts.clear();selEdges.clear();ringPrev=null;
- toast('Deleted '+r.done+' edge'+(r.done>1?'s':'')+' (the polygons beside '+(r.done>1?'each':'it')+' were joined). Ctrl+Z brings '+(r.done>1?'them':'it')+' back.');all()}
+ toast('Deleted '+r.done+' edge'+(r.done>1?'s':'')+(r.gone?(r.gone===r.done?' (on the border, so the polygon holding '+(r.done>1?'each':'it')+' was removed)':' ('+r.gone+' on the border, so the polygon holding '+(r.gone>1?'each':'it')+' was removed; the rest joined the polygons beside them)'):' (the polygons beside '+(r.done>1?'each':'it')+' were joined)')+'. Ctrl+Z brings '+(r.done>1?'them':'it')+' back.');all()}
 function deletePoints(){const o=objs[sel];if(!inEd()||!selPts.size)return;const list=[],seen=new Set(),add=a=>{if(a===undefined||seen.has(a))return;seen.add(a);list.push(a)};
  [...selPts].forEach(a=>{add(a);if(symEdit)add(mirPt(a))});
  const m=evaluate(o),r=cleanVerts(m,list);

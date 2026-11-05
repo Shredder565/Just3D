@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v144 — Smooth keeps the shape; every edge can be deleted
+- **Smooth now keeps your object's shape.** It no longer rounds a cube into a sphere. It only evens out the surface: stray points and bumps on flat or curved areas are pulled back in line, sharp edges and corners (and open borders) stay put, and the size doesn't shrink. The Smooth card has *amount* and *sharp* (the angle above which an edge counts as a crease; raise it to smooth harder edges too).
+- **Edges that wouldn't delete now delete.** Edges on the seams between the sides of a cube (sides built separately, wound the other way) were refused, and so were edges on the border of an open model. Seam edges now join the polygons beside them; a border edge removes the one polygon that holds it. Ctrl+Z brings them back.
+
 ## v143 — Renamed NOVA 3D, Smooth, Symmetrize object, and symmetry that catches every edit
 - **The program is now called NOVA 3D**: new header logo, window and page titles, program icon (desktop / quick-launch icon too), exe and zip names (`NOVA3D-vNN…`), README and shortcut script (`Create-NOVA3D-shortcuts.cmd` makes a "NOVA 3D" shortcut). Your saved settings and palettes carry over.
 - **Smooth** (Modeling tools): rounds the surface of a cube or sphere so it looks like a clean new sphere. The Smooth card on the right has *amount*, *levels* (optional extra subdivision for a finer skin) and *round* (pull toward the fitted ellipsoid). The size stays the same, open edges stay put, face colours are kept, and deleting the card undoes it (`Alt+S`).
