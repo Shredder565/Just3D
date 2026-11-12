@@ -305,6 +305,10 @@ FOPS.Symmetrize={p:{axis:[0,0,2,1],dir:[1,-1,1,2],offset:[0,-3,3,.01],merge:[.02
  const W=V.slice(),F=keep.slice(),map=new Int32Array(V.length).fill(-1);
  const mir=i=>{if(Math.abs(V[i][ax]-off)<=1e-9)return i;let r=map[i];if(r>=0)return r;const w=V[i].slice();w[ax]=2*off-w[ax];W.push(w);r=W.length-1;map[i]=r;return r};
  for(let j=0;j<keep.length;j++){const f=keep[j],n=f.length,g=new Array(n);for(let q=0;q<n;q++)g[n-1-q]=mir(f[q]);F.push(g)}const sr=ki.map(k=>s.src[k]);return{v:W,f:F,src:sr.concat(sr)}}};
+/* Add vertex: puts one new point on an edge, t of the way from its first point to its second. Every polygon that holds the edge gets the new point as an extra corner, so the point is attached to the edge and the shape does not change. */
+FOPS.AddVertex={p:{},fn:(m,p,n)=>{if(!n.edge||!(n.t>0&&n.t<1))return m;const[a,b]=n.edge,A=m.v[a],B=m.v[b];if(!A||!B)return m;const c=canonOf(m),cx=c[a],cy=c[b];if(cx===cy||cx<0||cy<0)return m;
+ const t=n.t,nv=m.v.length,V=m.v.concat([[A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t,A[2]+(B[2]-A[2])*t]]),F=m.f.map(f=>{const L=f.length;for(let k=0;k<L;k++){const u=c[f[k]],w=c[f[(k+1)%L]];if((u===cx&&w===cy)||(u===cy&&w===cx)){const g=f.slice(0,k+1);g.push(nv);return g.concat(f.slice(k+1))}}return f});
+ return{v:V,f:F,src:m.f.map((_,i)=>i)}}};
 /* Delete: removes the selected faces and nothing else. Vertex numbers stay the same so point edits made later still line up. */
 FOPS.Delete={p:{},fn:(m,p,n)=>{const d=new Set(n.fl||[]);return{v:m.v,f:m.f.filter((_,i)=>!d.has(i))}}};
 /* Dissolve edges / points: removing an edge joins the two polygons on either side of it into one; removing a point joins every polygon around it into one. Only what was selected goes: every other point, edge and polygon stays, and vertex numbers don't change. dissolveEdges / dissolveVerts also return, for each resulting polygon, the old polygon whose colour it keeps. */
@@ -758,10 +762,10 @@ function draw(){
  if(ceOn)ceOverlay(g,acc,view,scr);
  brushRing();
  draw.edges=null;
- if(editMode&&(sub==='edge'||sub==='loop')){const en2=editNode(so);
+ if(editMode&&(sub==='edge'||sub==='loop'||sub==='av')){const en2=editNode(so);
   draw.edgeCap=false;if(en2&&en2.out&&en2.rep){const bigE=hedE&&hedE.m===en2.out,rp=en2.rep,P=bigE?new Proxy({},{get:(_,k)=>[hedE.P.PX[k],hedE.P.PY[k],hedE.P.PZ[k]]}):en2.out.v.map(v=>{const q=mulv(Ms,v),w=view(q[0]+so.pos[0],q[1]+so.pos[1],q[2]+so.pos[2]),s=scr(w);return[s[0],s[1],w[2]]}),seen=new Set(),E=[];
    if(bigE)draw.hed.en=en2;else en2.out.f.forEach(f=>f.forEach((a,k)=>{const ra=rp[a],rb=rp[f[(k+1)%f.length]];if(ra===rb||ra<0||rb<0)return;const kk=ek(ra,rb);if(seen.has(kk))return;seen.add(kk);
-    const A=P[ra],B=P[rb];if(!vis((A[0]+B[0])/2,(A[1]+B[1])/2,(A[2]+B[2])/2))return;E.push({k:kk,a:Math.min(ra,rb),b:Math.max(ra,rb),x1:A[0],y1:A[1],x2:B[0],y2:B[1],z:(A[2]+B[2])/2})}));
+    const A=P[ra],B=P[rb];if(!vis((A[0]+B[0])/2,(A[1]+B[1])/2,(A[2]+B[2])/2))return;E.push({k:kk,a:Math.min(ra,rb),b:Math.max(ra,rb),ra,rb,x1:A[0],y1:A[1],x2:B[0],y2:B[1],z:(A[2]+B[2])/2,z1:A[2],z2:B[2]})}));
    draw.edges=E;
    if(bigE&&sub==='edge'&&selPts.size&&selEdges.size){let c=0;g.strokeStyle=acc;g.lineWidth=3.5;g.beginPath();const PX=hedE.P.PX,PY=hedE.P.PY;for(const k of selEdges){if(++c>20000)break;const[a,b]=k.split('_');g.moveTo(PX[a],PY[a]);g.lineTo(PX[b],PY[b])}g.stroke()}
    for(const e of E){const sl=sub==='edge'&&selPts.size&&selEdges.has(e.k);if(!sl)continue;
@@ -769,7 +773,8 @@ function draw(){
    /* loop cut preview: a straight yellow line through the middle of each ring edge, drawn where the cut will go */
    if(sub==='loop'&&ringPrev){const md=k=>{const[a,b]=k.split('_').map(Number),A=P[a],B=P[b];return A&&B?[(A[0]+B[0])/2,(A[1]+B[1])/2,(A[2]+B[2])/2]:null};
     g.strokeStyle='#f2b01e';g.lineWidth=3;g.lineCap='round';g.beginPath();
-    ringPrev.segs.forEach(([k1,k2])=>{const u=md(k1),w=md(k2);if(!u||!w||!vis((u[0]+w[0])/2,(u[1]+w[1])/2,(u[2]+w[2])/2))return;g.moveTo(u[0],u[1]);g.lineTo(w[0],w[1])});g.stroke();g.lineCap='butt'}}}
+    ringPrev.segs.forEach(([k1,k2])=>{const u=md(k1),w=md(k2);if(!u||!w||!vis((u[0]+w[0])/2,(u[1]+w[1])/2,(u[2]+w[2])/2))return;g.moveTo(u[0],u[1]);g.lineTo(w[0],w[1])});g.stroke();g.lineCap='butt'}
+   if(sub==='av'&&avHov){g.fillStyle='#f2b01e';g.strokeStyle='#fff';g.lineWidth=1.5;g.beginPath();g.arc(avHov.x,avHov.y,5.5,0,TAU);g.fill();g.stroke()}}}
  /* Maya-style extrude manipulator: right after Extrude, drag the arrow on the new faces to pull them in or out live */
  draw.exm=null;
  if(exNode&&editMode&&sub==='face'&&so&&so.nodes.includes(exNode)&&selPts.size===exSel.size&&[...selPts].every(i=>exSel.has(i))){const e3=editNode(so);
@@ -1475,6 +1480,17 @@ function symMirrorIdx(m,ax){const key=v=>v.map(t=>Math.round(t*1e4)).join(','),c
  return i=>{const v=m.v[i];if(!v)return undefined;const w=v.slice();w[ax]=-w[ax];return mfind(K,w)}}
 function mirPt(i){const o=objs[sel],en=editNode(o);if(!symEdit||!en||!en.out||!en.rep)return undefined;const ax=symAxis(),V=en.out.v,off=en.off,key=a=>a.map(t=>Math.round(t*1e4)).join(','),base=j=>{const q=off[j]||[0,0,0],v=V[j];return[v[0]-q[0],v[1]-q[1],v[2]-q[2]]};
  const b=base(i);b[ax]=-b[ax];for(let j=0;j<V.length;j++)if(en.rep[j]===j){const q=base(j);if(Math.abs(q[0]-b[0])<1.5e-4&&Math.abs(q[1]-b[1])<1.5e-4&&Math.abs(q[2]-b[2])<1.5e-4)return j}return undefined}
+/* Add vertex tool: where on an edge a click lands. ts is how far along the drawn line the click is; in perspective that is turned back into how far along the real edge it is. */
+let avHov=null;
+function avPoint(h,x,y){const vx=h.x2-h.x1,vy=h.y2-h.y1,l2=vx*vx+vy*vy;if(l2<1)return null;const ts=Math.max(0,Math.min(1,((x-h.x1)*vx+(y-h.y1)*vy)/l2));let t=ts;
+ if(!ortho&&h.z1!==undefined){const d1=Math.max(.05,h.z1+dist),d2=Math.max(.05,h.z2+dist);t=ts*d1/((1-ts)*d2+ts*d1)}
+ return{t,sx:h.x1+vx*ts,sy:h.y1+vy*ts}}
+function avInsert(h,x,y){const o=objs[sel];if(!o)return;const q=avPoint(h,x,y);if(!q)return;
+ if(q.t<.02||q.t>.98){toast('Click a little further from the corner, or select the point itself');return}
+ const nn=mk('AddVertex');nn.edge=[h.ra,h.rb];nn.t=q.t;let n2=null;
+ if(symEdit){const m=baseMesh(o);if(m){const mi=symMirrorIdx(m,symAxis()),a2=mi(h.ra),b2=mi(h.rb);if(a2!==undefined&&b2!==undefined&&a2!==b2){const c=canonOf(m);if(ek(c[a2],c[b2])!==ek(c[h.ra],c[h.rb])){n2=mk('AddVertex');n2.edge=[a2,b2];n2.t=q.t}}}}
+ placeNode(o,nn);if(n2)placeNode(o,n2);selPts.clear();selEdges.clear();avHov=null;dirtyFrom(o,o.nodes.indexOf(nn));
+ toast('Vertex added on the edge. Click again to add more, or choose another tool to stop.')}
 function loopInsert(h){const o=objs[sel],nn=mk('LoopCut');nn.edge=[h.a,h.b];let mirror=null;
  if(symEdit){const m=baseMesh(o);if(m){const mi=symMirrorIdx(m,symAxis()),a2=mi(h.a),b2=mi(h.b);
   if(a2!==undefined&&b2!==undefined&&a2!==b2){const r=ringOf(m,h.a,h.b),c=r&&r.c;if(c&&ek(c[a2],c[b2])!==ek(c[h.a],c[h.b])&&!r.R.has(ek(c[a2],c[b2])))mirror=[a2,b2]}
@@ -1589,6 +1605,7 @@ const CMDS=[
  {g:'Component mode',l:'Loop cut',k:'4',en:need,f:pick('loop'),on:()=>editMode&&sub==='loop'},
  {g:'Component mode',l:'Knife',k:'K',en:need,f:pick('knife'),on:()=>knife&&!kaOn&&!scOn},
  {g:'Component mode',l:'Knife Area',en:need,f:pick('karea'),on:()=>knife&&kaOn},
+ {g:'Component mode',l:'Add vertex',en:need,f:pick('av'),on:()=>editMode&&sub==='av'},
  {g:'Experimental and proprietary',l:'Separate and Cut',en:need,f:pick('sepcut'),on:()=>scOn},
  {g:'Component mode',l:'Add loop edge',en:need,f:pick('ce'),on:()=>ceOn},
  {g:'Modeling',l:'World Draw',k:'N',f:()=>{setTool('draw');all()},on:()=>drawOn},
@@ -1985,7 +2002,7 @@ const SHELVES=[
  {n:'Basic Modeling Tools',rows:[
   {n:'Primitives',items:[{c:'Add cube',t:'Cube',ic:'cube'},{c:'Add sphere',t:'Sphere',ic:'sphere'},{c:'Add torus',t:'Torus',ic:'torus'},{c:'Add trapezoid',t:'Trapezoid',ic:'trap'},{c:'Add teapot',t:'Teapot',ic:'teapot'},{c:'Add tree',t:'Tree',ic:'tree'}]},
   {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid',ic:'grid'},{sp:1},{gl:'Component'},{c:'Object mode',t:'Object'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{gl:'Pivot'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X',ic:'axX'},{c:'Lock to Y axis',t:'Y',ic:'axY'},{c:'Lock to Z axis',t:'Z',ic:'axZ'},{c:'World (free move)',t:'World',ic:'world'},{sp:1},{gl:'Scene'},{c:'Remove object',t:'Remove object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save file',t:'Save'},{c:'Open file',t:'Load'}]},
-  {n:'Modeling tools',items:[{c:'Loop cut'},{c:'Loop cut selected edges',t:'Cut'},{c:'Knife',ic:'knife'},{c:'Knife Area',t:'Knife Area',ic:'karea'},{c:'Add loop edge',t:'Add loop edge',ic:'ledge'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object',t:'Symmetrize Object'},{c:'Smooth surface',t:'Smooth'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Group weld',t:'Group Weld',ic:'bullseye'},{c:'Duplicate',ic:'dup3'},{c:'Group selected',t:'Group',ic:'dup'},{c:'Delete',t:'Delete'},{sp:1},{gl:'Soft select'},{c:'Soft select',t:'Soft Select',ic:'soft'},{soft:'mode'},{soft:'curve'},{soft:'r'}]},
+  {n:'Modeling tools',items:[{c:'Loop cut'},{c:'Loop cut selected edges',t:'Cut'},{c:'Knife',ic:'knife'},{c:'Knife Area',t:'Knife Area',ic:'karea'},{c:'Add vertex',t:'Add Vertex',ic:'points'},{c:'Add loop edge',t:'Add loop edge',ic:'ledge'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object',t:'Symmetrize Object'},{c:'Smooth surface',t:'Smooth'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Group weld',t:'Group Weld',ic:'bullseye'},{c:'Duplicate',ic:'dup3'},{c:'Group selected',t:'Group',ic:'dup'},{c:'Delete',t:'Delete'},{sp:1},{gl:'Soft select'},{c:'Soft select',t:'Soft Select',ic:'soft'},{soft:'mode'},{soft:'curve'},{soft:'r'}]},
   {n:'Draw',items:[{c:'World Draw',t:'World Draw',ic:'draw'},{c:'Object Draw',t:'Object Draw',ic:'odraw'},{c:'Free Draw',t:'Free Draw',ic:'fdraw'}]},
   {n:'Rotoscope',items:[{c:'Rotoscope: load image',t:'Load image…'},{c:'Rotoscope: move and scale',t:'Move / Scale'},{c:'Rotoscope: show or hide',t:'Visible'},{c:'Rotoscope: remove image',t:'Remove'},{roto:'op'},{roto:'size'},{roto:'x'},{roto:'y'},{rname:1}]},
   {n:'File',items:[{c:'New file',t:'New File'},{c:'Open file',t:'Open File'},{c:'Save file',t:'Save File'},{c:'Save file as',t:'Save As'},{fname:1},{c:'Export file',t:'Export File'},{fmt:1},{c:'Export and save to this computer',t:'Save to Computer'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Perspective view',t:'Perspective View'},{c:'Orthographic view',t:'Orthographic View'},{sp:1},{gl:'Selected object'},{c:'Object wireframe',t:'Wireframe'},{c:'Object shaded',t:'Shaded'},{c:'Object wireframe + shaded',t:'Wireframe + Shaded'},{vp:'op'}]}]},
@@ -2647,8 +2664,9 @@ if(e.button===2){drag.rc=true;return}
   if(draw.hed){const q=hugeFaceAt(x,y);if(q)h=q}else for(let k=draw.polys.length-1;k>=0&&!h;k--){const p=draw.polys[k];if(p.oi===sel&&inPoly(x,y,p.pts))h=p}
   if(h){if(add(e)){selPts.has(h.fi)?selPts.delete(h.fi):selPts.add(h.fi)}else if(!selPts.has(h.fi)){selPts.clear();selPts.add(h.fi)}drag.pt={z:h.z};draw()}
   else startBox(e,x,y)}
- else if(editMode&&(sub==='edge'||sub==='loop')&&draw.edges){const x=e.clientX-r0.left,y=e.clientY-r0.top,h=nearEdge(x,y);
-  if(sub==='loop'){if(h)drag.loop=h}
+ else if(editMode&&(sub==='edge'||sub==='loop'||sub==='av')&&draw.edges){const x=e.clientX-r0.left,y=e.clientY-r0.top,h=nearEdge(x,y);
+  if(sub==='av'){if(h)drag.av={h,x,y}}
+  else if(sub==='loop'){if(h)drag.loop=h}
   else{if(!selPts.size)selEdges.clear();
    if(h){if(add(e)){selEdges.has(h.k)?selEdges.delete(h.k):selEdges.add(h.k)}else if(!selEdges.has(h.k)||!selPts.size){selEdges.clear();selEdges.add(h.k)}lastEdge=h;syncEdges();drag.pt={z:h.z};draw()}
    else startBox(e,x,y)}}
@@ -2698,6 +2716,7 @@ cv.addEventListener('pointerup',e=>{if(drag&&drag.sbx){const b=box;box=null;drag
  if(drag&&drag.pn){drag=null;return}
  if(drag&&drag.kn){knifeCut();kn=null;drag=null;all();return}
  if(drag&&drag.loop){if(drag.moved<5)loopInsert(drag.loop);drag=null;all();return}
+ if(drag&&drag.av){const d=drag.av;if(drag.moved<5)avInsert(d.h,d.x,d.y);drag=null;all();return}
  if(drag&&drag.tw&&drag.moved>=5&&twSrc!=null){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;let h=null;if(draw.hed&&draw.hed.pb){h=hugePick(x,y);if(h&&h.i===twSrc)h=null}else for(const q of draw.pts||[])if(Math.hypot(q.x-x,q.y-y)<11&&q.i!==twSrc&&(!h||q.z<h.z))h=q;if(h)twDo(twSrc,h.i);drag=null;all();return}
  if(drag&&drag.tw){drag=null;draw();return}
  if(drag&&drag.box){boxSelect();box=null;drag=null;all();return}
@@ -2750,7 +2769,8 @@ $('#ctx').addEventListener('click',e=>{const t=e.target.closest('[data-ci],[data
  const c=CMDS[+t.dataset.ci];hideCtx();if(c&&(!c.en||c.en()))c.f()});
 addEventListener('pointerdown',e=>{if(!e.target.closest||!e.target.closest('#ctx'))hideCtx()},true);
 addEventListener('wheel',hideCtx,{passive:true});addEventListener('resize',hideCtx);
-cv.addEventListener('pointermove',e=>{if(drag||!editMode||sub!=='loop'||!draw.edges)return;const r=cv.getBoundingClientRect(),h=nearEdge(e.clientX-r.left,e.clientY-r.top),k=h?h.k:null;
+cv.addEventListener('pointermove',e=>{if(!drag&&editMode&&sub==='av'){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,h=draw.edges&&!draw.hed?nearEdge(x,y):null,q=h?avPoint(h,x,y):null,n=q?{x:q.sx,y:q.sy}:null;if((n&&avHov&&n.x===avHov.x&&n.y===avHov.y)||(!n&&!avHov))return;avHov=n;draw();return}
+ if(drag||!editMode||sub!=='loop'||!draw.edges)return;const r=cv.getBoundingClientRect(),h=nearEdge(e.clientX-r.left,e.clientY-r.top),k=h?h.k:null;
  if(k!==hoverK){hoverK=k;ringPrev=h?ringKeys(h):null;draw()}});
 /* one keyboard map for every command in the registry */
 addEventListener('keydown',e=>{if(e.target.matches&&e.target.matches('input:not([type]),input[type=text],input[type=number],textarea'))return;hideCtx();

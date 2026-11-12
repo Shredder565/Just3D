@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v147 — Add Vertex (under Knife)
+- **Add Vertex** (Modeling tools, right under Knife Area; also in the right-click command list): click the button, then click anywhere on an edge and a point is added exactly where you clicked, attached to that edge, so the shape does not change. A yellow dot shows where it will go as you move over an edge. Every polygon that touches the edge gets the new point as an extra corner, and the point can be selected and moved like any other. It follows Symmetrize / Mirror Polygons (the mirrored edge gets its point too) and Ctrl+Z removes it. Clicks very close to a corner are ignored so you don't create a doubled point.
+
 ## v146 — Affect Front Vertices hides the back half correctly on every shape
 - **Affect Front Vertices** decides which polygons face away from the camera by looking at how the shape is really oriented, not at the way each polygon happened to be wound. Shapes built from separate pieces (the sides of a cube, the trapezoid) used to hide the wrong polygons or leave the side polygons showing; now only polygons that truly face the camera stay (a cube seen straight on shows just its front side, a sphere shows exactly its front half), and the points and edges behind them are hidden and cannot be picked. Polygons seen exactly edge-on count as facing away.
 - Very large models (60,000+ polygons, drawn by the graphics card) now hide their back-facing polygons too.
