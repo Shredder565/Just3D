@@ -939,8 +939,8 @@ function knifeCut(){const o=objs[sel];if(!o||!kn||Math.hypot(kn.x1-kn.x0,kn.y1-k
   d=N[0]*(C[0]-o.pos[0])+N[1]*(C[1]-o.pos[1])+N[2]*(C[2]-o.pos[2]),nn=mk('Slice');
  const NL=mulvT(rotMat(o.rot),N);Object.assign(nn.p,{nx:+NL[0].toFixed(4),ny:+NL[1].toFixed(4),nz:+NL[2].toFixed(4),d:+d.toFixed(4)});
 insertNodeKeepColors(o,nn);
- if(symEdit){const ax=symAxis(),M=NL.slice();M[ax]=-M[ax];const same=Math.abs(M[0]-NL[0])+Math.abs(M[1]-NL[1])+Math.abs(M[2]-NL[2])<1e-4||(Math.abs(M[0]+NL[0])+Math.abs(M[1]+NL[1])+Math.abs(M[2]+NL[2])<1e-4&&Math.abs(d)<1e-4);
-  if(!same){const n2=mk('Slice');Object.assign(n2.p,{nx:+M[0].toFixed(4),ny:+M[1].toFixed(4),nz:+M[2].toFixed(4),d:+d.toFixed(4)});insertNodeKeepColors(o,n2)}}
+ if(symEdit){const seen=[NL.slice()];symSubsets().forEach(ss=>{const M=NL.slice();ss.forEach(ax=>{M[ax]=-M[ax]});const eq=(u,w)=>Math.abs(u[0]-w[0])+Math.abs(u[1]-w[1])+Math.abs(u[2]-w[2])<1e-4,same=seen.some(u=>eq(M,u))||(seen.some(u=>Math.abs(M[0]+u[0])+Math.abs(M[1]+u[1])+Math.abs(M[2]+u[2])<1e-4)&&Math.abs(d)<1e-4);
+  if(!same){seen.push(M);const n2=mk('Slice');Object.assign(n2.p,{nx:+M[0].toFixed(4),ny:+M[1].toFixed(4),nz:+M[2].toFixed(4),d:+d.toFixed(4)});insertNodeKeepColors(o,n2)}})}
  selPts.clear()}
 /* ---- Separate and Cut: drag a window; everything of the selected object inside it (all the way through, along the view direction) is cut off along the window's four sides and becomes its own object ---- */
 function sepCut(b){const o=objs[sel];box=null;if(!o){draw();return}
@@ -1493,8 +1493,8 @@ function syncEdges(){selPts.clear();selEdges.forEach(k=>{const[a,b]=k.split('_')
 function baseMesh(o){const en=editNode(o),i=en?o.nodes.indexOf(en):-1;return i>0?o.nodes[i-1].out:null}
 function symMirrorIdx(m,ax){const key=v=>v.map(t=>Math.round(t*1e4)).join(','),c=canonOf(m),K=new Map();m.v.forEach((v,i)=>{if(c[i]===i)K.set(key(v),i)});
  return i=>{const v=m.v[i];if(!v)return undefined;const w=v.slice();w[ax]=-w[ax];return mfind(K,w)}}
-function mirPt(i){const o=objs[sel],en=editNode(o);if(!symEdit||!en||!en.out||!en.rep)return undefined;const ax=symAxis(),V=en.out.v,off=en.off,key=a=>a.map(t=>Math.round(t*1e4)).join(','),base=j=>{const q=off[j]||[0,0,0],v=V[j];return[v[0]-q[0],v[1]-q[1],v[2]-q[2]]};
- const b=base(i);b[ax]=-b[ax];for(let j=0;j<V.length;j++)if(en.rep[j]===j){const q=base(j);if(Math.abs(q[0]-b[0])<1.5e-4&&Math.abs(q[1]-b[1])<1.5e-4&&Math.abs(q[2]-b[2])<1.5e-4)return j}return undefined}
+function mirPt(i,sset){const o=objs[sel],en=editNode(o);if(!symEdit||!en||!en.out||!en.rep)return undefined;const ax=symAxis(),V=en.out.v,off=en.off,key=a=>a.map(t=>Math.round(t*1e4)).join(','),base=j=>{const q=off[j]||[0,0,0],v=V[j];return[v[0]-q[0],v[1]-q[1],v[2]-q[2]]};
+ const b=base(i);(sset||[ax]).forEach(a=>{b[a]=-b[a]});for(let j=0;j<V.length;j++)if(en.rep[j]===j){const q=base(j);if(Math.abs(q[0]-b[0])<1.5e-4&&Math.abs(q[1]-b[1])<1.5e-4&&Math.abs(q[2]-b[2])<1.5e-4)return j}return undefined}
 /* Add vertex tool: where on an edge a click lands. ts is how far along the drawn line the click is; in perspective that is turned back into how far along the real edge it is. */
 let avHov=null;
 function avPoint(h,x,y){const vx=h.x2-h.x1,vy=h.y2-h.y1,l2=vx*vx+vy*vy;if(l2<1)return null;const ts=Math.max(0,Math.min(1,((x-h.x1)*vx+(y-h.y1)*vy)/l2));let t=ts;
@@ -1523,7 +1523,7 @@ function faceOp(name){const o=objs[sel];if(!o||sub!=='face'||!selPts.size)return
 function symFaces(o,set){if(!symEdit||!o)return set;const m=evaluate(o),en=editNode(o),ax=symAxis(),key=c=>c.map(t=>Math.round(t*1e4)).join(',');
  const bp=i=>{const v=m.v[i],q=en&&en.rep&&en.off[en.rep[i]];return q?[v[0]-q[0],v[1]-q[1],v[2]-q[2]]:v},cen=f=>{const c=[0,0,0];f.forEach(i=>{const b=bp(i);c[0]+=b[0]/f.length;c[1]+=b[1]/f.length;c[2]+=b[2]/f.length});return c};
  const K=new Map();m.f.forEach((f,i)=>K.set(key(cen(f)),i));const out=new Set(set);
- set.forEach(i=>{const f=m.f[i];if(!f)return;const c=cen(f);c[ax]=-c[ax];const j=mfind(K,c);if(j!==undefined)out.add(j)});return out}
+ set.forEach(i=>{const f=m.f[i];if(!f)return;symSubsets().forEach(ss=>{const c=cen(f);ss.forEach(a=>{c[a]=-c[a]});const j=mfind(K,c);if(j!==undefined)out.add(j)})});return out}
 function deleteFaces(){const o=objs[sel];if(!o||sub!=='face'||!selPts.size)return;const nf=evaluate(o).f.length,d=symFaces(o,new Set([...selPts].filter(i=>i<nf)));if(!d.size)return;
  const fc={};let k=0;for(let i=0;i<nf;i++){if(d.has(i))continue;if(o.fc&&o.fc[i])fc[k]=o.fc[i];k++}o.fc=fc;
  const nn=mk('Delete'),L=o.nodes.length-1;nn.fl=[...d];placeNode(o,nn);
@@ -1591,13 +1591,13 @@ function delObj(){const set=new Set(osel);if(objs[sel])set.add(objs[sel]);if(!se
 function remapColors(o,map){const fc={};map.forEach((old,i)=>{if(o.fc&&o.fc[old])fc[i]=o.fc[old]});o.fc=fc}
 function deleteEdges(){const o=objs[sel];if(!inEd()||!selEdges.size)return;const list=[],seen=new Set();
  const add=(a,b)=>{const k=ek(a,b);if(a===b||seen.has(k))return;seen.add(k);list.push(a,b)};
- [...selEdges].forEach(k=>{const[a,b]=k.split('_').map(Number);add(a,b);if(symEdit){const ma=mirPt(a),mb=mirPt(b);if(ma!==undefined&&mb!==undefined)add(ma,mb)}});
+ [...selEdges].forEach(k=>{const[a,b]=k.split('_').map(Number);add(a,b);if(symEdit)symSubsets().forEach(ss=>{const ma=mirPt(a,ss),mb=mirPt(b,ss);if(ma!==undefined&&mb!==undefined)add(ma,mb)})});
  const m=evaluate(o),r=dissolveEdges(m,list);
  if(!r.done){toast('Nothing deleted: those edges could not be removed.');return}
  remapColors(o,r.map);const nn=mk('DissolveEdges');nn.fl=list;placeNode(o,nn);selPts.clear();selEdges.clear();ringPrev=null;
  toast('Deleted '+r.done+' edge'+(r.done>1?'s':'')+(r.gone?(r.gone===r.done?' (on the border, so the polygon holding '+(r.done>1?'each':'it')+' was removed)':' ('+r.gone+' on the border, so the polygon holding '+(r.gone>1?'each':'it')+' was removed; the rest joined the polygons beside them)'):' (the polygons beside '+(r.done>1?'each':'it')+' were joined)')+'. Ctrl+Z brings '+(r.done>1?'them':'it')+' back.');all()}
 function deletePoints(){const o=objs[sel];if(!inEd()||!selPts.size)return;const list=[],seen=new Set(),add=a=>{if(a===undefined||seen.has(a))return;seen.add(a);list.push(a)};
- [...selPts].forEach(a=>{add(a);if(symEdit)add(mirPt(a))});
+ [...selPts].forEach(a=>{add(a);if(symEdit)symSubsets().forEach(ss=>add(mirPt(a,ss)))});
  const m=evaluate(o),r=cleanVerts(m,list);
  if(!r.done){toast('Nothing deleted: only a point that sits on a single line (exactly two edges) can be deleted. '+(r.kept>1?'These points join':'This point joins')+' three or more edges, so '+(r.kept>1?'they stay':'it stays')+'. Delete edges or faces first to free a point.');return}
  const nn=mk('CleanVerts');nn.fl=list;placeNode(o,nn);selPts.clear();selEdges.clear();
@@ -1640,7 +1640,8 @@ const CMDS=[
  {g:'Modeling',l:'Clear face paint',k:'Shift+P',en:need,f:()=>paintFaces(true)},
  {g:'Modeling',l:'Reset point edits',k:'Shift+R',en:inEd,f:resetEdits},
  {g:'Modeling',l:'Mirror polygons',k:'Alt+X',en:need,f:mirrorPolys,on:()=>symEdit},
- {g:'Modeling',l:'Symmetrize',k:'Ctrl+Shift+Y',en:need,f:symToggle,on:()=>symEdit},
+ {g:'Modeling',l:'Symmetrize',k:'Ctrl+Shift+Y',en:need,f:symToggle,on:()=>symEdit&&!sym4},
+ {g:'Modeling',l:'Symmetrize 4-way',k:'Ctrl+Alt+Y',en:need,f:sym4Toggle,on:()=>symEdit&&sym4},
  {g:'Modeling',l:'Symmetrize object',k:'Alt+Y',en:need,f:symmetrizeChanges},
  {g:'Modeling',l:'Smooth surface',k:'Alt+S',en:need,f:smoothObj},
  {g:'Modeling',l:'Paint tool (click or drag faces)',k:'B',en:need,f:pick('paint'),on:()=>paintOn},
@@ -2306,7 +2307,7 @@ const SHELVES=[
  {n:'Basic Modeling Tools',rows:[
   {n:'Primitives',items:[{c:'Add cube',t:'Cube',ic:'cube'},{c:'Add sphere',t:'Sphere',ic:'sphere'},{c:'Add torus',t:'Torus',ic:'torus'},{c:'Add trapezoid',t:'Trapezoid',ic:'trap'},{c:'Add teapot',t:'Teapot',ic:'teapot'},{c:'Add tree',t:'Tree',ic:'tree'}]},
   {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid',ic:'grid'},{sp:1},{gl:'Component'},{c:'Object mode',t:'Object'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{gl:'Pivot'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X',ic:'axX'},{c:'Lock to Y axis',t:'Y',ic:'axY'},{c:'Lock to Z axis',t:'Z',ic:'axZ'},{c:'World (free move)',t:'World',ic:'world'},{sp:1},{gl:'Scene'},{c:'Remove object',t:'Remove object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save file',t:'Save'},{c:'Open file',t:'Load'}]},
-  {n:'Modeling tools',items:[{c:'Loop cut',t:'Loop Cut'},{c:'Knife Area',t:'Knife Area',ic:'karea'},{c:'Add loop edge',t:'Add Loop Edge',ic:'ledge'},{c:'Add vertex',t:'Add Vertex',ic:'points'},{c:'Group weld',t:'Group Weld',ic:'bullseye'},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Symmetrize',t:'Symmetrize'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize object',t:'Symmetrize Object'},{c:'Smooth surface',t:'Smooth'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Duplicate',ic:'dup3'},{c:'Group selected',t:'Group',ic:'dup'},{c:'Delete',t:'Delete'},{sp:1},{gl:'Soft select'},{c:'Soft select',t:'Soft Select',ic:'soft'},{soft:'mode'},{soft:'curve'},{soft:'r'}]},
+  {n:'Modeling tools',items:[{c:'Loop cut',t:'Loop Cut'},{c:'Knife Area',t:'Knife Area',ic:'karea'},{c:'Add loop edge',t:'Add Loop Edge',ic:'ledge'},{c:'Add vertex',t:'Add Vertex',ic:'points'},{c:'Group weld',t:'Group Weld',ic:'bullseye'},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Symmetrize',t:'Symmetrize'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize 4-way',t:'Symmetrize 4-Way'},{c:'Symmetrize object',t:'Symmetrize Object'},{c:'Smooth surface',t:'Smooth'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Duplicate',ic:'dup3'},{c:'Group selected',t:'Group',ic:'dup'},{c:'Delete',t:'Delete'},{sp:1},{gl:'Soft select'},{c:'Soft select',t:'Soft Select',ic:'soft'},{soft:'mode'},{soft:'curve'},{soft:'r'}]},
   {n:'Draw',items:[{c:'World Draw',t:'World Draw',ic:'draw'},{c:'Object Draw',t:'Object Draw',ic:'odraw'},{c:'Free Draw',t:'Free Draw',ic:'fdraw'}]},
   {n:'Rotoscope',items:[{c:'Rotoscope: load image',t:'Load image…'},{c:'Rotoscope: move and scale',t:'Move / Scale'},{c:'Rotoscope: show or hide',t:'Visible'},{c:'Rotoscope: remove image',t:'Remove'},{roto:'op'},{roto:'size'},{roto:'x'},{roto:'y'},{rname:1}]},
   {n:'File',items:[{c:'New file',t:'New File'},{c:'Open file',t:'Open File'},{c:'Save file',t:'Save File'},{c:'Save file as',t:'Save As'},{fname:1},{c:'Export file',t:'Export File'},{fmt:1},{c:'Export and save to this computer',t:'Save to Computer'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Perspective view',t:'Perspective View'},{c:'Orthographic view',t:'Orthographic View'},{sp:1},{c:'Record video (MP4)',t:'Record',id:'rec'},{sp:1},{gl:'Selected object'},{c:'Object wireframe',t:'Wireframe'},{c:'Object shaded',t:'Shaded'},{c:'Object wireframe + shaded',t:'Wireframe + Shaded'},{vp:'op'}]}]},
@@ -2520,23 +2521,31 @@ function mfind(K,a){const c=a.map(t=>{const u=t*1e4,f=Math.floor(u),r=u-f;return
 let symAx=0;
 function symAxis(){return axisK!==null?axisK:symAx}
 function symPt(p){const q=p.slice(),a=symAxis();q[a]=-q[a];return q}
+var sym4=false;/* Symmetrize 4-way: edits are copied across the left/right plane and the front/back plane at once */
+function symAxes(){return symEdit&&sym4?[0,2]:[symAxis()]}
+function symSubsets(){const A=symAxes();return A.length===1?[[A[0]]]:[[A[0]],[A[1]],[A[0],A[1]]]}
+function symPtsAll(p){return symSubsets().map(ss=>{const q=p.slice();ss.forEach(a=>{q[a]=-q[a]});return q})}
 function symPrep(){if(!symEdit||!editMode)return null;const so=objs[sel],en=editNode(so);if(!so||!en||!en.out||!en.rep)return null;
- const ax=symAxis(),V=en.out.v,off=en.off,key=a=>a.map(t=>Math.round(t*1e4)).join(','),base=i=>{const o=off[i]||[0,0,0],v=V[i];return[v[0]-o[0],v[1]-o[1],v[2]-o[2]]};
- const selR=[...(sub==='face'?facePts(en):selPts)];if(!selR.length)return null;const sw=softWeights(so,en),reps=sw?[...sw.keys()]:selR,S=new Set(reps),K=new Map(),pairs=[];
+ const A=symAxes(),MK=A.length===1?[1]:[1,2,3],V=en.out.v,off=en.off,key=a=>a.map(t=>Math.round(t*1e4)).join(','),base=i=>{const o=off[i]||[0,0,0],v=V[i];return[v[0]-o[0],v[1]-o[1],v[2]-o[2]]};
+ const selR=[...(sub==='face'?facePts(en):selPts)];if(!selR.length)return null;const sw=softWeights(so,en),reps=sw?[...sw.keys()]:selR,S=new Set(reps),K=new Map(),groups=[],plane=[];
  V.forEach((_,i)=>{if(en.rep[i]===i)K.set(key(base(i)),i)});
- const plane=[],full=selR.length>=K.size;let sd=0,sn=0;
- reps.forEach(i=>{const x=base(i)[ax];if(Math.abs(x)>=2e-4){sd+=x;sn++}});const side=sn&&sd<0?-1:1;
- /* a two-sided selection: the side the selection mostly lies on is the master and the other side copies it; with every point selected the whole model is being moved, so nothing is mirrored */
- if(!full)reps.forEach(i=>{const b=base(i);if(Math.abs(b[ax])<2e-4){plane.push(i);return}const x=b[ax];b[ax]=-b[ax];const j=mfind(K,b);if(j===undefined||j===i)return;
-  if(S.has(j)){if(x*side>0)pairs.push([i,j])}else pairs.push([i,j])});
- return{so,en,ax,pairs,plane}}
-function symApply(P){if(!P)return;const{so,en,ax,pairs,plane}=P,off=en.off;
- plane.forEach(i=>{const o=off[i];if(o)o[ax]=0}); /* points on the mirror plane stay on it, otherwise the two sides could not match */
- pairs.forEach(([i,j])=>{const o=off[i]||[0,0,0],q=off[j]||(off[j]=[0,0,0]);q[0]=o[0];q[1]=o[1];q[2]=o[2];q[ax]=-q[ax]});dirtyFrom(so,so.nodes.indexOf(en))}
+ const full=selR.length>=K.size;
+ const side=A.map(a=>{let sd=0,sn=0;reps.forEach(i=>{const x=base(i)[a];if(Math.abs(x)>=2e-4){sd+=x;sn++}});return sn&&sd<0?-1:1});
+ /* a selection on several sides: the side (or corner) it mostly lies on is the master and the other sides copy it; with every point selected the whole model is being moved, so nothing is mirrored */
+ if(!full){const done=new Set();reps.forEach(i=>{const b=base(i),on=A.filter(a=>Math.abs(b[a])<2e-4);if(on.length)plane.push([i,on]);
+   if(done.has(i))return;const mem=[{j:i,m:0}];
+   MK.forEach(mk=>{const c=b.slice();A.forEach((a,k)=>{if(mk>>k&1)c[a]=-c[a]});const j=mfind(K,c);if(j!==undefined&&!mem.some(x=>x.j===j))mem.push({j,m:mk})});
+   mem.forEach(x=>done.add(x.j));if(mem.length<2)return;
+   const ok=x=>{const q=base(x.j);return A.every((a,k)=>Math.abs(q[a])<2e-4||q[a]*side[k]>0)},cand=mem.filter(x=>S.has(x.j)),src=cand.find(ok)||cand[0];
+   groups.push({src:src.j,t:mem.filter(x=>x!==src).map(x=>({j:x.j,m:x.m^src.m}))})})}
+ return{so,en,A,groups,plane}}
+function symApply(P){if(!P)return;const{so,en,A,groups,plane}=P,off=en.off;
+ plane.forEach(([i,on])=>{const o=off[i];if(o)on.forEach(a=>{o[a]=0})}); /* points on a mirror plane stay on it, otherwise the two sides could not match */
+ groups.forEach(g=>{const o=off[g.src]||[0,0,0];g.t.forEach(({j,m})=>{const q=off[j]||(off[j]=[0,0,0]);q[0]=o[0];q[1]=o[1];q[2]=o[2];A.forEach((a,k)=>{if(m>>k&1)q[a]=-q[a]})})});dirtyFrom(so,so.nodes.indexOf(en))}
 function rotPts(dx,dy){const P=symPrep();rotPts0(dx,dy);symApply(P)}
 function movePts(w){const P=symPrep();movePts0(w);symApply(P)}
 function scalePts(k,f){const P=symPrep();scalePts0(k,f);symApply(P)}
-function mirrorPolys(){if(!objs[sel])return;symEdit=!symEdit;if(symEdit&&!editMode)setTool('face');
+function mirrorPolys(){if(!objs[sel])return;symEdit=!symEdit;sym4=false;if(symEdit&&!editMode)setTool('face');
  all();toast(symEdit?'Mirror Polygons on: moving points or faces, and loop cut, extrude, bevel, weld, target weld, knife and delete, are repeated on the opposite side ('+'XYZ'[symAxis()]+' plane). Press X, Y or Z first to change the plane.':'Mirror Polygons off')}
 function mirrorObj(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK:0;dupObj();const c=objs[sel];c.name=o.name+'_mirror';
  c.pos=o.pos.slice();c.pos[ax]=-c.pos[ax];c.rot=o.rot.slice();for(let k=0;k<3;k++)if(k!==ax)c.rot[k]=-c.rot[k];
@@ -2572,10 +2581,15 @@ function symmetrize(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK
  selPts.clear();selEdges.clear();ringPrev=null;all();toast(symWhy(r,ax)+'Change axis, dir and offset in the Symmetrize card; delete the card to undo.')}
 /* Symmetrize object changes: same detection, kept as its own command. Every earlier node and edit stays in the stack, so nothing is lost; delete the Symmetrize node to go back. */
 function symmetrizeChanges(){symmetrize()}
+/* Symmetrize 4-way is a switch: while on, every edit is copied in both directions across the left/right plane (X) and the front/back plane (Z) at once, so each change appears in all four quadrants. It does not change the model when clicked. */
+function sym4Toggle(){const o=objs[sel];if(!o)return;
+ if(symEdit&&sym4){symEdit=false;sym4=false;symAx=0;all();toast('Symmetrize 4-way off.');return}
+ symEdit=true;sym4=true;symAx=0;if(!editMode)setTool('face');all();
+ toast('Symmetrize 4-way on: every edit you make (move, rotate, scale, sculpt, loop cut, extrude, bevel, delete, paint) is copied left to right, right to left, front to back and back to front. Click it again to turn it off.')}
 /* Symmetrize is a switch: clicking it on mirrors the modelled side across the plane now and then stays on, repeating every later edit (move, rotate, scale, loop cut, knife, extrude, bevel, weld, delete) on the opposite side until it is clicked off. */
 function symToggle(){const o=objs[sel];if(!o)return;
- if(symEdit){symEdit=false;symAx=0;all();toast('Symmetrize off. New edits are no longer repeated on the other side (the symmetrized shape stays; delete the Symmetrize card to undo it).');return}
- symAx=axisK!==null?0:autoAxis(o);symEdit=true;symmetrize();toast('Symmetrize on ('+'XYZ'[symAxis()]+' plane): the model was mirrored and every edit you make now is repeated on the opposite side until you click Symmetrize again. Press X, Y or Z before clicking to choose another plane.')}
+ if(symEdit){symEdit=false;sym4=false;symAx=0;all();toast('Symmetrize off. New edits are no longer repeated on the other side (the symmetrized shape stays; delete the Symmetrize card to undo it).');return}
+ sym4=false;symAx=axisK!==null?0:autoAxis(o);symEdit=true;symmetrize();toast('Symmetrize on ('+'XYZ'[symAxis()]+' plane): the model was mirrored and every edit you make now is repeated on the opposite side until you click Symmetrize again. Press X, Y or Z before clicking to choose another plane.')}
 /* Merge: joins the selected objects (select two or more with Shift+click) into one object. Each object's final shape, position, rotation and scale are baked in and face colours are kept. Where objects overlap, the faces of each that lie inside the other are deleted and the nearest points along the open seam are welded together. The originals are replaced by the merged object (Ctrl+Z undoes it). */
 function insideMesh(P,M,bb){if(P[0]<bb[0][0]||P[0]>bb[1][0]||P[1]<bb[0][1]||P[1]>bb[1][1]||P[2]<bb[0][2]||P[2]>bb[1][2])return false;
  const D=[[.5774,.6101,.5422],[-.4432,.7311,-.5189],[.2977,-.5513,.7799]];let votes=0;
@@ -2865,7 +2879,7 @@ function brushApply(en,so,list,ps,R){const V=en.out.v,off=en.off,sg=sNow?-1:1,nr
 /* one dab of the brush at a screen position, plus its mirror image when symmetry is on */
 function sculptDab(x,y){const so=objs[sel];let en=editNode(so);if(!so||!en||!en.out||!en.rep||!sVF)return;const hit=sculptHit(x,y);if(!hit)return;
  const ks=((so.sc||[1,1,1]).reduce((s,v)=>s+v,0)/3)||1,R=sSize*((ortho?dist:hit.z+dist)/draw.F)/ks,passes=[{H:hit.P,front:true}];
- if(sSym||symEdit)passes.push({H:symPt(hit.P),front:false});
+ if(sSym||symEdit)(symEdit&&sym4?symPtsAll(hit.P):[symPt(hit.P)]).forEach(H=>passes.push({H,front:false}));
  passes.forEach(ps=>{en=editNode(so);const list=sculptSel(en,so,ps.H,R,ps.front);if(!list.length)return;list.forEach(o=>{o.w=fall(o.d)});
   brushApply(en,so,list,ps,R);dirtyFrom(so,so.nodes.indexOf(en));evaluate(so)})}
 function sculptStart(e){drag.sc=true;const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;sPos={x,y};
@@ -2876,7 +2890,7 @@ function sculptStart(e){drag.sc=true;const r=cv.getBoundingClientRect(),x=e.clie
  sVF=draw.hed&&en.out.f.length>=HEAVY_MIN?bigVF(en):{vf:buildVF(en),nb:edgeGraph(en).vN};
  if(sMode==='grab'){const hit=sculptHit(x,y);sGrab=null;if(!hit)return;
   const ks=((so.sc||[1,1,1]).reduce((s,v)=>s+v,0)/3)||1,R=sSize*((ortho?dist:hit.z+dist)/draw.F)/ks,sets=[{mir:false,list:sculptSel(en,so,hit.P,R,true).map(o=>({i:o.i,w:fall(o.d)}))}];
-  if(sSym||symEdit)sets.push({mir:true,list:sculptSel(en,so,symPt(hit.P),R,false).map(o=>({i:o.i,w:fall(o.d)}))});
+  if(sSym||symEdit)symSubsets().forEach(ss=>{const H=hit.P.slice();ss.forEach(a=>{H[a]=-H[a]});sets.push({mir:true,fl:ss,list:sculptSel(en,so,H,R,false).map(o=>({i:o.i,w:fall(o.d)}))})});
   sGrab={z:hit.z,sets};return}
  sculptDab(x,y);sLast={x,y};draw()}
 /* Resolution: before a build-up stroke, split faces under the brush until about sRes edges fit across it */
@@ -2890,7 +2904,7 @@ function refineToRes(x,y){const so=objs[sel];for(let it=0;it<3;it++){const en=ed
 function sculptMove(e){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
  if(sMode==='grab'){if(sGrab&&sPos){const so=objs[sel],en=editNode(so);
    if(en){const k=(ortho?dist:sGrab.z+dist)/draw.F,w=wl(so,unview((x-sPos.x)*k,-(y-sPos.y)*k,0));
-    sGrab.sets.forEach(S=>{const v=S.mir?symPt(w):w;S.list.forEach(({i,w:wt})=>{const q=en.off[i]||(en.off[i]=[0,0,0]);q[0]+=v[0]*wt;q[1]+=v[1]*wt;q[2]+=v[2]*wt})});dirtyFrom(so,so.nodes.indexOf(en))}}}
+    sGrab.sets.forEach(S=>{const v=S.mir?(S.fl?w.map((t,k)=>S.fl.includes(k)?-t:t):symPt(w)):w;S.list.forEach(({i,w:wt})=>{const q=en.off[i]||(en.off[i]=[0,0,0]);q[0]+=v[0]*wt;q[1]+=v[1]*wt;q[2]+=v[2]*wt})});dirtyFrom(so,so.nodes.indexOf(en))}}}
  else if(sLast){const sp=Math.max(3,sSize*.2),dx=x-sLast.x,dy=y-sLast.y,L=Math.hypot(dx,dy);
   if(L>=sp){const n=Math.min(sVF&&sVF.big?3:40,Math.floor(L/sp));for(let k=1;k<=n;k++)sculptDab(sLast.x+dx/L*sp*k,sLast.y+dy/L*sp*k);sLast={x:sLast.x+dx/L*sp*n,y:sLast.y+dy/L*sp*n}}}
  sPos={x,y};draw()}

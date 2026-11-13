@@ -4,6 +4,11 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v155 — Symmetrize 4-Way button
+- New **Symmetrize 4-Way** button in Modeling tools, directly above **Symmetrize Object** (also in the right-click command list, `Ctrl+Alt+Y`). It is a switch: while it is on, every edit you make is copied in both directions across the left/right plane and the front/back plane at once, so a change on any side appears on the other three (left to right, right to left, front to back, back to front). It does not alter the model when you click it; click it again to turn it off.
+- Covered edits: moving, rotating and scaling points, edges and faces; the sculpt brushes (including Grab); loop cut; extrude, bevel and other face operations; delete points, edges and faces; face painting. Knife, Add Vertex, Add Loop Edge and Weld still mirror across the left/right plane only.
+- The existing **Symmetrize** button (#7) is unchanged.
+
 ## v154 — Box select picks everything in the rectangle; Save As after recording
 - **Box select / highlight fixed.** Dragging a selection rectangle in Points, Edges or Faces mode now selects *everything* inside it, including the back half of an object, instead of only the front. Turn on **Affect Front Vertices** if you want the old front-only behaviour.
 - **Recording finished dialog.** When you stop a recording (or **Record Animation** ends) a window opens with a preview of the video, an editable file name and three choices: **Save As…** (choose the folder and name), **Save to Downloads**, or **Discard**.
