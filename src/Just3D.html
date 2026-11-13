@@ -3016,12 +3016,22 @@ function rowTol(vals,targets,base){const u=[...new Set(vals.map(v=>Math.round(v*
  targets.forEach(x=>{let lo=-Infinity,hi=Infinity;for(let k=0;k<u.length;k++){const d=u[k]-x;if(d>1e-4){hi=u[k]-x;break}}
   for(let k=u.length-1;k>=0;k--){const d=x-u[k];if(d>1e-4){lo=x-u[k];break}}
   const g=Math.min(lo,hi);if(isFinite(g))t=Math.min(t,g*.45)});return Math.max(t,1e-5)}
+/* a row follows the mesh itself (the edge loop / face ring that runs most nearly sideways), so it still works on hand-shaped models where the points are not at exactly the same height */
+function ptRow(en,v){const V=en.out.v,{vN}=edgeGraph(en),nb=vN.get(v);if(!nb||nb.size<2)return null;let w=-1,bs=1e9;nb.forEach(c=>{const d=Math.hypot(V[c][0]-V[v][0],V[c][1]-V[v][1],V[c][2]-V[v][2])||1,sl=Math.abs(V[c][1]-V[v][1])/d;if(sl<bs){bs=sl;w=c}});if(w<0)return null;
+ const out=new Set([v,w]);edgeLoop(en,v,w).forEach(k=>k.split('_').forEach(x=>out.add(+x)));return out}
+function faceRow(en,fi){const F=en.out.f,V=en.out.v,rp=en.rep,{eF}=edgeGraph(en),f0=F[fi];if(!f0||f0.length!==4)return null;
+ const edges=f=>f.map((a,k)=>[rp[a],rp[f[(k+1)%f.length]]]),E0=edges(f0);let best=0,bs=-1;
+ E0.forEach(([a,b],k)=>{const sl=Math.abs(V[a][1]-V[b][1])/(Math.hypot(V[a][0]-V[b][0],V[a][1]-V[b][1],V[a][2]-V[b][2])||1);if(sl>bs){bs=sl;best=k%2}});
+ const out=new Set([fi]),walk=(f,k)=>{for(let g=0;g<5000;g++){const E=edges(F[f]),key=ek(E[k][0],E[k][1]),fs=eF.get(key);if(!fs||fs.size!==2)break;const nf=[...fs].find(x=>x!==f);if(nf===undefined||out.has(nf))break;const Fn=F[nf];if(!Fn||Fn.length!==4)break;out.add(nf);const ik=edges(Fn).findIndex(([a,b])=>ek(a,b)===key);if(ik<0)break;f=nf;k=(ik+2)%4}};
+ walk(fi,best);walk(fi,best+2);return out}
 function rowSelect(e){const so=objs[sel],en=so&&editNode(so);if(!en||!en.out||!en.rep)return false;
  const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,V=en.out.v,F=en.out.f;let ys=Infinity,yb=-Infinity;V.forEach(v=>{ys=Math.min(ys,v[1]);yb=Math.max(yb,v[1])});const tol=Math.max(1e-4,(yb-ys)*.01);
  if(sub==='pt'){let h=null;if(draw.hed&&draw.hed.pb)h=hugePick(x,y);else for(const p of draw.pts||[])if(Math.hypot(p.x-x,p.y-y)<11&&(!h||p.z<h.z))h=p;
+  if(h){const set=ptRow(en,en.rep[h.i]),big=set&&set.size>=3;if(big){if(!e.shiftKey)selPts.clear();set.forEach(i=>{if(en.rep[i]===i)selPts.add(i)});all();toast(selPts.size+' point(s) in the row selected');return true}}
   const a=h?[h.i]:[...selPts];if(!a.length)return false;const rows=a.map(i=>V[i][1]),rt=rowTol(V.filter((_,i)=>en.rep[i]===i).map(v=>v[1]),rows,tol);if(!e.shiftKey)selPts.clear();
   V.forEach((v,i)=>{if(en.rep[i]===i&&rows.some(t=>Math.abs(v[1]-t)<=rt))selPts.add(i)});all();toast(selPts.size+' point(s) in the row selected');return true}
  if(sub==='face'){let a=null;const P=draw.polys||[];if(draw.hed){const q=hugeFaceAt(x,y);if(q)a=[q.fi]}else for(let k=P.length-1;k>=0;k--){const q=P[k];if(q.oi===sel&&inPoly(x,y,q.pts)){a=[q.fi];break}}
+  if(a&&a.length===1){const set=faceRow(en,a[0]);if(set&&set.size>=3){if(!e.shiftKey)selPts.clear();set.forEach(i=>selPts.add(i));all();toast(selPts.size+' face(s) in the row selected');return true}}
   if(!a)a=[...selPts];if(!a.length)return false;const cy=f=>f.reduce((t,i)=>t+V[i][1],0)/f.length,rows=a.map(i=>F[i]&&cy(F[i])).filter(t=>t!==undefined),rt=rowTol(F.map(cy),rows,tol*1.5);if(!e.shiftKey)selPts.clear();
   F.forEach((f,i)=>{if(rows.some(t=>Math.abs(cy(f)-t)<=rt))selPts.add(i)});all();toast(selPts.size+' face(s) in the row selected');return true}
  return false}

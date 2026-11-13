@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v151 — Double-click row select works on hand-shaped models again
+- **Double-click a face (or point) selects its whole row** by following the mesh itself: the face ring or edge loop that runs most nearly sideways through the one you clicked. Before, a row was "everything at the same height", which only worked on perfectly regular shapes: once you had moved points around, double-click picked a single face. It now works on shaped models, on rotated objects and in either viewport. Shift+double-click still adds to the selection. Triangle areas, poles and other places where a row cannot be followed fall back to the old same-height rule.
+
 ## v150 — Mouth rig and phonemes; Windows download is now the native app only
 - **Windows download**: the browser-window version (the Edge/Chrome launcher) has been removed. The zip now contains just the native Windows app, `NOVA3D-v150.exe` (own window and taskbar icon), plus the shortcut maker and icon. Its README, the GitHub release, the README and the download page were updated to match.
 - **Set up mouth** (Rigging tab → Mouth and phonemes): click the mouth corner, the opposite corner, the middle of the upper lip, the middle of the lower lip and (optionally) the tongue tip, and NOVA adds mouth-corner, upper-lip, lower-lip and tongue joints under the Head and Jaw. Works on cartoon, realistic, creature and robot faces. Left and right joints mirror when you drag them.
