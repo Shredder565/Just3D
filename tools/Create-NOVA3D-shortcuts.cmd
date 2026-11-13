@@ -4,8 +4,7 @@ rem Run it by double-clicking. It points the shortcuts at the .exe in this folde
 setlocal
 set "HERE=%~dp0"
 set "EXE="
-for %%F in ("%HERE%NOVA3D-*-native.exe") do set "EXE=%%~fF"
-if not defined EXE for %%F in ("%HERE%NOVA3D-*.exe") do set "EXE=%%~fF"
+for %%F in ("%HERE%NOVA3D-*.exe") do set "EXE=%%~fF"
 if not defined EXE (
   echo No NOVA 3D .exe was found next to this file.
   pause

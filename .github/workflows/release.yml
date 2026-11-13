@@ -24,11 +24,11 @@ jobs:
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
-          cp src/Just3D.html launcher/app.html
           cp src/Just3D.html native/app.html
           mkdir -p "dist/NOVA3D-$TAG"
-          (cd launcher && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -H=windowsgui" -o "../dist/NOVA3D-$TAG/NOVA3D-$TAG.exe" .)
-          (cd native && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -H=windowsgui" -o "../dist/NOVA3D-$TAG/NOVA3D-$TAG-native.exe" .)
+          (cd native && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -H=windowsgui" -o "../dist/NOVA3D-$TAG/NOVA3D-$TAG.exe" .)
+          cp tools/Create-NOVA3D-shortcuts.cmd "dist/NOVA3D-$TAG/Create-NOVA3D-shortcuts.cmd"
+          cp assets/nova3d.ico "dist/NOVA3D-$TAG/NOVA3D.ico"
           cp CHANGELOG.md "dist/NOVA3D-$TAG/CHANGELOG.txt"
           sed "s/@VER@/$TAG/g" tools/windows-README.txt > "dist/NOVA3D-$TAG/README.txt"
           (cd dist && zip -qr "NOVA3D-$TAG-windows.zip" "NOVA3D-$TAG")

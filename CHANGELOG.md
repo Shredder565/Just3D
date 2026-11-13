@@ -4,6 +4,15 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v150 — Mouth rig and phonemes; Windows download is now the native app only
+- **Windows download**: the browser-window version (the Edge/Chrome launcher) has been removed. The zip now contains just the native Windows app, `NOVA3D-v150.exe` (own window and taskbar icon), plus the shortcut maker and icon. Its README, the GitHub release, the README and the download page were updated to match.
+- **Set up mouth** (Rigging tab → Mouth and phonemes): click the mouth corner, the opposite corner, the middle of the upper lip, the middle of the lower lip and (optionally) the tongue tip, and NOVA adds mouth-corner, upper-lip, lower-lip and tongue joints under the Head and Jaw. Works on cartoon, realistic, creature and robot faces. Left and right joints mirror when you drag them.
+- **Mouth shapes**: one-click phoneme poses — A / I, E, O, U, M B P, F V, L / TH, W / Q, C D G K S, plus Smile, Frown and Wide open — and seven sliders (jaw open, corners narrow ↔ wide, frown ↔ smile, pucker, upper lip, lower lip, tongue). The sliders always show the real values, so they follow keys and presets.
+- **Mouth keys are separate from body keys**: with Auto-key on, mouth changes key only the face joints and body changes key only the body, so you can animate speech and movement independently on the same timeline. *Key mouth now* and *Clear mouth keys* are in the card. Keys are now blended per joint, so partial keys work everywhere.
+- **Lip-sync from text**: type a line, set the speed, and *Add lip-sync at current frame* turns the letters into mouth shapes (vowels, closed-lip sounds, teeth/lip sounds, tongue sounds, pauses at commas and full stops) keyed on the timeline.
+- **Audio**: *Load audio* (wav, mp3, ogg, m4a) plays the voice in sync with the timeline (Play, scrubbing and loop), draws its waveform behind the timeline, and *Key jaw from audio* animates the jaw from the loudness. Audio is not stored inside the saved file.
+- Joints can now have a position offset, not just a rotation (used by the lips, mouth corners and hips); it is saved, mirrored and undone like everything else.
+
 ## v149 — Pose with IK and animate on a timeline
 - **Pose (IK) mode** (Rigging tab → Mode; turns on automatically when you bind skin): drag a hand or a foot and the whole arm or leg follows, bending the elbow or knee the natural way and staying inside the joint limits. Hand and foot joints get an orange ring. Dragging is two-bone IK, so it works on realistic, cartoon, creature and robot rigs alike.
 - **Move the whole body**: drag the Hips joint (or use the Move X / Y / Z sliders on Hips). *Keep feet planted when moving the hips* is on by default, so the legs bend to keep the feet on the ground.

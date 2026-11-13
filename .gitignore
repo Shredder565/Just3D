@@ -1,5 +1,4 @@
-launcher/app.html
-dist/
 *.exe
 *.zip
+dist/
 native/app.html

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Builds the Windows resource object (exe icon, optionally an application manifest) from assets/icon256.png.
 No external tools needed except Pillow:
-  python3 tools/mksyso.py                                   -> launcher/rsrc_windows_amd64.syso (icon only)
+  python3 tools/mksyso.py                                   -> native/rsrc_windows_amd64.syso (icon only)
   python3 tools/mksyso.py native/rsrc_windows_amd64.syso assets/native.manifest   (icon + manifest, for the native app)
 Icons <256px are stored as 32-bit BMP (DIB); the 256px icon as PNG (Windows Vista+ convention)."""
 import struct, io, os, sys
@@ -88,6 +88,6 @@ out += raw
 for r in relocs: out += struct.pack('<IIH', r, 0, 3)   # IMAGE_REL_AMD64_ADDR32NB against symbol 0
 out += struct.pack('<8sIhHBB', b'.rsrc', 0, 1, 0, 3, 0)
 out += struct.pack('<I', 4)
-dest = sys.argv[1] if len(sys.argv) > 1 else os.path.join(root, 'launcher', 'rsrc_windows_amd64.syso')
+dest = sys.argv[1] if len(sys.argv) > 1 else os.path.join(root, 'native', 'rsrc_windows_amd64.syso')
 open(dest, 'wb').write(out)
 print('wrote', dest, len(out), 'bytes,', len(images), 'icons')
