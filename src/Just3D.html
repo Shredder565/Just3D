@@ -37,6 +37,7 @@ label{display:grid;grid-template-columns:62px 1fr 56px;align-items:center;gap:6p
 input.nb{width:100%;box-sizing:border-box;font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:1px 3px;text-align:right}
 output{text-align:right;color:var(--tx);font-variant-numeric:tabular-nums}
 input[type=range]{width:100%;accent-color:var(--acc)}
+#tl{position:absolute;left:0;right:0;bottom:0;z-index:6;display:none;flex-direction:column;gap:3px;padding:5px 8px 6px;background:rgba(18,22,30,.88);color:#eee;font-size:12px;border-top:1px solid var(--line)}#tl .tlr{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}#tl label{display:inline-flex;gap:3px;align-items:center;margin:0}#tl input[type=number]{width:52px;padding:1px 3px}#tl button{padding:2px 7px}#tl button.on{background:#a371f7;color:#fff}#tl .tlt{position:relative;height:24px}#tl .tlt input[type=range]{position:absolute;inset:0;width:100%;height:24px;margin:0}#tl .tlm{position:absolute;inset:0;pointer-events:none}#tl .tlm i{position:absolute;top:2px;width:9px;height:9px;margin-left:-4px;background:#ffcc33;transform:rotate(45deg);border:1px solid #000;pointer-events:auto;cursor:pointer}#tl .tlm i.on{background:#fff}#vps.tlon .stat{bottom:74px}
 .stat{position:absolute;left:8px;bottom:6px;color:#f2f2f2;text-shadow:0 1px 2px rgba(0,0,0,.6);font-size:12px;pointer-events:none}
 .add{display:flex;gap:6px;margin-top:6px}.add select{flex:1}
 .pc{margin:4px 0}.pc>summary{cursor:pointer;padding:4px 8px;background:var(--bg);border:1px solid var(--line);border-radius:4px;font-weight:600}.pc[open]>summary{margin-bottom:4px}.sec{color:var(--mut);margin:10px 0 4px}.row{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0}.nm{width:100%;box-sizing:border-box;font:inherit;font-weight:600;color:var(--tx);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:3px 6px;margin-bottom:6px}
@@ -810,7 +811,7 @@ function draw(){
  if(rig.joints.length){const jp=rigPose().P.map(p=>{const s=scr(view(p[0],p[1],p[2]));return[s[0],s[1]]}),colJ=j=>j.name.startsWith('L_')?'#4aa3ff':j.name.startsWith('R_')?'#ff6b6b':'#f2b01e';
   g.lineWidth=2;rig.joints.forEach((j,i)=>{if(j.parent>=0&&jp[j.parent]){g.strokeStyle=colJ(j);g.beginPath();g.moveTo(jp[j.parent][0],jp[j.parent][1]);g.lineTo(jp[i][0],jp[i][1]);g.stroke()}
    if(j.tip&&(j.finger||j.name==='Head'||j.name==='Jaw'||j.name.endsWith('Toes'))){const P=rigPose(),t=V3.add(P.P[i],mulv(P.W[i],V3.sub(j.tip,j.p))),ts=scr(view(t[0],t[1],t[2]));g.strokeStyle=colJ(j);g.beginPath();g.moveTo(jp[i][0],jp[i][1]);g.lineTo(ts[0],ts[1]);g.stroke()}});
-  draw.jts=[];rig.joints.forEach((j,i)=>{const r0=j.finger?3.2:5;g.beginPath();g.arc(jp[i][0],jp[i][1],i===rigSel?7:r0,0,TAU);g.fillStyle=i===rigSel?'#fff':colJ(j);g.fill();g.strokeStyle='#000';g.lineWidth=1.2;g.stroke();draw.jts.push({i,x:jp[i][0],y:jp[i][1]})});
+  draw.jts=[];rig.joints.forEach((j,i)=>{const r0=j.finger?3.2:5;g.beginPath();g.arc(jp[i][0],jp[i][1],i===rigSel?7:r0,0,TAU);g.fillStyle=i===rigSel?'#fff':colJ(j);g.fill();g.strokeStyle='#000';g.lineWidth=1.2;g.stroke();if(rigMode==='pose'&&(j.parent<0||/^[LR]_(Hand|Foot)$/.test(j.name))){g.beginPath();g.arc(jp[i][0],jp[i][1],10,0,TAU);g.strokeStyle='#ffb300';g.lineWidth=2;g.stroke()}draw.jts.push({i,x:jp[i][0],y:jp[i][1]})});
   if(rigSel>=0&&rig.joints[rigSel]){g.font='12px system-ui,sans-serif';g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=3;const t=rig.joints[rigSel].name;g.strokeText(t,jp[rigSel][0]+10,jp[rigSel][1]-8);g.fillText(t,jp[rigSel][0]+10,jp[rigSel][1]-8)}}else draw.jts=[];
  if(rigFit){const P=rigFit.pts.map(p=>scr(view(p[0],p[1],p[2])));g.lineWidth=2;g.strokeStyle='rgba(242,176,30,.8)';g.beginPath();P.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.stroke();
   P.forEach((q,i)=>{g.beginPath();g.arc(q[0],q[1],6,0,TAU);g.fillStyle='#f2b01e';g.fill();g.strokeStyle='#000';g.lineWidth=1.5;g.stroke();g.fillStyle='#000';g.font='bold 9px system-ui,sans-serif';g.textAlign='center';g.fillText(i+1,q[0],q[1]+3);g.textAlign='left'});
@@ -847,6 +848,7 @@ document.addEventListener('click',e=>{const r=e.target.closest&&e.target.closest
 const openPC=new Set();
 document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.dataset&&d.dataset.pc!==undefined){const o=objs[sel],n=o&&o.nodes[+d.dataset.pc];if(n){if(d.open)openPC.add(n);else openPC.delete(n)}}},true);
 function panels(){
+ tlSync();
  groups=groups.filter(g=>objs.some(o=>o.g===g.id));
  const row=(o,i,ind)=>`<div class="n ${i===sel?'sel':osel.has(o)?'sel2':''}" style="margin-left:${ind}px" data-o="${i}" title="Double-click to rename">${renS&&renS.t==='o'&&renS.o===o?`<input class="nm" data-rn="1" value="${o.name.replace(/"/g,'&quot;')}" aria-label="Object name" style="width:80%;margin:0">`:o.name}</div>`+(i===sel||o.g?(o.g?o.nodes:[]).map((n,ni)=>`<div class="l2" style="margin-left:${ind+16}px"><label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer;margin:0"><input type="checkbox" data-vt="${i}:${ni}" ${(ni?n.on:!o.hid)?'checked':''} aria-label="${ni?'Enable':'Show'} ${n.type}">${n.type}</label></div>`).join('')+(i===sel?colorRows(o,ind):''):'');
  $('#tree').innerHTML=`<div class="n">Scene</div>`+groups.map(g=>{const ms=objs.map((o,i)=>[o,i]).filter(([o])=>o.g===g.id);return`<div class="n grp" data-gh="${g.id}" style="margin-left:6px"><span data-gt="${g.id}" style="display:inline-block;width:14px">${g.open?'▾':'▸'}</span><input type="checkbox" data-vg="${g.id}" ${ms.every(([o])=>!o.hid&&o.nodes.every(n=>n.on))?'checked':''} aria-label="Show or hide everything in ${g.name}" title="Turn everything in this model on or off" style="margin:0 6px 0 0">${g.ren?`<input class="nm" data-gn="${g.id}" value="${g.name.replace(/"/g,'&quot;')}" aria-label="Model name" style="width:60%;margin:0">`:g.name} <span style="color:var(--mut)">(${ms.length})</span></div>`+(g.open?ms.map(([o,i])=>row(o,i,26)).join(''):'')}).join('')+objs.map((o,i)=>o.g&&groups.some(g=>g.id===o.g)?'':row(o,i,10)).join('');
@@ -885,8 +887,8 @@ document.addEventListener('click',e=>{const t=e.target,d=t.dataset,o=objs[sel];
  else if(t.id==='dup'&&o){objs.push({name:o.name+'_copy',pos:[o.pos[0]+1.5,o.pos[1],o.pos[2]],rot:[...o.rot],sc:[...(o.sc||[1,1,1])],hue:0,color:o.color,fc:{...o.fc},cnm:{...(o.cnm||{})},nodes:o.nodes.map(n=>({...n,p:{...n.p},off:n.off?JSON.parse(JSON.stringify(n.off)):null,out:null,dirty:true}))});sel=objs.length-1;osel.clear();selPts.clear();all()}
  else if(d.sa){const en=editNode(o);if(en&&en.rep){if(sub==='face')en.out.f.forEach((_,i)=>selPts.add(i));else en.rep.forEach((r,i)=>r===i&&selPts.add(i))}all()}
  else if(d.jsel!==undefined){rigSel=+d.jsel;panels();draw()}
- else if(d.rg){const v=d.v;if(d.rg==='fit')startFit();else if(d.rg==='part'){rigSel=+v;panels();draw()}else if(d.rg==='resetj'){const j=rig.joints[rigSel];if(j){j.rot=[0,0,0];skinDirty();panels();draw();commit()}}
-  else if(d.rg==='hside'){handSide=v;panels()}else if(d.rg==='hpose')handPose(v);else if(d.rg==='mpose')mirrorPose(v);else if(d.rg==='reset')resetPose();else if(d.rg==='clear')clearRig();else if(d.rg==='mirror'){rigMirror=t.checked}}
+ else if(d.rg){const v=d.v;if(d.rg==='fit')startFit();else if(d.rg==='part'){rigSel=+v;panels();draw()}else if(d.rg==='resetj'){const j=rig.joints[rigSel];if(j){j.rot=[0,0,0];if(j.parent<0)j.off=null;skinDirty();tlAutoKey();panels();draw();commit()}}
+  else if(d.rg==='hside'){handSide=v;panels()}else if(d.rg==='hpose')handPose(v);else if(d.rg==='mpose')mirrorPose(v);else if(d.rg==='reset')resetPose();else if(d.rg==='clear')clearRig();else if(d.rg==='mirror'){rigMirror=t.checked}else if(d.rg==='mode'){rigMode=v;panels();draw()}else if(d.rg==='plant'){rigPlant=t.checked}}
  else if(d.sw){o.color=d.sw;all()}
  else if(d.pf&&sub==='face'){paintFaces(false)}
  else if(d.cf){paintFaces(true)}
@@ -911,7 +913,8 @@ document.addEventListener('input',e=>{const t=e.target,d=t.dataset,o=objs[sel];i
   const sl=t.parentElement.querySelector('input[type=range]');if(sl)sl.value=v;dirtyFrom(o,i);draw()}
  else if(d.pos!==undefined){o.pos[+d.pos]=+t.value;t.nextElementSibling.textContent=t.value;draw()}
  else if(d.rot!==undefined){o.rot[+d.rot]=+t.value;t.nextElementSibling.textContent=t.value;draw()}
- else if(d.jr!==undefined){const j=rig.joints[rigSel];if(j){j.rot[+d.jr]=+t.value;clampJ(j);t.nextElementSibling.textContent=t.value;skinDirty();draw()}}
+ else if(d.jo!==undefined){const j=rig.joints[rigSel];if(j){tlStop();j.off=j.off||[0,0,0];j.off[+d.jo]=+t.value;t.nextElementSibling.textContent=t.value;skinDirty();draw()}}
+ else if(d.jr!==undefined){const j=rig.joints[rigSel];if(j){tlStop();j.rot[+d.jr]=+t.value;clampJ(j);t.nextElementSibling.textContent=t.value;skinDirty();draw()}}
  else if(d.hc!==undefined&&rig.meta){const v=+t.value/100,f=d.hc;handSides().forEach(s=>{if(f==='All'){['Thumb',...fingerNames(rig.meta.nf)].forEach(q=>{if(q!=='Thumb')setCurl(s,q,v)});document.querySelectorAll('[data-hc]').forEach(el=>{if(el!==t&&el.dataset.hc!=='Spread'&&el.dataset.hc!=='Thumb'&&el.dataset.hc!=='All'){el.value=t.value;el.nextElementSibling.textContent=t.value}})}else if(f==='Spread')setSpread(s,v);else setCurl(s,f,v)});t.nextElementSibling.textContent=t.value;skinDirty();draw()}
  else if(d.col){o.color=t.value;draw()}
  else if(d.nm){o.name=t.value;const el=document.querySelector('[data-o="'+sel+'"]');if(el)el.textContent=t.value}});
@@ -1696,6 +1699,11 @@ const CMDS=[
  {g:'Rigging',l:'Clear rig',en:()=>rig.joints.length>0,f:clearRig},
  {g:'Rigging',l:'Mirror pose L to R',en:()=>!!(rig.meta&&rig.meta.biped),f:()=>mirrorPose('L')},
  {g:'Rigging',l:'Mirror pose R to L',en:()=>!!(rig.meta&&rig.meta.biped),f:()=>mirrorPose('R')},
+ {g:'Rigging',l:'Pose mode (IK)',en:()=>!!(rig.meta&&rig.meta.biped),f:()=>{rigMode=rigMode==='pose'?'adjust':'pose';panels();draw()},on:()=>rigMode==='pose'},
+ {g:'Animation',l:'Timeline',en:()=>rig.joints.length>0,f:()=>{tlOpen=!tlOpen;tlRender()},on:()=>tlOpen&&rig.joints.length>0},
+ {g:'Animation',l:'Set key',k:'Alt+K',en:()=>rig.joints.length>0,f:()=>{tlStop();setKey(anim.frame)}},
+ {g:'Animation',l:'Play / stop animation',k:'Alt+L',en:()=>rig.joints.length>0,f:tlPlayToggle,on:()=>!!tlPlay},
+ {g:'Animation',l:'Make cycle (mirror at halfway)',en:()=>!!(rig.meta&&rig.meta.biped),f:makeCycle},
  {g:'Rigging',l:'Joint tool (click to place)',k:'J',f:()=>{setTool('joint');all()},on:()=>jointOn},
  {g:'Rigging',l:'Bind skin to skeleton',k:'Shift+K',en:()=>need()&&rig.joints.length>0,f:bindSkin},
  {g:'Rigging',l:'Remove skin',k:'Shift+U',en:()=>hasSkin(),f:unbindSkin},
@@ -1777,13 +1785,13 @@ const MREG=new Map(),MID=new WeakMap();let mseq=0;const BIGM=20000;
 function meshTok(m){let id=MID.get(m);if(!id){id=++mseq;MID.set(m,id)}MREG.set(id,m);return {$M:id}}
 function meshMem(){let t=0;MREG.forEach(m=>{t+=(m.v.length+m.f.length)*50});return t}
 function pruneMeshes(){if(!MREG.size)return;const used=new Set(),sc=x=>{const re=/"\$M":(\d+)/g;let r;while((r=re.exec(x)))used.add(+r[1])};undoSt.forEach(sc);redoSt.forEach(sc);sc(lastSnap);if(curFile&&curFile.saved)sc(curFile.saved);[...MREG.keys()].forEach(k=>{if(!used.has(k))MREG.delete(k)})}
-function snap(full){return JSON.stringify({v:1,rig:rig.joints,rigm:rig.meta,groups:groups,cams:cams,objs:objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name,pos:o.pos,rot:o.rot,sc:o.sc||[1,1,1],color:o.color,fc:o.fc,cnm:o.cnm&&Object.keys(o.cnm).length?o.cnm:undefined,dm:o.dm,op:o.op,
+function snap(full){return JSON.stringify({v:1,rig:rig.joints,rigm:rig.meta,anim:anim&&Object.keys(anim.keys).length?anim:undefined,groups:groups,cams:cams,objs:objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name,pos:o.pos,rot:o.rot,sc:o.sc||[1,1,1],color:o.color,fc:o.fc,cnm:o.cnm&&Object.keys(o.cnm).length?o.cnm:undefined,dm:o.dm,op:o.op,
  nodes:o.nodes.filter(n=>!(n.type==='Edit'&&!Object.keys(n.off).length)).map(n=>({type:n.type,on:n.on,p:n.p,off:n.off,fl:n.fl,edge:n.edge||null,mesh:n.mesh?(full||n.mesh.v.length+n.mesh.f.length<BIGM?n.mesh:meshTok(n.mesh)):null,path:n.path||null,pairs:n.pairs||null}))}))})}
 function restore(s){const sc=JSON.parse(s);if(!sc||!Array.isArray(sc.objs))throw new Error('bad scene');
  const next=sc.objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name||'Object',pos:o.pos||[0,0,0],rot:o.rot||[0,0,0],sc:o.sc||[1,1,1],hue:0,color:o.color||'#3aa393',fc:o.fc||{},cnm:o.cnm||{},dm:o.dm,op:o.op,
   nodes:(o.nodes||[]).filter(n=>TY[n.type]).map(n=>{const k=mk(n.type);Object.assign(k.p,n.p||{});k.on=n.on!==false;if(n.off)k.off=n.off;k.fl=n.fl||null;if(n.edge)k.edge=n.edge;if(n.mesh){if(n.mesh.$M){k.mesh=MREG.get(n.mesh.$M);if(!k.mesh)throw new Error('bad scene')}else k.mesh=n.mesh}if(n.path)k.path=n.path;if(n.pairs)k.pairs=n.pairs;return k})}));
  if(!next.every(o=>o.nodes.length&&GEN[o.nodes[0].type]))throw new Error('bad scene');
- objs.length=0;next.forEach(o=>objs.push(o));rig.joints=(sc.rig||[]).map(j=>({...j,rot:j.rot||[0,0,0]}));rig.meta=sc.rigm||null;groups=(sc.groups||[]).map(g=>({id:g.id,name:g.name,open:g.open!==false}));gid2=groups.reduce((m,g)=>Math.max(m,g.id),0);cams=(sc.cams||[]).map(c=>({name:c.name||'camera',tgt:c.tgt||[0,0,0],yaw:c.yaw||0,pitch:c.pitch||0,dist:c.dist||9,pan:c.pan||[0,0],f:c.f||35}));if(camSel>=cams.length)camSel=-1;if(camAct>=cams.length){camAct=-1;tgt=[0,0,0]}osel.clear();rigSel=-1;sel=Math.min(sel,Math.max(0,objs.length-1));selPts.clear();selEdges.clear();ringPrev=null;all()}
+ objs.length=0;next.forEach(o=>objs.push(o));rig.joints=(sc.rig||[]).map(j=>({...j,rot:j.rot||[0,0,0]}));rig.meta=sc.rigm||null;anim=sc.anim?{fps:24,len:48,frame:0,keys:{},loop:true,ease:'smooth',...sc.anim}:{fps:24,len:48,frame:0,keys:{},loop:true,ease:'smooth'};tlStop();groups=(sc.groups||[]).map(g=>({id:g.id,name:g.name,open:g.open!==false}));gid2=groups.reduce((m,g)=>Math.max(m,g.id),0);cams=(sc.cams||[]).map(c=>({name:c.name||'camera',tgt:c.tgt||[0,0,0],yaw:c.yaw||0,pitch:c.pitch||0,dist:c.dist||9,pan:c.pan||[0,0],f:c.f||35}));if(camSel>=cams.length)camSel=-1;if(camAct>=cams.length){camAct=-1;tgt=[0,0,0]}osel.clear();rigSel=-1;sel=Math.min(sel,Math.max(0,objs.length-1));selPts.clear();selEdges.clear();ringPrev=null;all()}
 function commit(){softCache=null;const s=snap();if(s!==lastSnap){undoSt.push(lastSnap);undoSel.push(preSel||selState());if(undoSt.length>100){undoSt.shift();undoSel.shift()}redoSt.length=0;redoSel.length=0;lastSnap=s;while(undoSt.length>1&&undoSt.reduce((a,x)=>a+x.length,0)+lastSnap.length+meshMem()>6e8){undoSt.shift();undoSel.shift();pruneMeshes()}pruneMeshes()}updateFname()}
 function updateFname(){const e=document.getElementById('fname'),n=curFile.name||'Untitled',dirty=!!curFile.name&&lastSnap!==curFile.saved;
  if(e){e.textContent=n;e.classList.toggle('dirty',dirty);e.title=(curFile.name?'This project is saved as '+curFile.name:'Not saved yet. Use Save As to name the file.')+(dirty?' (changes since the last save)':'')}
@@ -1796,7 +1804,7 @@ function openScene(){$('#dtx').value=snap(true);$('#dlg').hidden=false;$('#ddl')
 /* ---- files: New clears the scene (undoable), Save writes the scene as .json, Export writes geometry as .obj (default), .stl or .ply ---- */
 let expFmt='obj';
 function newFile(){
- objs.length=0;groups=[];gid2=0;cams=[];camSel=-1;if(camAct>=0){camAct=-1;tgt=[0,0,0]}rig.joints=[];rig.meta=null;rigSel=-1;rigFit=null;osel.clear();sel=0;selPts.clear();selEdges.clear();ringPrev=null;uid=0;addObj('Sphere',0);setTool(null);all();commit();curFile={name:'',handle:null,saved:null};updateFname();toast('New file with a single sphere. Ctrl+Z brings the old scene back.')}
+ objs.length=0;groups=[];gid2=0;cams=[];camSel=-1;if(camAct>=0){camAct=-1;tgt=[0,0,0]}rig.joints=[];rig.meta=null;anim={fps:24,len:48,frame:0,keys:{},loop:true,ease:'smooth'};rigMode='adjust';rigSel=-1;rigFit=null;osel.clear();sel=0;selPts.clear();selEdges.clear();ringPrev=null;uid=0;addObj('Sphere',0);setTool(null);all();commit();curFile={name:'',handle:null,saved:null};updateFname();toast('New file with a single sphere. Ctrl+Z brings the old scene back.')}
 async function sendFile(name,text){try{const d=await claude.use('downloads');if(!d)throw 0;await d.save({filename:name,data:text});toast('Saved '+name)}
  catch(err){if(err&&err.code==='declined')return;$('#dtx').value=text;$('#dlg').hidden=false;$('#ddl').hidden=true;toast('Downloads are not available here. Copy the text from the box instead.')}}
 /* Save File writes the whole project (every object, tree, sphere, group, colour and edit history) into the current file with no pop-up. Save As names the file first; the name then shows in the top bar. The project is stored as an .obj whose geometry any program can open; NOVA 3D also finds the editable scene inside it. */
@@ -1987,12 +1995,13 @@ const toView=p=>{const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=M
 /* joints are stored parent-first; a joint's rotation turns it and everything below it about the joint itself */
 function rigPose(){const J=rig.joints,P=[],W=[];
  for(let i=0;i<J.length;i++){const j=J[i],Rl=jointRot(j);
-  if(j.parent<0||!J[j.parent]){P[i]=j.p.slice();W[i]=Rl}
+  if(j.parent<0||!J[j.parent]){P[i]=j.off?[j.p[0]+j.off[0],j.p[1]+j.off[1],j.p[2]+j.off[2]]:j.p.slice();W[i]=Rl}
   else{const q=j.parent,off=mulv(W[q],[j.p[0]-J[q].p[0],j.p[1]-J[q].p[1],j.p[2]-J[q].p[2]]);P[i]=[P[q][0]+off[0],P[q][1]+off[1],P[q][2]+off[2]];W[i]=mulM(W[q],Rl)}}
  return{P,W}}
 const toViewP=p=>toView([p[0]-tgt[0],p[1]-tgt[1],p[2]-tgt[2]]);
 function jointClick(e){drag.jn=true;const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,hit=(draw.jts||[]).find(j=>Math.hypot(j.x-x,j.y-y)<12);
- if(hit){rigSel=hit.i;if(!rig.joints.some(j=>j.rot.some(v=>v)))drag.jm={i:hit.i,z:toViewP(rig.joints[hit.i].p)[2],alone:e.shiftKey};panels();draw();return}
+ if(hit){rigSel=hit.i;if(rigMode==='pose'&&rig.meta&&rig.meta.biped){if(ikChain(hit.i)||rig.joints[hit.i].parent<0)ikStart(hit.i)}else if(!rig.joints.some(j=>j.rot.some(v=>v)||j.off))drag.jm={i:hit.i,z:toViewP(rig.joints[hit.i].p)[2],alone:e.shiftKey};panels();draw();return}
+ if(rigMode==='pose'&&rig.meta&&rig.meta.biped)return;
  if(rig.joints.some(j=>j.rot.some(v=>v))){toast('Reset the pose before adding joints');return}
  const par=rigSel>=0&&rig.joints[rigSel]?rigSel:-1,F=draw.F,zv=par>=0?toViewP(rig.joints[par].p)[2]:0,d=ortho?dist:zv+dist,p=unview((x-r.width/2-panX)*d/F,-(y-r.height/2-panY)*d/F,zv).map((v,k)=>v+tgt[k]);
  rig.joints.push({name:'joint'+(++jid),p:p.map(v=>+v.toFixed(3)),parent:par,rot:[0,0,0]});rigSel=rig.joints.length-1;skinDirty();panels();draw()}
@@ -2000,13 +2009,14 @@ function delJoint(){if(rigSel<0||!rig.joints[rigSel])return;const J=rig.joints,r
  while(ch){ch=false;J.forEach((j,i)=>{if(!rm.has(i)&&rm.has(j.parent)){rm.add(i);ch=true}})}
  const map=new Map();let k=0;J.forEach((j,i)=>{if(!rm.has(i))map.set(i,k++)});
  rig.joints=J.filter((j,i)=>!rm.has(i)).map(j=>({...j,parent:j.parent<0?-1:map.get(j.parent)}));rigSel=-1;skinDirty();panels();draw()}
+const hasAnySkinOrRig=()=>rig.joints.length>0;
 const hasSkin=()=>{const o=objs[sel];return !!(o&&o.nodes.some(n=>n.type==='Skin'))};
 function skinDirty(){objs.forEach(o=>{const i=o.nodes.findIndex(n=>n.type==='Skin');if(i>=0)dirtyFrom(o,i)})}
 function bindSkin(){const o=objs[sel];if(!o)return;if(!rig.joints.length){toast('Add joints first: use Auto-rig biped, or the Joint tool (J)');return}
  const list=[o,...osel].filter((q,i,a)=>q&&objs.includes(q)&&a.indexOf(q)===i&&!q.nodes.some(n=>n.type==='Skin'));if(!list.length){toast('The selected object is already bound');return}
- list.forEach(q=>{const nn=mk('Skin'),L=q.nodes.length-1;if(q.nodes[L].type==='Edit'){q.nodes.splice(L,0,nn);dirtyFrom(q,L)}else q.nodes.push(nn)});all();toast('Bound '+list.length+' object'+(list.length>1?'s':'')+' to the skeleton. Pose the bones, or change falloff/blend in the Skin card (blend 1 = rigid parts, good for robots and armour).')}
+ list.forEach(q=>{const nn=mk('Skin'),L=q.nodes.length-1;if(q.nodes[L].type==='Edit'){q.nodes.splice(L,0,nn);dirtyFrom(q,L)}else q.nodes.push(nn)});if(rig.meta&&rig.meta.biped)rigMode='pose';all();toast('Bound '+list.length+' object'+(list.length>1?'s':'')+' to the skeleton. Pose mode is on: drag a hand or foot (IK) or the hips, use the sliders, or set keys on the timeline. Change falloff/blend in the Skin card (blend 1 = rigid parts, good for robots and armour).')}
 function unbindSkin(){const o=objs[sel];if(!o)return;const i=o.nodes.findIndex(n=>n.type==='Skin');if(i<0)return;o.nodes.splice(i,1);dirtyFrom(o,i);all()}
-function resetPose(){rig.joints.forEach(j=>{j.rot=[0,0,0]});skinDirty();panels();draw()}
+function resetPose(){tlStop();rig.joints.forEach(j=>{j.rot=[0,0,0];if(j.off)j.off=null});skinDirty();tlAutoKey();panels();draw()}
 function jointCard(){const J=rig.joints,meta=rig.meta,bip=!!(meta&&meta.biped);
  if(!J.length){return'<div class="sec">Rigging</div><div class="card"><b>Biped auto-rig</b><div style="margin:4px 0;font-size:12px;opacity:.85">Fits a full skeleton (spine, neck, head, jaw, eyes, arms, hands with fingers, legs) to any two-legged character with 10 clicks.</div>'+
   '<label>Fingers<select id="rgf"><option value="4"'+(rigOpts.fingers===4?' selected':'')+'>4 + thumb (realistic)</option><option value="3"'+(rigOpts.fingers===3?' selected':'')+'>3 + thumb (cartoon)</option><option value="2"'+(rigOpts.fingers===2?' selected':'')+'>2 + thumb</option><option value="0"'+(rigOpts.fingers===0?' selected':'')+'>none (mitten hand)</option></select></label>'+
@@ -2014,10 +2024,11 @@ function jointCard(){const J=rig.joints,meta=rig.meta,bip=!!(meta&&meta.biped);
   '<button data-rg="fit" style="margin-top:6px">Start auto-rig</button></div><div style="font-size:12px;opacity:.8;margin:6px 0">Or place joints one at a time with the Joint tool (J).</div>'}
  const dep=i=>{let d=0,k=J[i].parent;while(k>=0&&J[k]&&d<50){d++;k=J[k].parent}return d},S=J[rigSel];
  const vis=(j)=>{if(!j.finger)return true;return !!(S&&((S.finger&&S.hand===j.hand)||S.name===j.hand+'_Hand'))};
- let h='<div class="sec">Skeleton</div>';
+ let h='';if(bip&&hasAnySkinOrRig()){h+='<div class="sec">Mode</div><div class="card"><div class="row" style="gap:4px"><button data-rg="mode" data-v="adjust" class="'+(rigMode==='adjust'?'on':'')+'">Adjust joints</button><button data-rg="mode" data-v="pose" class="'+(rigMode==='pose'?'on':'')+'">Pose (IK)</button></div><div style="font-size:12px;opacity:.85;margin:4px 0">'+(rigMode==='pose'?'Drag a hand or foot: the arm or leg follows (IK). Drag the hips to move the whole body.':'Drag joints to fit the skeleton to your model. Switch to Pose to animate.')+'</div><label><input type="checkbox" data-rg="plant" '+(rigPlant?'checked':'')+'> Keep feet planted when moving the hips</label></div>'}
+ h+='<div class="sec">Skeleton</div>';
  if(bip){h+='<div class="row" style="flex-wrap:wrap;gap:4px">'+[['Body','Hips'],['Head','Head'],['Jaw','Jaw'],['L Arm','L_UpperArm'],['R Arm','R_UpperArm'],['L Hand','L_Hand'],['R Hand','R_Hand'],['L Leg','L_UpperLeg'],['R Leg','R_UpperLeg']].map(([t,n])=>{const i=J.findIndex(j=>j.name===n);return i<0?'':'<button data-rg="part" data-v="'+i+'" class="'+(i===rigSel?'on':'')+'">'+t+'</button>'}).join('')+'</div>'}
  h+=J.map((j,i)=>vis(j)?'<div class="n'+(i===rigSel?' sel':'')+'" data-jsel="'+i+'" style="margin-left:'+dep(i)*12+'px">'+j.name+'</div>':'').join('');
- if(S){const lb=S.fr?['Twist','Side','Bend']:['Rotate X','Rotate Y','Rotate Z'];h+='<div class="card" style="margin-top:6px"><b>'+S.name+'</b>'+[0,1,2].map(i=>{const lo=S.lim?S.lim[i][0]:-180,hi=S.lim?S.lim[i][1]:180;return lo===hi?'':'<label>'+lb[i]+'<input type="range" data-jr="'+i+'" min="'+lo+'" max="'+hi+'" step="1" value="'+S.rot[i]+'"><output>'+S.rot[i]+'</output></label>'}).join('')+'<button data-rg="resetj">Reset this bone</button></div>'}
+ if(S){const lb=S.fr?['Twist','Side','Bend']:['Rotate X','Rotate Y','Rotate Z'];h+='<div class="card" style="margin-top:6px"><b>'+S.name+'</b>'+[0,1,2].map(i=>{const lo=S.lim?S.lim[i][0]:-180,hi=S.lim?S.lim[i][1]:180;return lo===hi?'':'<label>'+lb[i]+'<input type="range" data-jr="'+i+'" min="'+lo+'" max="'+hi+'" step="1" value="'+S.rot[i]+'"><output>'+S.rot[i]+'</output></label>'}).join('')+(S.parent<0?[0,1,2].map(i=>'<label>Move '+'XYZ'[i]+'<input type="range" data-jo="'+i+'" min="-3" max="3" step=".01" value="'+((S.off&&S.off[i])||0)+'"><output>'+((S.off&&S.off[i])||0)+'</output></label>').join(''):'')+'<button data-rg="resetj">Reset this bone</button></div>'}
  if(bip){const sd=handSides()[0],fl=['Thumb',...fingerNames(meta.nf)].filter(f=>jByName(sd+'_'+f+'1'));
   h+='<div class="sec">Hands</div><div class="card"><div class="row" style="gap:4px;margin-bottom:4px">Edit: '+['both','L','R'].map(v=>'<button data-rg="hside" data-v="'+v+'" class="'+(handSide===v?'on':'')+'">'+(v==='both'?'Both':v==='L'?'Left':'Right')+'</button>').join('')+'</div>';
   if(fl.length){h+='<label>All fingers<input type="range" data-hc="All" min="0" max="100" value="'+Math.round(fl.filter(f=>f!=='Thumb').reduce((a,f)=>a+getCurl(sd,f),0)/Math.max(1,fl.length-(fl.includes('Thumb')?1:0))*100)+'"><output>0</output></label>'+fl.map(f=>'<label>'+f+' curl<input type="range" data-hc="'+f+'" min="0" max="100" value="'+Math.round(getCurl(sd,f)*100)+'"><output>'+Math.round(getCurl(sd,f)*100)+'</output></label>').join('')+
@@ -2104,9 +2115,69 @@ function getCurl(s,f){const nb=rig.meta?rig.meta.nb:3,j=jByName(s+'_'+f+(nb===3?
 function setSpread(s,v){for(const f of fingerNames(rig.meta?rig.meta.nf:4)){const j=jByName(s+'_'+f+'1');if(j){j.rot[1]=-j.cx*v*14;clampJ(j)}}}
 function getSpread(s){for(const f of fingerNames(rig.meta?rig.meta.nf:4)){const j=jByName(s+'_'+f+'1');if(j&&Math.abs(j.cx)>1)return Math.max(-1,Math.min(1,-j.rot[1]/(j.cx*14)))}return 0}
 const HPOSE={open:{c:[0,0,0,0,0],s:.6},relax:{c:[.15,.2,.25,.3,.35],s:.1},fist:{c:[.8,1,1,1,1],s:0},point:{c:[.6,0,1,1,1],s:0},peace:{c:[.8,0,0,1,1],s:.5},thumbsup:{c:[0,1,1,1,1],s:0},pinch:{c:[.5,.55,.2,.15,.1],s:.1}};
-function handPose(name){const P=HPOSE[name];if(!P||!rig.meta)return;handSides().forEach(s=>{['Thumb',...fingerNames(rig.meta.nf)].forEach((f,i)=>setCurl(s,f,P.c[i]));setSpread(s,P.s)});skinDirty();panels();draw();commit()}
-function mirrorPose(from){const to=from==='L'?'R':'L';rig.joints.forEach(j=>{if(!j.name.startsWith(from+'_'))return;const t=jByName(to+'_'+j.name.slice(2));if(t)t.rot=[-j.rot[0],-j.rot[1],j.rot[2]]});skinDirty();panels();draw();commit()}
-function clearRig(){if(!rig.joints.length)return;rig.joints=[];rig.meta=null;rigSel=-1;rigFit=null;skinDirty();panels();all();toast('Skeleton removed. Skinned meshes keep their Skin card; delete it with Remove skin.')}
+function handPose(name){const P=HPOSE[name];if(!P||!rig.meta)return;handSides().forEach(s=>{['Thumb',...fingerNames(rig.meta.nf)].forEach((f,i)=>setCurl(s,f,P.c[i]));setSpread(s,P.s)});tlStop();skinDirty();tlAutoKey();panels();draw();commit()}
+function mirrorPose(from){const to=from==='L'?'R':'L';rig.joints.forEach(j=>{if(!j.name.startsWith(from+'_'))return;const t=jByName(to+'_'+j.name.slice(2));if(t)t.rot=[-j.rot[0],-j.rot[1],j.rot[2]]});tlStop();skinDirty();tlAutoKey();panels();draw();commit()}
+function clearRig(){if(!rig.joints.length)return;tlStop();rig.joints=[];rig.meta=null;anim={fps:24,len:48,frame:0,keys:{},loop:true,ease:'smooth'};rigMode='adjust';rigSel=-1;rigFit=null;skinDirty();panels();all();toast('Skeleton removed. Skinned meshes keep their Skin card; delete it with Remove skin.')}
+/* ===================== IK + animation timeline ===================== */
+const IKCH={Hand:['UpperArm','LowerArm'],Foot:['UpperLeg','LowerLeg']};
+function ikChain(i){const j=rig.joints[i];if(!j||!rig.meta||!rig.meta.biped)return null;const m=/^([LR])_(Hand|Foot)$/.exec(j.name);if(!m)return null;const a=rig.joints.findIndex(q=>q.name===m[1]+'_'+IKCH[m[2]][0]),b=rig.joints.findIndex(q=>q.name===m[1]+'_'+IKCH[m[2]][1]);return a<0||b<0?null:[a,b,i]}
+/* damped least squares on the five angles that matter (upper bone twist/side/bend, lower bone side/bend) */
+function ikSolve(ch,T,iters){const J=rig.joints,[a,b,e]=ch,prm=[[a,0],[a,1],[a,2],[b,1],[b,2]],ev=()=>rigPose().P[e];let best=1e9;
+ for(let it=0;it<(iters||20);it++){const p0=ev(),er=V3.sub(T,p0),d=V3.len(er);if(d<2e-4||Math.abs(best-d)<1e-6)break;best=d;
+  const Jm=[[],[],[]];prm.forEach(([q,k],c)=>{const j=J[q],o=j.rot[k];j.rot[k]=o+1;const p1=ev();j.rot[k]=o;for(let r=0;r<3;r++)Jm[r][c]=p1[r]-p0[r]});
+  const lam=(.25*(V3.len(V3.sub(J[b].p,J[a].p))+V3.len(V3.sub(J[e].p,J[b].p)))*.0175)**2,A=[[0,0,0],[0,0,0],[0,0,0]];
+  for(let r=0;r<3;r++)for(let s=0;s<3;s++){let v=r===s?lam:0;for(let c=0;c<5;c++)v+=Jm[r][c]*Jm[s][c];A[r][s]=v}
+  const x=solve3(A,er);if(!x)break;
+  prm.forEach(([q,k],c)=>{let dq=0;for(let r=0;r<3;r++)dq+=Jm[r][c]*x[r];dq=Math.max(-20,Math.min(20,dq));J[q].rot[k]+=dq});
+  [a,b].forEach(q=>clampJ(J[q]))}}
+function solve3(A,b){const M=A.map((r,i)=>[...r,b[i]]);for(let c=0;c<3;c++){let p=c;for(let r=c+1;r<3;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;if(Math.abs(M[p][c])<1e-14)return null;[M[c],M[p]]=[M[p],M[c]];for(let r=0;r<3;r++)if(r!==c){const f=M[r][c]/M[c][c];for(let k=c;k<4;k++)M[r][k]-=f*M[c][k]}}return[M[0][3]/M[0][0],M[1][3]/M[1][1],M[2][3]/M[2][2]]}
+function ikStart(i){tlStop();const P=rigPose().P,pin=[];if(rigPlant&&rig.joints[i].parent<0)['L_Foot','R_Foot'].forEach(n=>{const k=rig.joints.findIndex(q=>q.name===n),ch=k<0?null:ikChain(k);if(ch)pin.push({ch,T:P[k].slice()})});
+ drag.ik={i,ch:ikChain(i),T:P[i].slice(),z:toViewP(P[i])[2],pin}}
+function ikDrag(e){const d=drag.ik,dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;const k=(ortho?dist:d.z+dist)/draw.F,w=unview(dx*k,-dy*k,0),J=rig.joints;d.T=V3.add(d.T,w);
+ if(d.ch)ikSolve(d.ch,d.T,24);else{const j=J[d.i];j.off=V3.add(j.off||[0,0,0],w).map(v=>+v.toFixed(4));d.pin.forEach(p=>ikSolve(p.ch,p.T,24))}
+ skinDirty();draw()}
+/* ---- keyframes: anim.keys[frame] = {r:{jointName:[tw,side,bend]}, o:{rootName:[x,y,z]}} ---- */
+var anim={fps:24,len:48,frame:0,keys:{},loop:true,ease:'smooth'};
+var tlOpen=true,tlAuto=true,tlPlay=0,tlLast=0,tlSig='',rigMode='adjust',rigPlant=true;
+const keyFrames=()=>Object.keys(anim.keys).map(Number).sort((a,b)=>a-b);
+function capturePose(){const r={},o={};rig.joints.forEach(j=>{r[j.name]=j.rot.slice();if(j.parent<0&&j.off)o[j.name]=j.off.slice()});return{r,o}}
+function setKey(f,silent){if(!rig.joints.length)return;f=Math.round(f);anim.keys[f]=capturePose();if(!silent){tlRender();commit()}}
+function tlAutoKey(){if(tlAuto&&rig.joints.length&&!tlPlay){anim.keys[Math.round(anim.frame)]=capturePose();tlSig='';tlRender()}}
+function delKey(){const f=Math.round(anim.frame);if(anim.keys[f]){delete anim.keys[f];tlRender();commit()}}
+function ease(t){return anim.ease==='linear'?t:anim.ease==='step'?0:t*t*(3-2*t)}
+function poseAt(f){const ks=keyFrames();if(!ks.length)return null;if(f<=ks[0])return anim.keys[ks[0]];if(f>=ks[ks.length-1])return anim.keys[ks[ks.length-1]];let i=0;while(ks[i+1]<=f)i++;const A=anim.keys[ks[i]],B=anim.keys[ks[i+1]],t=ease((f-ks[i])/(ks[i+1]-ks[i])),r={},o={};
+ for(const n in A.r){const b=B.r[n]||A.r[n];r[n]=A.r[n].map((v,k)=>v+(b[k]-v)*t)}
+ for(const n in A.o){const b=B.o[n]||A.o[n];o[n]=A.o[n].map((v,k)=>v+(b[k]-v)*t)}return{r,o}}
+function applyPoseData(p){if(!p)return;rig.joints.forEach(j=>{const r=p.r[j.name];if(r)j.rot=r.slice();if(j.parent<0){const o=p.o[j.name];j.off=o?o.slice():null}});skinDirty()}
+function gotoFrame(f,play){f=Math.max(0,Math.min(anim.len,f));anim.frame=f;applyPoseData(poseAt(f));tlSync2();if(play)draw();else{panels();draw()}}
+function tlStop(){if(tlPlay){cancelAnimationFrame(tlPlay);tlPlay=0;tlSig='';tlRender()}}
+function tlPlayToggle(){if(tlPlay){tlStop();return}if(!keyFrames().length){toast('Pose the skeleton and press Set key first');return}if(anim.frame>=anim.len)anim.frame=0;tlLast=performance.now();
+ const step=t=>{anim.frame+=(t-tlLast)/1000*anim.fps;tlLast=t;if(anim.frame>=anim.len){if(anim.loop)anim.frame%=anim.len;else{anim.frame=anim.len;gotoFrame(anim.frame,true);tlPlay=0;tlSig='';tlRender();panels();return}}gotoFrame(anim.frame,true);tlPlay=requestAnimationFrame(step)};tlPlay=requestAnimationFrame(step);tlSig='';tlRender()}
+function mirrorPoseData(P){const sw=n=>n.startsWith('L_')?'R_'+n.slice(2):n.startsWith('R_')?'L_'+n.slice(2):n,r={},o={};
+ for(const n in P.r){const j=jByName(n),v=P.r[n];r[sw(n)]=j&&!j.fr&&!/^[LR]_/.test(n)?[v[0],-v[1],-v[2]]:[-v[0],-v[1],v[2]]}
+ for(const n in P.o)o[n]=[-P.o[n][0],P.o[n][1],P.o[n][2]];return{r,o}}
+function makeCycle(){const f=Math.round(anim.frame),K=anim.keys[f]||(setKey(f,true),anim.keys[f]);if(!K)return;const h=Math.round(anim.len/2),cl=x=>JSON.parse(JSON.stringify(x)),P=cl(K);anim.keys[0]=cl(P);anim.keys[h]=mirrorPoseData(P);anim.keys[anim.len]=cl(P);
+ anim.loop=true;gotoFrame(0);tlSig='';tlRender();commit();toast('Cycle made: this pose at frame 0, its mirror at '+h+', and back at '+anim.len+'. Press Play, then adjust any of the poses.')}
+function tlSync2(){const s=$('#tlslider');if(s&&document.activeElement!==s)s.value=anim.frame;const c=Math.round(anim.frame),n=$('#tlframe');if(n&&document.activeElement!==n)n.value=c;const on=!!anim.keys[c],kb=document.querySelector('#tl [data-tl="key"]'),db=document.querySelector('#tl [data-tl="del"]');
+ if(kb){kb.textContent=on?'Update key':'Set key';kb.classList.toggle('on',on)}if(db)db.disabled=!on;document.querySelectorAll('#tl [data-tlk]').forEach(i=>i.classList.toggle('on',+i.dataset.tlk===c))}
+function tlRender(){const el=$('#tl');if(!el)return;tlSig=tlKey();const show=tlOpen&&rig.joints.length>0;el.style.display=show?'flex':'none';$('#vps').classList.toggle('tlon',show);if(!show)return;
+ const ks=keyFrames(),cur=Math.round(anim.frame),on=ks.includes(cur);
+ el.innerHTML='<div class="tlr"><button data-tl="pk" title="Previous key">&laquo; Key</button><button data-tl="m1" title="Back one frame">&lsaquo;</button><button data-tl="play" class="'+(tlPlay?'on':'')+'">'+(tlPlay?'Stop':'Play')+'</button><button data-tl="p1" title="Forward one frame">&rsaquo;</button><button data-tl="nk" title="Next key">Key &raquo;</button>'+
+  '<label>Frame <input id="tlframe" type="number" data-tlin="f" min="0" max="'+anim.len+'" value="'+cur+'"></label><label>Length <input type="number" data-tlin="len" min="2" max="2000" value="'+anim.len+'"></label><label>FPS <input type="number" data-tlin="fps" min="1" max="120" value="'+anim.fps+'"></label>'+
+  '<label><select data-tlin="ease"><option value="smooth"'+(anim.ease==='smooth'?' selected':'')+'>Smooth</option><option value="linear"'+(anim.ease==='linear'?' selected':'')+'>Linear</option><option value="step"'+(anim.ease==='step'?' selected':'')+'>Hold (step)</option></select></label>'+
+  '<label><input type="checkbox" data-tlin="loop"'+(anim.loop?' checked':'')+'> Loop</label><label title="Any pose change at the current frame sets a key automatically"><input type="checkbox" data-tlin="auto"'+(tlAuto?' checked':'')+'> Auto-key</label>'+
+  '<button data-tl="key" class="'+(on?'on':'')+'">'+(on?'Update key':'Set key')+'</button><button data-tl="del"'+(on?'':' disabled')+'>Delete key</button><button data-tl="cyc" title="Use this pose as a cycle: mirrored pose at the halfway point, repeated at the end">Make cycle</button><button data-tl="x" title="Hide timeline">✕</button></div>'+
+  '<div class="tlt"><input id="tlslider" type="range" data-tlin="s" min="0" max="'+anim.len+'" step="any" value="'+anim.frame+'"><div class="tlm">'+ks.map(k=>'<i style="left:calc(7px + (100% - 14px) * '+(k/anim.len)+')" data-tlk="'+k+'" class="'+(k===cur?'on':'')+'" title="Frame '+k+'"></i>').join('')+'</div></div>'}
+const tlKey=()=>(tlOpen?1:0)+'|'+rig.joints.length+'|'+keyFrames().join(',')+'|'+anim.len+'|'+(tlPlay?1:0);
+function tlSync(){if(!anim||!$('#tl'))return;if(tlKey()!==tlSig)tlRender()}
+(function(){const el=document.createElement('div');el.id='tl';el.style.display='none';$('#vps').appendChild(el);
+ el.addEventListener('click',e=>{const t=e.target,d=t.dataset,k=t.closest&&t.closest('[data-tlk]');if(k){tlStop();gotoFrame(+k.dataset.tlk);return}if(!d||d.tl===undefined)return;const ks=keyFrames(),c=Math.round(anim.frame);
+  switch(d.tl){case'pk':{const p=ks.filter(x=>x<c).pop();if(p!==undefined){tlStop();gotoFrame(p)}break}case'nk':{const n=ks.find(x=>x>c);if(n!==undefined){tlStop();gotoFrame(n)}break}case'm1':tlStop();gotoFrame(c-1);break;case'p1':tlStop();gotoFrame(c+1);break;
+   case'play':tlPlayToggle();break;case'key':tlStop();setKey(c);break;case'del':delKey();break;case'cyc':tlStop();makeCycle();break;case'x':tlOpen=false;tlSig='';tlRender();break}});
+ el.addEventListener('input',e=>{const t=e.target;if(t.dataset.tlin==='s'){tlStop();gotoFrame(+t.value)}});
+ el.addEventListener('change',e=>{e.stopPropagation();const t=e.target,v=t.dataset.tlin;if(v==='f'){tlStop();gotoFrame(+t.value||0)}else if(v==='len'){anim.len=Math.max(2,Math.min(2000,+t.value||48));Object.keys(anim.keys).forEach(k=>{if(+k>anim.len)delete anim.keys[k]});anim.frame=Math.min(anim.frame,anim.len);tlSig='';tlRender();commit()}
+  else if(v==='fps'){anim.fps=Math.max(1,Math.min(120,+t.value||24));commit()}else if(v==='ease'){anim.ease=t.value;commit()}else if(v==='loop'){anim.loop=t.checked;commit()}else if(v==='auto'){tlAuto=t.checked}});
+ el.addEventListener('keydown',e=>e.stopPropagation());el.addEventListener('pointerdown',e=>e.stopPropagation())})();
 /* ---- shelves: four tabs of buttons that run the same commands as the keyboard and the right-click menu ---- */
 let shelfIdx=0,rowSel='Primitives';const BR=['#e5484d','#f2b01e','#3fb950','#2dc4ad','#4a7fd1','#b5559c','#ffffff','#8a8a8a'];
 const SHELVES=[
@@ -2121,12 +2192,12 @@ const SHELVES=[
   {n:'Coloring',items:[{gl:'Paint'},{c:'Paint tool (click or drag faces)',t:'Paint'},{c:'Paint selected faces',t:'Paint selected'},{c:'Clear face paint',t:'Clear paint'},{sp:1},{gl:'Brush'},{brush:1},{sw:'brush'},{sp:1},{gl:'Object'},{objc:1},{sw:'obj'},{sp:1},{gl:'Display'},{c:'Shaded'},{c:'Shaded + wire'},{c:'Wire'}]},
   {n:'Render 2K',items:[{gl:'Aspect'},{rsel:'asp'},{gl:'Quality'},{rsel:'q'},{sp:1},{c:'Highlight to render',t:'Highlight to Render'},{c:'Render 2K (GPU)',t:'Render 2K · GPU'},{c:'Ray trace 2K (CPU)',t:'Ray Trace 2K · CPU'},{sp:1},{c:'Show last render',t:'Show Render'},{c:'Save last render',t:'Save Render'}]}]},
  {n:'Navigating',items:[{gl:'Camera'},{c:'Front view',t:'Front'},{c:'Back view',t:'Back'},{c:'Left view',t:'Left'},{c:'Right view',t:'Right'},{c:'Top view',t:'Top'},{c:'Bottom view',t:'Bottom'},{c:'Zoom in'},{c:'Zoom out'},{c:'Reset camera',t:'Reset'},{sp:1},{gl:'Cameras'},{c:'Add camera',t:'Add Camera'},{c:'Look through camera',t:'Look Through'},{c:'Back to perspective view',t:'Persp. View'}]},
- {n:'Rigging',items:[{gl:'Skeleton'},{c:'Auto-rig biped',t:'Auto-Rig Biped'},{c:'Joint tool (click to place)',t:'Joint'},{c:'Delete joint'},{c:'Clear rig',t:'Clear Rig'},{sp:1},{gl:'Skin'},{c:'Bind skin to skeleton',t:'Bind skin'},{c:'Remove skin'},{sp:1},{gl:'Pose'},{c:'Reset pose'},{c:'Mirror pose L to R',t:'Mirror L → R'},{c:'Mirror pose R to L',t:'Mirror R → L'}]},
+ {n:'Rigging',items:[{gl:'Skeleton'},{c:'Auto-rig biped',t:'Auto-Rig Biped'},{c:'Joint tool (click to place)',t:'Joint'},{c:'Delete joint'},{c:'Clear rig',t:'Clear Rig'},{sp:1},{gl:'Skin'},{c:'Bind skin to skeleton',t:'Bind skin'},{c:'Remove skin'},{sp:1},{gl:'Pose'},{c:'Reset pose'},{c:'Mirror pose L to R',t:'Mirror L → R'},{c:'Mirror pose R to L',t:'Mirror R → L'},{sp:1},{gl:'Animate'},{c:'Pose mode (IK)',t:'Pose (IK)'},{c:'Timeline'},{c:'Set key'},{c:'Play / stop animation',t:'Play'},{c:'Make cycle (mirror at halfway)',t:'Make Cycle'}]},
  {n:'Sculpting',items:[{gl:'Brushes'},{c:'Clay (build up)',t:'Clay'},{c:'Grab (move)',t:'Move'},{c:'Smooth'},{c:'Crease'},{c:'Flatten'},{c:'Inflate'},{c:'Pinch'},{sp:1},{c:'Subtract (reverse brush)',t:'Subtract'},{c:'Symmetry (X mirror)',t:'Symmetry'},{sp:1},{gl:'Radius'},{c:'Smaller brush',t:'−'},{rng:'size'},{c:'Larger brush',t:'+'},{gl:'Intensity'},{rng:'str'},{gl:'Falloff'},{rng:'hard'},{gl:'Resolution'},{rng:'res'},{sp:1},{gl:'Detail'},{c:'Add detail (subdivide)',t:'Add detail'},{c:'Reset sculpt'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{sp:1},{c:'Undo'},{c:'Redo'}]}
  ,{n:'Experimental and proprietary',rows:[{n:'Cut apart',items:[{c:'Separate and Cut',t:'Separate and Cut',ic:'sepc'},{sp:1},{c:'Affect front vertices',t:'Affect Front Vertices'}]}]}
 ];
 /* one numbered tab per sub shelf, in order; the File row lives in the top bar and is not a tab */
-const TAB_INFO={'Primitives':'Add a cube, sphere, torus, trapezoid, teapot or tree','Transform and scene':'Select, move, rotate and scale; choose points, edges or faces; pivot and axis lock; undo, redo, save and load','Modeling tools':'Cut, knife, extrude, bevel, symmetrize, weld, merge, duplicate, delete and soft select','Draw':'Draw shapes straight into the scene','Rotoscope':'Load a reference image behind the model and place it','Coloring':'Paint faces and objects, and choose how the model is displayed','Render 2K':'Render a 2K image with the GPU or the ray tracer','Navigating':'Camera views, zoom and cameras','Rigging':'Auto-rig a biped skeleton with fingers, place joints, bind skin and pose','Sculpting':'Sculpt brushes and their size, intensity and falloff','Experimental and proprietary':'Separate and Cut, and Affect Front Vertices'};
+const TAB_INFO={'Primitives':'Add a cube, sphere, torus, trapezoid, teapot or tree','Transform and scene':'Select, move, rotate and scale; choose points, edges or faces; pivot and axis lock; undo, redo, save and load','Modeling tools':'Cut, knife, extrude, bevel, symmetrize, weld, merge, duplicate, delete and soft select','Draw':'Draw shapes straight into the scene','Rotoscope':'Load a reference image behind the model and place it','Coloring':'Paint faces and objects, and choose how the model is displayed','Render 2K':'Render a 2K image with the GPU or the ray tracer','Navigating':'Camera views, zoom and cameras','Rigging':'Auto-rig a biped skeleton with fingers, bind skin, pose with IK and animate on a timeline','Sculpting':'Sculpt brushes and their size, intensity and falloff','Experimental and proprietary':'Separate and Cut, and Affect Front Vertices'};
 const TABS=[];SHELVES.forEach((S,si)=>{(S.rows||[{n:S.n}]).forEach(r=>{if(si===0&&r.n==='File')return;const multi=S.rows&&S.rows.length>1;TABS.push({si,row:S.rows?r.n:null,label:multi?r.n:S.n})})});
 /* every group gets its own colour tab so the groups are easy to tell apart (Pivot = yellow, Axis lock = red, ...). Groups without a label take the next colour at each gap. */
 const PALG=['#2dc4ad','#4a7fd1','#f2c200','#e5484d','#a371f7','#f08a24'];
@@ -2247,7 +2318,7 @@ const vpTargets=()=>{const t=new Set(osel);if(objs[sel])t.add(objs[sel]);return[
 const vpOp=()=>objs[sel]?Math.round(oa(objs[sel])*100):100;
 function vpSet(m){vpTargets().forEach(o=>{o.dm=m});syncShelf();draw();commit()}
 document.addEventListener('input',e=>{const t=e.target;if(!t||!t.dataset||t.dataset.vp!=='op')return;const v=Math.max(.05,Math.min(1,parseFloat(t.value)/100));if(!isFinite(v))return;vpTargets().forEach(o=>{o.op=v>=1?undefined:v});draw()});
-document.addEventListener('change',e=>{const t=e.target;if(t&&t.dataset&&(t.dataset.vp==='op'||t.dataset.jr!==undefined||t.dataset.hc!==undefined))commit();if(t&&t.id==='rgf')rigOpts.fingers=+t.value;else if(t&&t.id==='rgb')rigOpts.bones=+t.value;else if(t&&t.id==='rgt')rigOpts.thumb=t.checked});
+document.addEventListener('change',e=>{const t=e.target;if(t&&t.dataset&&(t.dataset.vp==='op'||t.dataset.jr!==undefined||t.dataset.hc!==undefined||t.dataset.jo!==undefined)){if(t.dataset.vp!=='op')tlAutoKey();commit()}if(t&&t.id==='rgf')rigOpts.fingers=+t.value;else if(t&&t.id==='rgb')rigOpts.bones=+t.value;else if(t&&t.id==='rgt')rigOpts.thumb=t.checked});
 function syncShelf(){
  updateFname();
  document.querySelectorAll('[data-vp="op"]').forEach(e=>{e.disabled=!objs[sel];if(+e.value!==vpOp())e.value=vpOp()});
@@ -2798,6 +2869,7 @@ cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,
  if(drag.rc||drag.orb){if(ortho){panX+=dx;panY+=dy;drag.x=e.clientX;drag.y=e.clientY;draw();return}orbitBy(dx,dy,.008,drag.rc);drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.zm){dist=Math.max(.3,Math.min(80,dist*Math.exp((dy-dx)*.008)));drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.exm&&exNode&&draw.exm){const m=draw.exm,s2=((e.clientX-drag.x)*m.ux+(e.clientY-drag.y)*m.uy)/m.pxu/drag.exm.ks;exNode.p.dist=Math.max(-5,Math.min(5,+(drag.exm.d0+s2).toFixed(3)));const so=objs[sel],i=so.nodes.indexOf(exNode);dirtyFrom(so,i);evaluate(so);draw();return}
+ if(drag.ik){ikDrag(e);return}
  if(drag.jm){jointDrag(e);return}
  if(drag.jn)return;
  if(drag.pn){paintAt(e);return}
@@ -2826,7 +2898,7 @@ cv.addEventListener('pointerup',e=>{if(drag&&drag.sbx){const b=box;box=null;drag
  if(drag&&(drag.rc||drag.zm||drag.orb)){drag=null;return}
  if(drag&&drag.exm){drag=null;panels();draw();return}
  if(drag&&drag.sc){sculptEnd();drag=null;panels();return}
- if(drag&&drag.jn){const mv=drag.jm&&drag.moved>2;drag=null;panels();if(mv)commit();return}
+ if(drag&&drag.jn){const mv=(drag.jm||drag.ik)&&drag.moved>2,ik=!!drag.ik;drag=null;if(mv&&ik)tlAutoKey();panels();if(mv)commit();return}
  if(drag&&drag.pn){drag=null;return}
  if(drag&&drag.kn){knifeCut();kn=null;drag=null;all();return}
  if(drag&&drag.loop){if(drag.moved<5)loopInsert(drag.loop);drag=null;all();return}

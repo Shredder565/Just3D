@@ -4,6 +4,13 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v149 — Pose with IK and animate on a timeline
+- **Pose (IK) mode** (Rigging tab → Mode; turns on automatically when you bind skin): drag a hand or a foot and the whole arm or leg follows, bending the elbow or knee the natural way and staying inside the joint limits. Hand and foot joints get an orange ring. Dragging is two-bone IK, so it works on realistic, cartoon, creature and robot rigs alike.
+- **Move the whole body**: drag the Hips joint (or use the Move X / Y / Z sliders on Hips). *Keep feet planted when moving the hips* is on by default, so the legs bend to keep the feet on the ground.
+- **Timeline** (bar at the bottom of the viewport whenever a skeleton exists; also Rigging → Animate → Timeline): scrub slider with a diamond for every key, Frame / Length / FPS, Play, step ±1 frame, jump to previous / next key, Set key / Update key / Delete key, Loop, and **Auto-key** (on by default: any pose change at the current frame sets a key). Between keys the pose blends with Smooth, Linear or Hold (step) timing. Keys store every joint's pose plus the hips' position.
+- **Make cycle**: pose the character, press *Make cycle*, and NOVA puts that pose at frame 0, its left/right mirror at the halfway frame and the pose again at the end. Press Play for an instant walk, run or idle loop to refine.
+- Animation is saved with the file and is part of undo. Alt+K sets a key, Alt+L plays / stops. New joint dots, rings and commands in the Rigging shelf (Pose (IK), Timeline, Set key, Play, Make Cycle).
+
 ## v148 — Biped Auto-Rig: an easy animation skeleton for any two-legged character (new "Rigging" tab)
 - **Auto-rig biped**: Rigging tab → *Auto-rig biped*. Pick how many fingers (0–4 + thumb) and bones per finger (2 or 3), then click 10 landmarks on your model: top of head, chin, shoulder, elbow, wrist, tip of the middle finger, hip, knee, ankle and the floor under the toes. NOVA builds a full 55-joint skeleton (hips, spine, neck, head, jaw, eyes, clavicles, arms, legs, feet, toes and every finger) sized to your character. Works on cartoon, realistic, upright-creature (turtle) and robot / armour models because you place the landmarks yourself. Right-click or Backspace undoes a landmark, Esc cancels.
 - **Mirrored fitting**: drag any joint to adjust it; the opposite side follows (turn "mirror" off to move one side only). Shift-drag moves just that joint. Left side is blue, right is red, centre is yellow.
