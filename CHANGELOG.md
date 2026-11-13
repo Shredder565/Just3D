@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v153 — Modeling tools tab reordered
+- The first seven buttons of **Modeling tools** are now, in order: **Loop Cut, Knife Area, Add Loop Edge, Add Vertex, Group Weld, Target Weld, Symmetrize**. The *Cut* (cut selected edges) and *Knife* buttons were removed from the tab (their commands are still in the right-click command list). Everything after them is unchanged: Extrude, Bevel, Invert, Loop, Ring, Symmetrize Object, Smooth, Freeze, Merge, then Duplicate, Group, Delete and Soft Select.
+
 ## v152 — Record MP4 video; W / E / R keys fixed
 - **Record** (button in the top bar next to Perspective / Orthographic View, or Alt+R): click it, work or animate, click **Stop** and an `.mp4` is saved to your computer. It records only the 3D view, copied straight from the viewport, so there is no mouse cursor, no panels, menus, timeline or messages in the video. In split view both views are recorded side by side. The skeleton dots and the move/rotate/scale handles are hidden while recording so the picture is clean. A red "Stop 0:12" shows the length while it runs. If the timeline has audio loaded, the sound is recorded too.
 - **Record Animation** (Rigging → Animate): plays your timeline once from frame 0 and records it, then stops and saves by itself at the last frame.
