@@ -764,12 +764,12 @@ function draw(){
  if(odOn)odOverlay(g,acc,view,scr);
  if(ceOn)ceOverlay(g,acc,view,scr);
  brushRing();
- draw.edges=null;
+ draw.edges=null;draw.edgesAll=null;
  if(editMode&&(sub==='edge'||sub==='loop'||sub==='av')){const en2=editNode(so);
-  draw.edgeCap=false;if(en2&&en2.out&&en2.rep){const bigE=hedE&&hedE.m===en2.out,rp=en2.rep,P=bigE?new Proxy({},{get:(_,k)=>[hedE.P.PX[k],hedE.P.PY[k],hedE.P.PZ[k]]}):en2.out.v.map(v=>{const q=mulv(Ms,v),w=view(q[0]+so.pos[0],q[1]+so.pos[1],q[2]+so.pos[2]),s=scr(w);return[s[0],s[1],w[2]]}),seen=new Set(),E=[];
+  draw.edgeCap=false;if(en2&&en2.out&&en2.rep){const bigE=hedE&&hedE.m===en2.out,rp=en2.rep,P=bigE?new Proxy({},{get:(_,k)=>[hedE.P.PX[k],hedE.P.PY[k],hedE.P.PZ[k]]}):en2.out.v.map(v=>{const q=mulv(Ms,v),w=view(q[0]+so.pos[0],q[1]+so.pos[1],q[2]+so.pos[2]),s=scr(w);return[s[0],s[1],w[2]]}),seen=new Set(),E=[],EA=[];
    if(bigE)draw.hed.en=en2;else en2.out.f.forEach(f=>f.forEach((a,k)=>{const ra=rp[a],rb=rp[f[(k+1)%f.length]];if(ra===rb||ra<0||rb<0)return;const kk=ek(ra,rb);if(seen.has(kk))return;seen.add(kk);
-    const A=P[ra],B=P[rb];if(!vis((A[0]+B[0])/2,(A[1]+B[1])/2,(A[2]+B[2])/2))return;E.push({k:kk,a:Math.min(ra,rb),b:Math.max(ra,rb),ra,rb,x1:A[0],y1:A[1],x2:B[0],y2:B[1],z:(A[2]+B[2])/2,z1:A[2],z2:B[2]})}));
-   draw.edges=E;
+    const A=P[ra],B=P[rb],en={k:kk,a:Math.min(ra,rb),b:Math.max(ra,rb),ra,rb,x1:A[0],y1:A[1],x2:B[0],y2:B[1],z:(A[2]+B[2])/2,z1:A[2],z2:B[2]};EA.push(en);if(vis((A[0]+B[0])/2,(A[1]+B[1])/2,(A[2]+B[2])/2))E.push(en)}));
+   draw.edges=E;draw.edgesAll=EA;
    if(bigE&&sub==='edge'&&selPts.size&&selEdges.size){let c=0;g.strokeStyle=acc;g.lineWidth=3.5;g.beginPath();const PX=hedE.P.PX,PY=hedE.P.PY;for(const k of selEdges){if(++c>20000)break;const[a,b]=k.split('_');g.moveTo(PX[a],PY[a]);g.lineTo(PX[b],PY[b])}g.stroke()}
    for(const e of E){const sl=sub==='edge'&&selPts.size&&selEdges.has(e.k);if(!sl)continue;
     g.strokeStyle=acc;g.lineWidth=3.5;g.beginPath();g.moveTo(e.x1,e.y1);g.lineTo(e.x2,e.y2);g.stroke()}
@@ -1391,9 +1391,9 @@ function polyHitsRect(pts,x0,y0,x1,y1){for(const q of pts)if(q[0]>=x0&&q[0]<=x1&
  return inPoly(x0,y0,pts)}
 function boxSelect(){if(!box)return;const x0=Math.min(box.x0,box.x1),x1=Math.max(box.x0,box.x1),y0=Math.min(box.y0,box.y1),y1=Math.max(box.y0,box.y1);
  if(!box.add||(!box.sh&&x1-x0<3&&y1-y0<3)){selPts.clear();selEdges.clear()}if(x1-x0<3&&y1-y0<3)return;
- if(sub==='face'&&draw.hed)hugeFacesInRect(x0,y0,x1,y1).forEach(fi=>{box.sub?selPts.delete(fi):selPts.add(fi)});
- else if(sub==='face')draw.polys.forEach(p=>{if(p.oi!==sel||!polyHitsRect(p.pts,x0,y0,x1,y1))return;const cx=p.pts.reduce((s,q)=>s+q[0],0)/p.pts.length,cy=p.pts.reduce((s,q)=>s+q[1],0)/p.pts.length;if(vis(cx,cy,p.z)||(!frontOnly&&p.pts.some((q,i)=>vis(q[0],q[1],p.zs[i]))))(box.sub?selPts.delete(p.fi):selPts.add(p.fi))});
- else if(sub==='edge'){if(!selPts.size)selEdges.clear();(draw.hed&&draw.hed.en?hugeEdgesIn(x0,y0,x1,y1):(draw.edges||[])).forEach(e=>{if(segHitsRect(e.x1,e.y1,e.x2,e.y2,x0,y0,x1,y1))box.sub?selEdges.delete(e.k):selEdges.add(e.k)});syncEdges()}
+ if(sub==='face'&&draw.hed)hugeFacesInRect(x0,y0,x1,y1,frontOnly).forEach(fi=>{box.sub?selPts.delete(fi):selPts.add(fi)});
+ else if(sub==='face')draw.polys.forEach(p=>{if(p.oi!==sel||!polyHitsRect(p.pts,x0,y0,x1,y1))return;const cx=p.pts.reduce((s,q)=>s+q[0],0)/p.pts.length,cy=p.pts.reduce((s,q)=>s+q[1],0)/p.pts.length;if(!frontOnly||vis(cx,cy,p.z))(box.sub?selPts.delete(p.fi):selPts.add(p.fi))});
+ else if(sub==='edge'){if(!selPts.size)selEdges.clear();(draw.hed&&draw.hed.en?hugeEdgesIn(x0,y0,x1,y1,frontOnly):((frontOnly?draw.edges:(draw.edgesAll||draw.edges))||[])).forEach(e=>{if(segHitsRect(e.x1,e.y1,e.x2,e.y2,x0,y0,x1,y1))box.sub?selEdges.delete(e.k):selEdges.add(e.k)});syncEdges()}
  else if(draw.hed&&draw.hed.pb)hugeBoxPts(x0,y0,x1,y1,frontOnly,box.sub);
  else ((frontOnly?draw.pts:draw.allPts)||[]).forEach(p=>{if(p.x>=x0&&p.x<=x1&&p.y>=y0&&p.y<=y1)box.sub?selPts.delete(p.i):selPts.add(p.i)})}
 /* ---- soft select (like Maya): with it on, moving, rotating or scaling the selected points or faces also pulls the points around them, strongest next to the selection and fading to nothing at the falloff radius ---- */
@@ -1487,7 +1487,7 @@ function gizmoDrag(e){const g=draw.gz,h=drag.gz,so=objs[sel];if(!g||!so)return;
   const sv=axisK;axisK=h.k;if(editMode)rotPts(t/.01,0);else objXform(t/.01,0);axisK=sv}
  drag.x=e.clientX;drag.y=e.clientY;draw()}
 const SW=['#3aa393','#c9783a','#4a7fd1','#c9a93a','#b5559c','#d9d9d9','#e5484d','#5b6572'],hexRgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
-function nearEdge(x,y){let best=null,bd=8;(draw.hed&&draw.hed.en?hugeEdgesIn(x-10,y-10,x+10,y+10):(draw.edges||[])).forEach(e=>{const vx=e.x2-e.x1,vy=e.y2-e.y1,l2=vx*vx+vy*vy||1,t=Math.max(0,Math.min(1,((x-e.x1)*vx+(y-e.y1)*vy)/l2)),d=Math.hypot(x-(e.x1+vx*t),y-(e.y1+vy*t));if(d<bd){bd=d;best=e}});return best}
+function nearEdge(x,y){let best=null,bd=8;(draw.hed&&draw.hed.en?hugeEdgesIn(x-10,y-10,x+10,y+10,true):(draw.edges||[])).forEach(e=>{const vx=e.x2-e.x1,vy=e.y2-e.y1,l2=vx*vx+vy*vy||1,t=Math.max(0,Math.min(1,((x-e.x1)*vx+(y-e.y1)*vy)/l2)),d=Math.hypot(x-(e.x1+vx*t),y-(e.y1+vy*t));if(d<bd){bd=d;best=e}});return best}
 function syncEdges(){selPts.clear();selEdges.forEach(k=>{const[a,b]=k.split('_');selPts.add(+a);selPts.add(+b)})}
 /* Mirror Polygons for tools that change the shape: finds the point on the other side of the plane (same place mirrored, measured on the shape before manual point edits) */
 function baseMesh(o){const en=editNode(o),i=en?o.nodes.indexOf(en):-1;return i>0?o.nodes[i-1].out:null}
@@ -1741,7 +1741,7 @@ const CMDS=[
 /* ---- painting individual faces ---- */
 function paintAt(e){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;let h=null;
  let wide=null; /* on a big model one polygon is a speck, so the brush covers a small disc of them */
- if(draw.hed){const q=hugeFaceAt(x,y);if(q){h={oi:sel,fi:q.fi};wide=hugeFacesInRect(x-10,y-10,x+10,y+10)}}
+ if(draw.hed){const q=hugeFaceAt(x,y);if(q){h={oi:sel,fi:q.fi};wide=hugeFacesInRect(x-10,y-10,x+10,y+10,true)}}
  else for(let k=draw.polys.length-1;k>=0&&!h;k--){const p=draw.polys[k];if(inPoly(x,y,p.pts))h=p}
  if(!h)return;const o=objs[h.oi];
  if(e.ctrlKey||e.metaKey){$('#pcol').value=(o.fc&&o.fc[h.fi])||o.color;return}
@@ -2221,10 +2221,20 @@ function recFrame(){const S=recSt;if(!S||!recOn)return;const now=performance.now
   if(v.glc.style.display==='block'&&v.glc.width>0)x.drawImage(v.glc,dx,dy,dw,dh);x.drawImage(v.cv,dx,dy,dw,dh)});
  try{S.track.requestFrame()}catch(_){}}
 function recStop(){if(!recOn||!recSt)return;const S=recSt;recOn=false;clearInterval(S.iv);clearInterval(S.lab);tlStop();anim.loop=S.loop;try{S.rec.requestData();S.rec.stop()}catch(_){}try{S.track.stop();if(S.aud)S.aud.stream.getTracks().forEach(t=>t.stop())}catch(_){}recLabel();tlSig='';tlRender();draw()}
-function recFinish(chunks,mime){recSt=null;if(!chunks.length){toast('Nothing was recorded');return}const mp4=mime.indexOf('mp4')>=0,blob=new Blob(chunks,{type:mp4?'video/mp4':'video/webm'}),d=new Date(),p2=n=>String(n).padStart(2,'0'),
-  name='NOVA3D_'+d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate())+'_'+p2(d.getHours())+p2(d.getMinutes())+p2(d.getSeconds())+(mp4?'.mp4':'.webm');
- const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);
- toast((mp4?'Saved ':'Saved (this window can only write .webm, not .mp4) ')+name+' ('+(blob.size/1048576).toFixed(1)+' MB)')}
+function recFinish(chunks,mime){const secs=recSt?Math.round((performance.now()-recSt.t0)/1000):0;recSt=null;if(!chunks.length){toast('Nothing was recorded');return}const mp4=mime.indexOf('mp4')>=0,blob=new Blob(chunks,{type:mp4?'video/mp4':'video/webm'}),d=new Date(),p2=n=>String(n).padStart(2,'0'),
+  name='NOVA3D_'+d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate())+'_'+p2(d.getHours())+p2(d.getMinutes())+p2(d.getSeconds());recAsk(blob,name,mp4?'.mp4':'.webm',secs)}
+/* when a recording ends: preview it, then Save As (choose the folder and name), Save to Downloads, or Discard */
+function recAsk(blob,name,ext,secs){const old=document.getElementById('recdlg');if(old)old.remove();const url=URL.createObjectURL(blob),el=document.createElement('div');el.id='recdlg';el.style.cssText='position:fixed;inset:0;z-index:85;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center';
+ const mb=(blob.size/1048576).toFixed(1),m=Math.floor(secs/60),sc=String(secs%60).padStart(2,'0');
+ el.innerHTML='<div style="background:var(--panel);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:14px 16px;width:min(560px,calc(100vw - 24px));max-height:92vh;overflow:auto"><b style="font-size:15px">Recording finished</b><div style="opacity:.8;margin:2px 0 8px;font-size:12px">'+m+':'+sc+' &middot; '+mb+' MB &middot; '+(ext==='.mp4'?'MP4':'WebM')+'</div>'+
+  '<video id="recpv" src="'+url+'" controls loop playsinline style="width:100%;max-height:50vh;background:#000;border-radius:4px"></video>'+
+  '<label style="display:flex;gap:6px;align-items:center;margin:10px 0 8px">File name <input id="recname" type="text" value="'+name+'" style="flex:1;min-width:0"><span>'+ext+'</span></label>'+
+  '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button id="recdisc">Discard</button><button id="recdl">Save to Downloads</button><button id="recsa" style="background:var(--acc);color:#fff">Save As\u2026</button></div></div>';
+ document.body.appendChild(el);const close=()=>{try{$('#recpv').pause()}catch(_){}el.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)},fname=()=>(($('#recname').value||name).replace(/[\\/:*?"<>|]+/g,'_').trim()||name)+ext;
+ const dl=()=>{const a=document.createElement('a');a.href=url;a.download=fname();a.style.display='none';document.body.appendChild(a);a.click();a.remove();toast('Saved '+a.download+' to your Downloads');close()};
+ $('#recdl').onclick=dl;$('#recdisc').onclick=()=>{close();toast('Recording discarded')};
+ $('#recsa').onclick=async()=>{if(!window.showSaveFilePicker){dl();return}try{const h=await showSaveFilePicker({suggestedName:fname(),types:[{description:ext==='.mp4'?'MP4 video':'WebM video',accept:{[blob.type]:[ext]}}]}),w=await h.createWritable();await w.write(blob);await w.close();toast('Saved '+h.name);close()}catch(e){if(e&&e.name==='AbortError')return;dl()}};
+ el.addEventListener('keydown',e=>e.stopPropagation());setTimeout(()=>{const n=$('#recname');if(n){n.focus();n.select()}},50)}
 function recToggle(){recOn?recStop():recStart(false)}
 function recAnimation(){if(recOn){recStop();return}if(!rig.joints.length||!keyFrames().length){toast('Set some keys on the timeline first, or use Record to capture the view as it is');return}tlStop();const lp=anim.loop;anim.loop=false;gotoFrame(0);recStart(true);if(recSt)recSt.loop=lp;else anim.loop=lp;setTimeout(()=>{if(recOn)tlPlayToggle()},400)}
 /* ===================== Mouth rig + phonemes ===================== */
@@ -2467,11 +2477,11 @@ function hugeDots(g,acc,swp){const h=draw.hed,b=h.pb,N=h.pn,st=Math.max(1,Math.c
  if(N>HUGE_DOTS)for(let k=0;k<N;k+=st)g.fillRect(b.X[k]-1,b.Y[k]-1,2,2);
  let c=0;for(let k=0;k<N;k++){const i=b.I[k],on=selPts.has(i),wt=swp&&!on?swp.get(i):0;if(N>HUGE_DOTS&&!on&&!wt)continue;if(++c>HUGE_DOTS*2)break;const x=b.X[k],y=b.Y[k];g.beginPath();g.arc(x,y,on?5:wt?3.6:2.6,0,TAU);g.fillStyle=on?acc:wt?softHeat(wt):'#fff';g.fill();g.strokeStyle=on?'#fff':'#1b2026';g.lineWidth=1;g.stroke()}}
 /* edges of a big model are looked up only where asked (under the cursor, or inside a selection box): the visible ones whose line touches the rectangle */
-function hugeEdgesIn(x0,y0,x1,y1){const h=draw.hed,out=[];if(!h||!h.en)return out;const en=h.en,F=en.out.f,rp=en.rep,P=h.P,PX=P.PX,PY=P.PY,PZ=P.PZ,nv=PZ.length,seen=new Set(),CAP=300000;
+function hugeEdgesIn(x0,y0,x1,y1,front){const h=draw.hed,out=[];if(!h||!h.en)return out;const en=h.en,F=en.out.f,rp=en.rep,P=h.P,PX=P.PX,PY=P.PY,PZ=P.PZ,nv=PZ.length,seen=new Set(),CAP=300000;
  for(let fi=0;fi<F.length;fi++){const f=F[fi],n=f.length;let mnx=1e9,mxx=-1e9,mny=1e9,mxy=-1e9;for(let k=0;k<n;k++){const i=f[k],x=PX[i],y=PY[i];if(x<mnx)mnx=x;if(x>mxx)mxx=x;if(y<mny)mny=y;if(y>mxy)mxy=y}
   if(!(mxx>=x0&&mnx<=x1&&mxy>=y0&&mny<=y1))continue;
   for(let k=0;k<n;k++){const ra=rp[f[k]],rb=rp[f[(k+1)%n]];if(ra===rb||ra<0||rb<0)continue;const lo=ra<rb?ra:rb,hi=ra<rb?rb:ra,key=lo*nv+hi;if(seen.has(key))continue;seen.add(key);
-   if(!segHitsRect(PX[ra],PY[ra],PX[rb],PY[rb],x0,y0,x1,y1))continue;const mx=(PX[ra]+PX[rb])/2,my=(PY[ra]+PY[rb])/2,mz=(PZ[ra]+PZ[rb])/2;if(!vis(mx,my,mz))continue;
+   if(!segHitsRect(PX[ra],PY[ra],PX[rb],PY[rb],x0,y0,x1,y1))continue;const mx=(PX[ra]+PX[rb])/2,my=(PY[ra]+PY[rb])/2,mz=(PZ[ra]+PZ[rb])/2;if(front&&!vis(mx,my,mz))continue;
    out.push({k:lo+'_'+hi,a:lo,b:hi,x1:PX[ra],y1:PY[ra],x2:PX[rb],y2:PY[rb],z:mz});if(out.length>=CAP)return out}}
  return out}
 /* the nearest face under a pixel / the faces whose centre lies in a box and can be seen */
@@ -2482,9 +2492,9 @@ function hugeFaceAt(x,y){const H=draw.hed;if(!H)return null;const P=H.P,PX=P.PX,
    const d=(by-cy)*(ax-cx)+(cx-bx)*(ay-cy);if(Math.abs(d)<1e-9)continue;const l1=((by-cy)*(x-cx)+(cx-bx)*(y-cy))/d,l2=((cy-ay)*(x-cx)+(ax-cx)*(y-cy))/d,l3=1-l1-l2;
    if(l1<-1e-6||l2<-1e-6||l3<-1e-6)continue;const z=l1*PZ[a]+l2*PZ[b]+l3*PZ[c];if(z<bz){bz=z;best=fi}}}
  return best<0?null:{fi:best,z:bz}}
-function hugeFacesInRect(x0,y0,x1,y1){const H=draw.hed,out=[];if(!H)return out;const P=H.P,PX=P.PX,PY=P.PY,PZ=P.PZ,F=H.m.f;
+function hugeFacesInRect(x0,y0,x1,y1,front){const H=draw.hed,out=[];if(!H)return out;const P=H.P,PX=P.PX,PY=P.PY,PZ=P.PZ,F=H.m.f;
  for(let fi=0;fi<F.length;fi++){const f=F[fi],n=f.length;let cx=0,cy=0,cz=0;for(let k=0;k<n;k++){const i=f[k];cx+=PX[i];cy+=PY[i];cz+=PZ[i]}cx/=n;cy/=n;cz/=n;
-  if(cx>=x0&&cx<=x1&&cy>=y0&&cy<=y1&&vis(cx,cy,cz))out.push(fi)}
+  if(cx>=x0&&cx<=x1&&cy>=y0&&cy<=y1&&(!front||vis(cx,cy,cz)))out.push(fi)}
  return out}
 /* big models: the same depth buffer filled straight from the projected points (flat number arrays), one pass over the faces */
 const _triL=new WeakMap();

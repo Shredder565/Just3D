@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v154 — Box select picks everything in the rectangle; Save As after recording
+- **Box select / highlight fixed.** Dragging a selection rectangle in Points, Edges or Faces mode now selects *everything* inside it, including the back half of an object, instead of only the front. Turn on **Affect Front Vertices** if you want the old front-only behaviour.
+- **Recording finished dialog.** When you stop a recording (or **Record Animation** ends) a window opens with a preview of the video, an editable file name and three choices: **Save As…** (choose the folder and name), **Save to Downloads**, or **Discard**.
+
 ## v153 — Modeling tools tab reordered
 - The first seven buttons of **Modeling tools** are now, in order: **Loop Cut, Knife Area, Add Loop Edge, Add Vertex, Group Weld, Target Weld, Symmetrize**. The *Cut* (cut selected edges) and *Knife* buttons were removed from the tab (their commands are still in the right-click command list). Everything after them is unchanged: Extrude, Bevel, Invert, Loop, Ring, Symmetrize Object, Smooth, Freeze, Merge, then Duplicate, Group, Delete and Soft Select.
 
