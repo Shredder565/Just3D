@@ -410,12 +410,14 @@ function smoothObj(){const o=objs[sel];if(!o)return;const m=evaluate(o);if(!m.f.
  if(m.f.reduce((a,f)=>a+f.length,0)>30000){toast('This model is already very dense, so smoothing it would be slow.');return}
  const nn=mk('Smooth');insertNodeKeepColors(o,nn);dirtyFrom(o,o.nodes.indexOf(nn));selPts.clear();selEdges.clear();ringPrev=null;all();
  toast('Surface smoothed; the shape is kept. Change amount and the sharp-edge angle in the Smooth card (right panel); delete the card to undo.')}
+/* Skin: each point follows the nearest bones. On a biped skeleton only bones within two steps of the nearest one are used, so a finger never takes weight from its neighbour's far end and an arm never from the hip. */
+function hopTable(J){const n=J.length,D=[];for(let i=0;i<n;i++){D[i]=new Array(n).fill(99);D[i][i]=0}J.forEach((j,i)=>{if(j.parent>=0&&J[j.parent]){D[i][j.parent]=1;D[j.parent][i]=1}});for(let k=0;k<n;k++)for(let i=0;i<n;i++)for(let q=0;q<n;q++)if(D[i][k]+D[k][q]<D[i][q])D[i][q]=D[i][k]+D[k][q];return D}
 FOPS.Skin={p:{falloff:[2,.5,6,.1],blend:[3,1,6,1]},fn:(m,p,n)=>{const o=n.owner,J=rig.joints;if(!o||!J.length)return m;
- const{P,W}=rigPose(),Mo=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),NB=Math.round(p.blend),kid=J.map((j,i)=>J.findIndex(k=>k.parent===i)),segB=J.map((j,i)=>kid[i]>=0?J[kid[i]].p:j.p);
+ const{P,W}=rigPose(),Mo=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),NB=Math.round(p.blend),kid=J.map((j,i)=>J.findIndex(k=>k.parent===i)),segB=J.map((j,i)=>boneSeg(J,i,kid)),bip=rig.meta&&rig.meta.biped,hop=bip?hopTable(J):null;
  return mv(m,v=>{const q=mulv(Mo,v),w=[q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2]],ws=[];
   J.forEach((j,i)=>{const a=j.p,b=segB[i],ab=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],l2=ab[0]*ab[0]+ab[1]*ab[1]+ab[2]*ab[2]||1e-9,
    t=Math.max(0,Math.min(1,((w[0]-a[0])*ab[0]+(w[1]-a[1])*ab[1]+(w[2]-a[2])*ab[2])/l2));ws.push([i,Math.hypot(w[0]-(a[0]+ab[0]*t),w[1]-(a[1]+ab[1]*t),w[2]-(a[2]+ab[2]*t))])});
-  ws.sort((x,y)=>x[1]-y[1]);const use=ws.slice(0,NB).map(([i,d])=>[i,1/Math.pow(d+.05,p.falloff)]),sum=use.reduce((s,x)=>s+x[1],0)||1,r=[0,0,0];
+  ws.sort((x,y)=>x[1]-y[1]);const n0=ws[0][0],cand=hop?ws.filter(q=>hop[n0][q[0]]<=2):ws;const use=cand.slice(0,NB).map(([i,d])=>[i,1/Math.pow(d+.05,p.falloff)]),sum=use.reduce((s,x)=>s+x[1],0)||1,r=[0,0,0];
   use.forEach(([i,wt])=>{const t=mulv(W[i],[w[0]-J[i].p[0],w[1]-J[i].p[1],w[2]-J[i].p[2]]),k=wt/sum;r[0]+=k*(P[i][0]+t[0]);r[1]+=k*(P[i][1]+t[1]);r[2]+=k*(P[i][2]+t[2])});
   return wl(o,[r[0]-o.pos[0],r[1]-o.pos[1],r[2]-o.pos[2]])})}};
 const IMPRINT={p:{},fn:(m,p,n)=>n.path?imprint(m,n.path):m};
@@ -423,7 +425,7 @@ const CONNECT={p:{},fn:(m,p,n)=>n.pairs?connectEdges(m,n.pairs):m};
 const TY={...GEN,...OPS,...FOPS,Edit:EDITOP,Imprint:IMPRINT,Connect:CONNECT};
 /* ---------- scene + dependency graph ---------- */
 const mk=t=>({type:t,on:true,out:null,dirty:true,off:t==='Edit'?{}:null,fl:null,p:Object.fromEntries(Object.entries(TY[t].p).map(([k,s])=>[k,s[0]]))});
-let cams=[],camSel=-1,camAct=-1,tgt=[0,0,0],gridOn=true,exNode=null,exSel=new Set();let uid=0,groups=[],gid2=0;const osel=new Set();const objs=[];let sel=0,mode=0,editMode=false,sub='pt',knife=false,kaOn=false,scOn=false,kn=null,drawOn=false,dw=null,odOn=false,odFree=false,od=null,odCand=null,ceOn=false,ce=null,ceCand=null,xf='select',axisK=null,multi=true,box=null,selEdges=new Set(),ringPrev=null,hoverK=null,paintOn=false,jointOn=false,sculptOn=false,sBrush='clay',sSize=60,sStr=.5,sHard=.35,sRes=6,sSub=false,sSym=false,sNow=false,sMode=null,sVF=null,sLast=null,sPos=null,sGrab=null,rig={joints:[]},rigSel=-1,jid=0,lastEdge=null,selPts=new Set(),stats={ran:0,hit:0};
+let cams=[],camSel=-1,camAct=-1,tgt=[0,0,0],gridOn=true,exNode=null,exSel=new Set();let uid=0,groups=[],gid2=0;const osel=new Set();const objs=[];let sel=0,mode=0,editMode=false,sub='pt',knife=false,kaOn=false,scOn=false,kn=null,drawOn=false,dw=null,odOn=false,odFree=false,od=null,odCand=null,ceOn=false,ce=null,ceCand=null,xf='select',axisK=null,multi=true,box=null,selEdges=new Set(),ringPrev=null,hoverK=null,paintOn=false,jointOn=false,sculptOn=false,sBrush='clay',sSize=60,sStr=.5,sHard=.35,sRes=6,sSub=false,sSym=false,sNow=false,sMode=null,sVF=null,sLast=null,sPos=null,sGrab=null,rig={joints:[],meta:null},rigSel=-1,jid=0,lastEdge=null,selPts=new Set(),stats={ran:0,hit:0};
 /* new objects go to the dead center of the scene: their bounding box is centered on the world origin */
 function centerNew(o){const m=evaluate(o),mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];m.f.flat().forEach(i=>{for(let k=0;k<3;k++){mn[k]=Math.min(mn[k],m.v[i][k]);mx[k]=Math.max(mx[k],m.v[i][k])}});if(mn[0]>mx[0])return o;o.pos=[0,1,2].map(k=>-+((mn[k]+mx[k])/2).toFixed(5));return o}
 function addObj(type,x,ops=[]){const o={name:type+(++uid),pos:[x,0,0],rot:[0,0,0],sc:[1,1,1],hue:0,color:['#3aa393','#c9783a','#4a7fd1','#c9a93a','#b5559c'][uid%5],fc:{},nodes:[mk(type),...ops.map(mk)]};objs.push(o);sel=objs.length-1;osel.clear();selPts.clear();return o}
@@ -805,9 +807,14 @@ function draw(){
    if(xe()==='scale'){g.fillStyle='#fff';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#888';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else if(xe()==='move'){g.fillStyle='#ffe066';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#5a4a00';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else{g.beginPath();g.arc(ps[0],ps[1],3.5,0,TAU);g.fillStyle='#fff';g.fill()}}}
  if(sculptOn&&sPos&&!draw.hed){g.strokeStyle=acc;g.lineWidth=1.5;g.beginPath();g.arc(sPos.x,sPos.y,sSize,0,TAU);g.stroke();g.globalAlpha=.5;g.beginPath();g.arc(sPos.x,sPos.y,sSize*.5,0,TAU);g.stroke();g.globalAlpha=1}
  if(box){g.setLineDash([4,3]);g.strokeStyle=box.hl?'#f2c230':box.sc?'#e0701b':box.sub?'#e5484d':acc;g.lineWidth=1;g.strokeRect(box.x0,box.y0,box.x1-box.x0,box.y1-box.y0);g.setLineDash([])}
- if(rig.joints.length){const jp=rigPose().P.map(p=>{const s=scr(view(p[0],p[1],p[2]));return[s[0],s[1]]});
-  g.lineWidth=2;g.strokeStyle='#f2b01e';rig.joints.forEach((j,i)=>{if(j.parent>=0&&jp[j.parent]){g.beginPath();g.moveTo(jp[j.parent][0],jp[j.parent][1]);g.lineTo(jp[i][0],jp[i][1]);g.stroke()}});
-  draw.jts=[];rig.joints.forEach((j,i)=>{g.beginPath();g.arc(jp[i][0],jp[i][1],i===rigSel?7:5,0,TAU);g.fillStyle=i===rigSel?'#fff':'#f2b01e';g.fill();g.strokeStyle='#000';g.lineWidth=1.5;g.stroke();draw.jts.push({i,x:jp[i][0],y:jp[i][1]})})}else draw.jts=[];
+ if(rig.joints.length){const jp=rigPose().P.map(p=>{const s=scr(view(p[0],p[1],p[2]));return[s[0],s[1]]}),colJ=j=>j.name.startsWith('L_')?'#4aa3ff':j.name.startsWith('R_')?'#ff6b6b':'#f2b01e';
+  g.lineWidth=2;rig.joints.forEach((j,i)=>{if(j.parent>=0&&jp[j.parent]){g.strokeStyle=colJ(j);g.beginPath();g.moveTo(jp[j.parent][0],jp[j.parent][1]);g.lineTo(jp[i][0],jp[i][1]);g.stroke()}
+   if(j.tip&&(j.finger||j.name==='Head'||j.name==='Jaw'||j.name.endsWith('Toes'))){const P=rigPose(),t=V3.add(P.P[i],mulv(P.W[i],V3.sub(j.tip,j.p))),ts=scr(view(t[0],t[1],t[2]));g.strokeStyle=colJ(j);g.beginPath();g.moveTo(jp[i][0],jp[i][1]);g.lineTo(ts[0],ts[1]);g.stroke()}});
+  draw.jts=[];rig.joints.forEach((j,i)=>{const r0=j.finger?3.2:5;g.beginPath();g.arc(jp[i][0],jp[i][1],i===rigSel?7:r0,0,TAU);g.fillStyle=i===rigSel?'#fff':colJ(j);g.fill();g.strokeStyle='#000';g.lineWidth=1.2;g.stroke();draw.jts.push({i,x:jp[i][0],y:jp[i][1]})});
+  if(rigSel>=0&&rig.joints[rigSel]){g.font='12px system-ui,sans-serif';g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=3;const t=rig.joints[rigSel].name;g.strokeText(t,jp[rigSel][0]+10,jp[rigSel][1]-8);g.fillText(t,jp[rigSel][0]+10,jp[rigSel][1]-8)}}else draw.jts=[];
+ if(rigFit){const P=rigFit.pts.map(p=>scr(view(p[0],p[1],p[2])));g.lineWidth=2;g.strokeStyle='rgba(242,176,30,.8)';g.beginPath();P.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.stroke();
+  P.forEach((q,i)=>{g.beginPath();g.arc(q[0],q[1],6,0,TAU);g.fillStyle='#f2b01e';g.fill();g.strokeStyle='#000';g.lineWidth=1.5;g.stroke();g.fillStyle='#000';g.font='bold 9px system-ui,sans-serif';g.textAlign='center';g.fillText(i+1,q[0],q[1]+3);g.textAlign='left'});
+  const msg='Auto-rig '+(rigFit.pts.length+1)+' of '+FIT_STEPS.length+': click '+FIT_STEPS[rigFit.pts.length]+'   (right-click or Backspace = undo, Esc = cancel)';g.font='14px system-ui,sans-serif';const w=g.measureText(msg).width+24;g.fillStyle='rgba(20,24,30,.88)';g.fillRect((W-w)/2,46,w,28);g.fillStyle='#f2b01e';g.textAlign='center';g.fillText(msg,W/2,65);g.textAlign='left'}
  /* camera icons: a small frustum at each camera's eye point */
  draw.camPts=[];
  cams.forEach((c,i)=>{if(i===camAct)return;const cy_=Math.cos(c.yaw),sy_=Math.sin(c.yaw),cp_=Math.cos(c.pitch),sp_=Math.sin(c.pitch),
@@ -878,6 +885,8 @@ document.addEventListener('click',e=>{const t=e.target,d=t.dataset,o=objs[sel];
  else if(t.id==='dup'&&o){objs.push({name:o.name+'_copy',pos:[o.pos[0]+1.5,o.pos[1],o.pos[2]],rot:[...o.rot],sc:[...(o.sc||[1,1,1])],hue:0,color:o.color,fc:{...o.fc},cnm:{...(o.cnm||{})},nodes:o.nodes.map(n=>({...n,p:{...n.p},off:n.off?JSON.parse(JSON.stringify(n.off)):null,out:null,dirty:true}))});sel=objs.length-1;osel.clear();selPts.clear();all()}
  else if(d.sa){const en=editNode(o);if(en&&en.rep){if(sub==='face')en.out.f.forEach((_,i)=>selPts.add(i));else en.rep.forEach((r,i)=>r===i&&selPts.add(i))}all()}
  else if(d.jsel!==undefined){rigSel=+d.jsel;panels();draw()}
+ else if(d.rg){const v=d.v;if(d.rg==='fit')startFit();else if(d.rg==='part'){rigSel=+v;panels();draw()}else if(d.rg==='resetj'){const j=rig.joints[rigSel];if(j){j.rot=[0,0,0];skinDirty();panels();draw();commit()}}
+  else if(d.rg==='hside'){handSide=v;panels()}else if(d.rg==='hpose')handPose(v);else if(d.rg==='mpose')mirrorPose(v);else if(d.rg==='reset')resetPose();else if(d.rg==='clear')clearRig();else if(d.rg==='mirror'){rigMirror=t.checked}}
  else if(d.sw){o.color=d.sw;all()}
  else if(d.pf&&sub==='face'){paintFaces(false)}
  else if(d.cf){paintFaces(true)}
@@ -902,7 +911,8 @@ document.addEventListener('input',e=>{const t=e.target,d=t.dataset,o=objs[sel];i
   const sl=t.parentElement.querySelector('input[type=range]');if(sl)sl.value=v;dirtyFrom(o,i);draw()}
  else if(d.pos!==undefined){o.pos[+d.pos]=+t.value;t.nextElementSibling.textContent=t.value;draw()}
  else if(d.rot!==undefined){o.rot[+d.rot]=+t.value;t.nextElementSibling.textContent=t.value;draw()}
- else if(d.jr!==undefined){const j=rig.joints[rigSel];if(j){j.rot[+d.jr]=+t.value;t.nextElementSibling.textContent=t.value;skinDirty();draw()}}
+ else if(d.jr!==undefined){const j=rig.joints[rigSel];if(j){j.rot[+d.jr]=+t.value;clampJ(j);t.nextElementSibling.textContent=t.value;skinDirty();draw()}}
+ else if(d.hc!==undefined&&rig.meta){const v=+t.value/100,f=d.hc;handSides().forEach(s=>{if(f==='All'){['Thumb',...fingerNames(rig.meta.nf)].forEach(q=>{if(q!=='Thumb')setCurl(s,q,v)});document.querySelectorAll('[data-hc]').forEach(el=>{if(el!==t&&el.dataset.hc!=='Spread'&&el.dataset.hc!=='Thumb'&&el.dataset.hc!=='All'){el.value=t.value;el.nextElementSibling.textContent=t.value}})}else if(f==='Spread')setSpread(s,v);else setCurl(s,f,v)});t.nextElementSibling.textContent=t.value;skinDirty();draw()}
  else if(d.col){o.color=t.value;draw()}
  else if(d.nm){o.name=t.value;const el=document.querySelector('[data-o="'+sel+'"]');if(el)el.textContent=t.value}});
 /* orbit / zoom / pick */
@@ -1682,6 +1692,10 @@ const CMDS=[
  {g:'View',l:'Bottom view',k:'Shift+ArrowDown',kl:'Shift+↓',f:()=>viewTo(0,Math.PI/2)},
  {g:'View',l:'Zoom in',k:'=',f:()=>{dist=Math.max(.3,dist*.85);draw()}},
  {g:'View',l:'Zoom out',k:'-',f:()=>{dist=Math.min(80,dist/.85);draw()}},
+ {g:'Rigging',l:'Auto-rig biped',en:()=>need()&&!rig.joints.length&&!rigFit,f:startFit},
+ {g:'Rigging',l:'Clear rig',en:()=>rig.joints.length>0,f:clearRig},
+ {g:'Rigging',l:'Mirror pose L to R',en:()=>!!(rig.meta&&rig.meta.biped),f:()=>mirrorPose('L')},
+ {g:'Rigging',l:'Mirror pose R to L',en:()=>!!(rig.meta&&rig.meta.biped),f:()=>mirrorPose('R')},
  {g:'Rigging',l:'Joint tool (click to place)',k:'J',f:()=>{setTool('joint');all()},on:()=>jointOn},
  {g:'Rigging',l:'Bind skin to skeleton',k:'Shift+K',en:()=>need()&&rig.joints.length>0,f:bindSkin},
  {g:'Rigging',l:'Remove skin',k:'Shift+U',en:()=>hasSkin(),f:unbindSkin},
@@ -1763,13 +1777,13 @@ const MREG=new Map(),MID=new WeakMap();let mseq=0;const BIGM=20000;
 function meshTok(m){let id=MID.get(m);if(!id){id=++mseq;MID.set(m,id)}MREG.set(id,m);return {$M:id}}
 function meshMem(){let t=0;MREG.forEach(m=>{t+=(m.v.length+m.f.length)*50});return t}
 function pruneMeshes(){if(!MREG.size)return;const used=new Set(),sc=x=>{const re=/"\$M":(\d+)/g;let r;while((r=re.exec(x)))used.add(+r[1])};undoSt.forEach(sc);redoSt.forEach(sc);sc(lastSnap);if(curFile&&curFile.saved)sc(curFile.saved);[...MREG.keys()].forEach(k=>{if(!used.has(k))MREG.delete(k)})}
-function snap(full){return JSON.stringify({v:1,rig:rig.joints,groups:groups,cams:cams,objs:objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name,pos:o.pos,rot:o.rot,sc:o.sc||[1,1,1],color:o.color,fc:o.fc,cnm:o.cnm&&Object.keys(o.cnm).length?o.cnm:undefined,dm:o.dm,op:o.op,
+function snap(full){return JSON.stringify({v:1,rig:rig.joints,rigm:rig.meta,groups:groups,cams:cams,objs:objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name,pos:o.pos,rot:o.rot,sc:o.sc||[1,1,1],color:o.color,fc:o.fc,cnm:o.cnm&&Object.keys(o.cnm).length?o.cnm:undefined,dm:o.dm,op:o.op,
  nodes:o.nodes.filter(n=>!(n.type==='Edit'&&!Object.keys(n.off).length)).map(n=>({type:n.type,on:n.on,p:n.p,off:n.off,fl:n.fl,edge:n.edge||null,mesh:n.mesh?(full||n.mesh.v.length+n.mesh.f.length<BIGM?n.mesh:meshTok(n.mesh)):null,path:n.path||null,pairs:n.pairs||null}))}))})}
 function restore(s){const sc=JSON.parse(s);if(!sc||!Array.isArray(sc.objs))throw new Error('bad scene');
  const next=sc.objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name||'Object',pos:o.pos||[0,0,0],rot:o.rot||[0,0,0],sc:o.sc||[1,1,1],hue:0,color:o.color||'#3aa393',fc:o.fc||{},cnm:o.cnm||{},dm:o.dm,op:o.op,
   nodes:(o.nodes||[]).filter(n=>TY[n.type]).map(n=>{const k=mk(n.type);Object.assign(k.p,n.p||{});k.on=n.on!==false;if(n.off)k.off=n.off;k.fl=n.fl||null;if(n.edge)k.edge=n.edge;if(n.mesh){if(n.mesh.$M){k.mesh=MREG.get(n.mesh.$M);if(!k.mesh)throw new Error('bad scene')}else k.mesh=n.mesh}if(n.path)k.path=n.path;if(n.pairs)k.pairs=n.pairs;return k})}));
  if(!next.every(o=>o.nodes.length&&GEN[o.nodes[0].type]))throw new Error('bad scene');
- objs.length=0;next.forEach(o=>objs.push(o));rig.joints=(sc.rig||[]).map(j=>({name:j.name,p:j.p,parent:j.parent,rot:j.rot||[0,0,0]}));groups=(sc.groups||[]).map(g=>({id:g.id,name:g.name,open:g.open!==false}));gid2=groups.reduce((m,g)=>Math.max(m,g.id),0);cams=(sc.cams||[]).map(c=>({name:c.name||'camera',tgt:c.tgt||[0,0,0],yaw:c.yaw||0,pitch:c.pitch||0,dist:c.dist||9,pan:c.pan||[0,0],f:c.f||35}));if(camSel>=cams.length)camSel=-1;if(camAct>=cams.length){camAct=-1;tgt=[0,0,0]}osel.clear();rigSel=-1;sel=Math.min(sel,Math.max(0,objs.length-1));selPts.clear();selEdges.clear();ringPrev=null;all()}
+ objs.length=0;next.forEach(o=>objs.push(o));rig.joints=(sc.rig||[]).map(j=>({...j,rot:j.rot||[0,0,0]}));rig.meta=sc.rigm||null;groups=(sc.groups||[]).map(g=>({id:g.id,name:g.name,open:g.open!==false}));gid2=groups.reduce((m,g)=>Math.max(m,g.id),0);cams=(sc.cams||[]).map(c=>({name:c.name||'camera',tgt:c.tgt||[0,0,0],yaw:c.yaw||0,pitch:c.pitch||0,dist:c.dist||9,pan:c.pan||[0,0],f:c.f||35}));if(camSel>=cams.length)camSel=-1;if(camAct>=cams.length){camAct=-1;tgt=[0,0,0]}osel.clear();rigSel=-1;sel=Math.min(sel,Math.max(0,objs.length-1));selPts.clear();selEdges.clear();ringPrev=null;all()}
 function commit(){softCache=null;const s=snap();if(s!==lastSnap){undoSt.push(lastSnap);undoSel.push(preSel||selState());if(undoSt.length>100){undoSt.shift();undoSel.shift()}redoSt.length=0;redoSel.length=0;lastSnap=s;while(undoSt.length>1&&undoSt.reduce((a,x)=>a+x.length,0)+lastSnap.length+meshMem()>6e8){undoSt.shift();undoSel.shift();pruneMeshes()}pruneMeshes()}updateFname()}
 function updateFname(){const e=document.getElementById('fname'),n=curFile.name||'Untitled',dirty=!!curFile.name&&lastSnap!==curFile.saved;
  if(e){e.textContent=n;e.classList.toggle('dirty',dirty);e.title=(curFile.name?'This project is saved as '+curFile.name:'Not saved yet. Use Save As to name the file.')+(dirty?' (changes since the last save)':'')}
@@ -1782,7 +1796,7 @@ function openScene(){$('#dtx').value=snap(true);$('#dlg').hidden=false;$('#ddl')
 /* ---- files: New clears the scene (undoable), Save writes the scene as .json, Export writes geometry as .obj (default), .stl or .ply ---- */
 let expFmt='obj';
 function newFile(){
- objs.length=0;groups=[];gid2=0;cams=[];camSel=-1;if(camAct>=0){camAct=-1;tgt=[0,0,0]}rig.joints=[];rigSel=-1;osel.clear();sel=0;selPts.clear();selEdges.clear();ringPrev=null;uid=0;addObj('Sphere',0);setTool(null);all();commit();curFile={name:'',handle:null,saved:null};updateFname();toast('New file with a single sphere. Ctrl+Z brings the old scene back.')}
+ objs.length=0;groups=[];gid2=0;cams=[];camSel=-1;if(camAct>=0){camAct=-1;tgt=[0,0,0]}rig.joints=[];rig.meta=null;rigSel=-1;rigFit=null;osel.clear();sel=0;selPts.clear();selEdges.clear();ringPrev=null;uid=0;addObj('Sphere',0);setTool(null);all();commit();curFile={name:'',handle:null,saved:null};updateFname();toast('New file with a single sphere. Ctrl+Z brings the old scene back.')}
 async function sendFile(name,text){try{const d=await claude.use('downloads');if(!d)throw 0;await d.save({filename:name,data:text});toast('Saved '+name)}
  catch(err){if(err&&err.code==='declined')return;$('#dtx').value=text;$('#dlg').hidden=false;$('#ddl').hidden=true;toast('Downloads are not available here. Copy the text from the box instead.')}}
 /* Save File writes the whole project (every object, tree, sphere, group, colour and edit history) into the current file with no pop-up. Save As names the file first; the name then shows in the top bar. The project is stored as an .obj whose geometry any program can open; NOVA 3D also finds the editable scene inside it. */
@@ -1972,13 +1986,13 @@ function scalePts0(k,f){const so=objs[sel],en=editNode(so);if(!en||!en.out||!en.
 const toView=p=>{const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch),x1=p[0]*cy+p[2]*sy,z1=-p[0]*sy+p[2]*cy;return[x1,p[1]*cp-z1*sp,p[1]*sp+z1*cp]};
 /* joints are stored parent-first; a joint's rotation turns it and everything below it about the joint itself */
 function rigPose(){const J=rig.joints,P=[],W=[];
- for(let i=0;i<J.length;i++){const j=J[i],Rl=rotMat(j.rot);
+ for(let i=0;i<J.length;i++){const j=J[i],Rl=jointRot(j);
   if(j.parent<0||!J[j.parent]){P[i]=j.p.slice();W[i]=Rl}
   else{const q=j.parent,off=mulv(W[q],[j.p[0]-J[q].p[0],j.p[1]-J[q].p[1],j.p[2]-J[q].p[2]]);P[i]=[P[q][0]+off[0],P[q][1]+off[1],P[q][2]+off[2]];W[i]=mulM(W[q],Rl)}}
  return{P,W}}
 const toViewP=p=>toView([p[0]-tgt[0],p[1]-tgt[1],p[2]-tgt[2]]);
 function jointClick(e){drag.jn=true;const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,hit=(draw.jts||[]).find(j=>Math.hypot(j.x-x,j.y-y)<12);
- if(hit){rigSel=hit.i;panels();draw();return}
+ if(hit){rigSel=hit.i;if(!rig.joints.some(j=>j.rot.some(v=>v)))drag.jm={i:hit.i,z:toViewP(rig.joints[hit.i].p)[2],alone:e.shiftKey};panels();draw();return}
  if(rig.joints.some(j=>j.rot.some(v=>v))){toast('Reset the pose before adding joints');return}
  const par=rigSel>=0&&rig.joints[rigSel]?rigSel:-1,F=draw.F,zv=par>=0?toViewP(rig.joints[par].p)[2]:0,d=ortho?dist:zv+dist,p=unview((x-r.width/2-panX)*d/F,-(y-r.height/2-panY)*d/F,zv).map((v,k)=>v+tgt[k]);
  rig.joints.push({name:'joint'+(++jid),p:p.map(v=>+v.toFixed(3)),parent:par,rot:[0,0,0]});rigSel=rig.joints.length-1;skinDirty();panels();draw()}
@@ -1988,14 +2002,111 @@ function delJoint(){if(rigSel<0||!rig.joints[rigSel])return;const J=rig.joints,r
  rig.joints=J.filter((j,i)=>!rm.has(i)).map(j=>({...j,parent:j.parent<0?-1:map.get(j.parent)}));rigSel=-1;skinDirty();panels();draw()}
 const hasSkin=()=>{const o=objs[sel];return !!(o&&o.nodes.some(n=>n.type==='Skin'))};
 function skinDirty(){objs.forEach(o=>{const i=o.nodes.findIndex(n=>n.type==='Skin');if(i>=0)dirtyFrom(o,i)})}
-function bindSkin(){const o=objs[sel];if(!o)return;if(!rig.joints.length){toast('Add joints first with the Joint tool (J)');return}if(hasSkin()){toast('This object is already bound');return}
- const nn=mk('Skin'),L=o.nodes.length-1;if(o.nodes[L].type==='Edit'){o.nodes.splice(L,0,nn);dirtyFrom(o,L)}else o.nodes.push(nn);all()}
+function bindSkin(){const o=objs[sel];if(!o)return;if(!rig.joints.length){toast('Add joints first: use Auto-rig biped, or the Joint tool (J)');return}
+ const list=[o,...osel].filter((q,i,a)=>q&&objs.includes(q)&&a.indexOf(q)===i&&!q.nodes.some(n=>n.type==='Skin'));if(!list.length){toast('The selected object is already bound');return}
+ list.forEach(q=>{const nn=mk('Skin'),L=q.nodes.length-1;if(q.nodes[L].type==='Edit'){q.nodes.splice(L,0,nn);dirtyFrom(q,L)}else q.nodes.push(nn)});all();toast('Bound '+list.length+' object'+(list.length>1?'s':'')+' to the skeleton. Pose the bones, or change falloff/blend in the Skin card (blend 1 = rigid parts, good for robots and armour).')}
 function unbindSkin(){const o=objs[sel];if(!o)return;const i=o.nodes.findIndex(n=>n.type==='Skin');if(i<0)return;o.nodes.splice(i,1);dirtyFrom(o,i);all()}
 function resetPose(){rig.joints.forEach(j=>{j.rot=[0,0,0]});skinDirty();panels();draw()}
-function jointCard(){const J=rig.joints;if(!J.length)return'';const dep=i=>{let d=0,k=J[i].parent;while(k>=0&&J[k]&&d<50){d++;k=J[k].parent}return d};
- let h='<div class="sec">Skeleton</div>'+J.map((j,i)=>'<div class="n'+(i===rigSel?' sel':'')+'" data-jsel="'+i+'" style="margin-left:'+dep(i)*12+'px">'+j.name+'</div>').join('');
- if(rigSel>=0&&J[rigSel]){const j=J[rigSel];h+='<div class="card" style="margin-top:6px"><b>'+j.name+'</b>'+[0,1,2].map(i=>'<label>Rotate '+'XYZ'[i]+'<input type="range" data-jr="'+i+'" min="-180" max="180" step="1" value="'+j.rot[i]+'"><output>'+j.rot[i]+'</output></label>').join('')+'</div>'}
+function jointCard(){const J=rig.joints,meta=rig.meta,bip=!!(meta&&meta.biped);
+ if(!J.length){return'<div class="sec">Rigging</div><div class="card"><b>Biped auto-rig</b><div style="margin:4px 0;font-size:12px;opacity:.85">Fits a full skeleton (spine, neck, head, jaw, eyes, arms, hands with fingers, legs) to any two-legged character with 10 clicks.</div>'+
+  '<label>Fingers<select id="rgf"><option value="4"'+(rigOpts.fingers===4?' selected':'')+'>4 + thumb (realistic)</option><option value="3"'+(rigOpts.fingers===3?' selected':'')+'>3 + thumb (cartoon)</option><option value="2"'+(rigOpts.fingers===2?' selected':'')+'>2 + thumb</option><option value="0"'+(rigOpts.fingers===0?' selected':'')+'>none (mitten hand)</option></select></label>'+
+  '<label>Bones per finger<select id="rgb"><option value="3"'+(rigOpts.bones===3?' selected':'')+'>3</option><option value="2"'+(rigOpts.bones===2?' selected':'')+'>2</option></select></label><label><input type="checkbox" id="rgt"'+(rigOpts.thumb?' checked':'')+'> Thumb</label>'+
+  '<button data-rg="fit" style="margin-top:6px">Start auto-rig</button></div><div style="font-size:12px;opacity:.8;margin:6px 0">Or place joints one at a time with the Joint tool (J).</div>'}
+ const dep=i=>{let d=0,k=J[i].parent;while(k>=0&&J[k]&&d<50){d++;k=J[k].parent}return d},S=J[rigSel];
+ const vis=(j)=>{if(!j.finger)return true;return !!(S&&((S.finger&&S.hand===j.hand)||S.name===j.hand+'_Hand'))};
+ let h='<div class="sec">Skeleton</div>';
+ if(bip){h+='<div class="row" style="flex-wrap:wrap;gap:4px">'+[['Body','Hips'],['Head','Head'],['Jaw','Jaw'],['L Arm','L_UpperArm'],['R Arm','R_UpperArm'],['L Hand','L_Hand'],['R Hand','R_Hand'],['L Leg','L_UpperLeg'],['R Leg','R_UpperLeg']].map(([t,n])=>{const i=J.findIndex(j=>j.name===n);return i<0?'':'<button data-rg="part" data-v="'+i+'" class="'+(i===rigSel?'on':'')+'">'+t+'</button>'}).join('')+'</div>'}
+ h+=J.map((j,i)=>vis(j)?'<div class="n'+(i===rigSel?' sel':'')+'" data-jsel="'+i+'" style="margin-left:'+dep(i)*12+'px">'+j.name+'</div>':'').join('');
+ if(S){const lb=S.fr?['Twist','Side','Bend']:['Rotate X','Rotate Y','Rotate Z'];h+='<div class="card" style="margin-top:6px"><b>'+S.name+'</b>'+[0,1,2].map(i=>{const lo=S.lim?S.lim[i][0]:-180,hi=S.lim?S.lim[i][1]:180;return lo===hi?'':'<label>'+lb[i]+'<input type="range" data-jr="'+i+'" min="'+lo+'" max="'+hi+'" step="1" value="'+S.rot[i]+'"><output>'+S.rot[i]+'</output></label>'}).join('')+'<button data-rg="resetj">Reset this bone</button></div>'}
+ if(bip){const sd=handSides()[0],fl=['Thumb',...fingerNames(meta.nf)].filter(f=>jByName(sd+'_'+f+'1'));
+  h+='<div class="sec">Hands</div><div class="card"><div class="row" style="gap:4px;margin-bottom:4px">Edit: '+['both','L','R'].map(v=>'<button data-rg="hside" data-v="'+v+'" class="'+(handSide===v?'on':'')+'">'+(v==='both'?'Both':v==='L'?'Left':'Right')+'</button>').join('')+'</div>';
+  if(fl.length){h+='<label>All fingers<input type="range" data-hc="All" min="0" max="100" value="'+Math.round(fl.filter(f=>f!=='Thumb').reduce((a,f)=>a+getCurl(sd,f),0)/Math.max(1,fl.length-(fl.includes('Thumb')?1:0))*100)+'"><output>0</output></label>'+fl.map(f=>'<label>'+f+' curl<input type="range" data-hc="'+f+'" min="0" max="100" value="'+Math.round(getCurl(sd,f)*100)+'"><output>'+Math.round(getCurl(sd,f)*100)+'</output></label>').join('')+
+   '<label>Spread<input type="range" data-hc="Spread" min="-100" max="100" value="'+Math.round(getSpread(sd)*100)+'"><output>'+Math.round(getSpread(sd)*100)+'</output></label>'+
+   '<div class="row" style="flex-wrap:wrap;gap:4px;margin-top:4px">'+[['open','Open'],['relax','Relax'],['fist','Fist'],['point','Point'],['peace','Peace'],['thumbsup','Thumbs up'],['pinch','Pinch']].map(([k,t])=>'<button data-rg="hpose" data-v="'+k+'">'+t+'</button>').join('')+'</div>'}
+  else h+='<div style="font-size:12px;opacity:.8">This skeleton has mitten hands (no fingers).</div>';
+  h+='<div class="row" style="gap:4px;margin-top:4px"><button data-rg="mpose" data-v="L">Copy pose Left → Right</button><button data-rg="mpose" data-v="R">Right → Left</button></div></div>'}
+ h+='<div class="row" style="gap:4px;margin-top:6px;flex-wrap:wrap">'+(bip?'<label><input type="checkbox" data-rg="mirror" '+(rigMirror?'checked':'')+'> Mirror left and right when dragging joints</label>':'')+'<button data-rg="reset">Reset pose</button><button data-rg="clear">Clear rig</button></div>';
  return h}
+/* ===================== Biped auto-rig ===================== */
+const V3={sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],add:(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],mul:(a,k)=>[a[0]*k,a[1]*k,a[2]*k],dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+ cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],len:a=>Math.hypot(a[0],a[1],a[2]),norm:a=>{const l=Math.hypot(a[0],a[1],a[2])||1;return[a[0]/l,a[1]/l,a[2]/l]},
+ lerp:(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]};
+/* A bone's own axes: X runs along the bone, Y points the way a positive bend swings it (tw), Z is the hinge. Rotating a bone "Bend" folds it toward tw, "Side" swings it sideways, "Twist" spins it about its length. */
+function boneFrame(x,tw){x=V3.norm(x);let t=V3.sub(tw,V3.mul(x,V3.dot(x,tw)));if(V3.len(t)<1e-4)t=V3.sub([0,1,0],V3.mul(x,x[1]));if(V3.len(t)<1e-4)t=V3.sub([0,0,1],V3.mul(x,x[2]));t=V3.norm(t);const z=V3.cross(x,t);return[[x[0],t[0],z[0]],[x[1],t[1],z[1]],[x[2],t[2],z[2]]]}
+function jointRot(j){const R=rotMat(j.rot);if(!j.fr)return R;const F=j.fr,T=[[F[0][0],F[1][0],F[2][0]],[F[0][1],F[1][1],F[2][1]],[F[0][2],F[1][2],F[2][2]]];return mulM(F,mulM(R,T))}
+const clampJ=j=>{if(j.lim)for(let k=0;k<3;k++)j.rot[k]=Math.max(j.lim[k][0],Math.min(j.lim[k][1],j.rot[k]))};
+const RLIM={Hips:null,Spine:[[-25,25],[-30,30],[-35,45]],Neck:[[-40,40],[-40,40],[-40,45]],Head:[[-50,50],[-40,40],[-45,50]],Jaw:[[0,0],[-8,8],[0,35]],Eye:[[0,0],[-35,35],[-30,30]],
+ Clavicle:[[-15,15],[-15,15],[-20,30]],UpperArm:[[-90,90],[-90,90],[-60,170]],LowerArm:[[-90,90],[-5,5],[0,150]],Hand:[[-70,70],[-30,30],[-70,70]],
+ UpperLeg:[[-45,45],[-45,60],[-30,120]],LowerLeg:[[-30,30],[-5,5],[0,140]],Foot:[[-20,20],[-20,20],[-40,50]],Toes:[[0,0],[0,0],[-60,40]],
+ F1:[[-5,5],[-25,25],[-30,90]],F2:[[0,0],[-3,3],[-5,110]],F3:[[0,0],[0,0],[-5,80]],T1:[[-30,30],[-40,40],[-30,60]],T2:[[0,0],[-10,10],[-10,80]],T3:[[0,0],[0,0],[-10,80]]};
+let rigFit=null,rigMirror=true,handSide='both',rigOpts={fingers:4,bones:3,thumb:true};
+const FIT_STEPS=['the very top of the head','the bottom of the chin','the shoulder joint (either arm)','the elbow of that same arm','the wrist of that arm','the tip of the middle finger of that hand','the hip joint on the same side','the knee','the ankle','the floor under the toes (the foot is pointed forward for you)'];
+const fingerNames=n=>['Index','Middle','Ring','Pinky'].slice(0,n);
+function buildBiped(Lm,F,opts){
+ const[crown,chin,sh,el,wr,tip,hip,kn,an,toe]=Lm,x0=(crown[0]+chin[0])/2,z0=crown[2],UP=[0,1,0],nf=Math.max(0,Math.min(4,opts.fingers|0)),nb=opts.bones===2?2:3,headH=Math.max(.01,crown[1]-chin[1]);
+ const sx=Math.sign(sh[0]-x0)||1,leftW=V3.cross(F,UP),leftX=Math.sign(leftW[0])||1,nameA=sx*leftX>0?'L':'R',nameB=nameA==='L'?'R':'L',mir=p=>[2*x0-p[0],p[1],p[2]];
+ const J=[],add=(name,p,parent,tw,lim,extra)=>{J.push(Object.assign({name,p:p.map(v=>+v.toFixed(4)),parent,rot:[0,0,0],tw,lim,kind:name.replace(/^[LR]_/,'')},extra||{}));return J.length-1};
+ const pl=(x,y)=>[x,y,z0];
+ const hipsP=pl(x0,hip[1]+.02*(crown[1]-an[1])),neckP=pl(x0,sh[1]+(chin[1]-sh[1])*.25);
+ const iH=add('Hips',hipsP,-1,F,RLIM.Hips),s1=add('Spine1',V3.lerp(hipsP,neckP,.22),iH,F,RLIM.Spine),s2=add('Spine2',V3.lerp(hipsP,neckP,.45),s1,F,RLIM.Spine),s3=add('Spine3',V3.lerp(hipsP,neckP,.68),s2,F,RLIM.Spine);
+ const iN=add('Neck',neckP,s3,F,RLIM.Neck),headP=V3.lerp(neckP,pl(x0,chin[1]),.9),iHd=add('Head',headP,iN,F,RLIM.Head,{tip:pl(x0,crown[1])});
+ const jawP=V3.sub(pl(x0,chin[1]+.28*headH),V3.mul(F,.22*headH)),jawEnd=V3.add(pl(x0,chin[1]),V3.mul(F,.34*headH));
+ add('Jaw',jawP,iHd,[0,-1,0],RLIM.Jaw,{tip:jawEnd});
+ [nameA,nameB].forEach(s=>{const ex=x0+(s==='L'?leftX:-leftX)*.17*headH,ep=V3.add(pl(ex,chin[1]+.62*headH),V3.mul(F,.4*headH));add(s+'_Eye',ep,iHd,UP,RLIM.Eye,{tip:V3.add(ep,V3.mul(F,.08*headH))})});
+ const side=(s,S,E,W,T,Hp,K,A,Tt)=>{const sgn=Math.sign(S[0]-x0)||1;
+  const clav=add(s+'_Clavicle',[x0+(S[0]-x0)*.28,S[1],z0],s3,UP,RLIM.Clavicle),ua=add(s+'_UpperArm',S,clav,F,RLIM.UpperArm),la=add(s+'_LowerArm',E,ua,F,RLIM.LowerArm),hd=add(s+'_Hand',W,la,[0,-1,0],RLIM.Hand);
+  const a=V3.norm(V3.sub(T,W)),L=V3.len(V3.sub(T,W));let N=Math.abs(a[1])<.6?[0,-1,0]:[-sgn,0,0];let lat=V3.sub(F,V3.mul(a,V3.dot(F,a)));if(V3.len(lat)<.2)lat=[sgn,0,0];lat=V3.norm(lat);N=V3.norm(V3.sub(N,V3.mul(a,V3.dot(N,a))));
+  J[hd].tw=N;const sp=L*.085,CO={4:[1.5,.5,-.5,-1.5],3:[1,0,-1],2:[.5,-.5],1:[0],0:[]}[nf],PR=[.40,.42,.40,.36],LR=[.95,1,.92,.78],FR=nb===3?[.45,.33,.22]:[.55,.45];
+  const chain=(fname,base,dir,total,tw,cx,tag)=>{let p=base,pi=hd;for(let b=0;b<nb;b++){const idx=add(s+'_'+fname+(b+1),p,pi,tw,RLIM[tag+(b+1)],{finger:fname,fidx:b+1,hand:s,cx});
+    const step=V3.mul(dir,total*FR[b]);const q=V3.add(p,step);if(b===nb-1)J[idx].tip=q.map(v=>+v.toFixed(4));p=q;pi=idx}};
+  const mid=nf>0?V3.add(V3.add(W,V3.mul(a,PR[1]*L)),V3.mul(lat,(CO[Math.min(1,nf-1)]||0)*sp)):T;J[hd].tip=mid.map(v=>+v.toFixed(4));
+  if(opts.thumb&&nf>=0){const base=V3.add(V3.add(V3.add(W,V3.mul(a,.10*L)),V3.mul(lat,2.1*sp)),V3.mul(N,.2*sp)),dir=V3.norm(V3.add(V3.add(V3.mul(a,.7),V3.mul(lat,.6)),V3.mul(N,.15)));
+   chain('Thumb',base,dir,.62*L,V3.norm(V3.sub(V3.mul(N,.6),V3.mul(lat,.8))),0,'T')}
+  fingerNames(nf).forEach((fname,k)=>{const c=CO[k],base=V3.add(V3.add(W,V3.mul(a,PR[k]*L)),V3.mul(lat,c*sp)),dir=V3.norm(V3.add(a,V3.mul(lat,c*.025)));
+   chain(fname,base,dir,(LR[k]-PR[k])*L,N,c,'F')});
+  const ul=add(s+'_UpperLeg',Hp,iH,F,RLIM.UpperLeg),ll=add(s+'_LowerLeg',K,ul,V3.mul(F,-1),RLIM.LowerLeg),ft=add(s+'_Foot',A,ll,UP,RLIM.Foot),ball=V3.lerp(A,Tt,.68);
+  add(s+'_Toes',ball,ft,UP,RLIM.Toes,{tip:Tt.map(v=>+v.toFixed(4))})};
+ const footLen=.15*Math.max(.01,crown[1]-toe[1]),toeP=[an[0]+F[0]*footLen,Math.min(toe[1],an[1]-.02*headH),an[2]+F[2]*footLen],pA=[sh,el,wr,tip,hip,kn,an].map(p=>[p[0],p[1],z0]).concat([toeP]);
+ side(nameA,pA[0],pA[1],pA[2],pA[3],pA[4],pA[5],pA[6],pA[7]);side(nameB,...pA.map(mir));
+ /* bone frames: X along the bone (to its tip or its first child) */
+ J.forEach((j,i)=>{const kid=J.find(k=>k.parent===i);let x=j.tip?V3.sub(j.tip,j.p):kid?V3.sub(kid.p,j.p):null;if(!x||V3.len(x)<1e-6){const pr=J[j.parent];x=pr?V3.sub(j.p,pr.p):UP}j.fr=boneFrame(x,j.tw);delete j.tw});
+ return{joints:J,meta:{biped:true,mid:x0,F,nf,nb,thumb:!!opts.thumb,left:nameA}}}
+function partnerOf(i){const j=rig.joints[i];if(!j)return -1;const n=j.name.startsWith('L_')?'R_'+j.name.slice(2):j.name.startsWith('R_')?'L_'+j.name.slice(2):null;return n?rig.joints.findIndex(k=>k.name===n):-1}
+function rigDesc(i){const out=[i];let ch=true;while(ch){ch=false;rig.joints.forEach((j,k)=>{if(!out.includes(k)&&out.includes(j.parent)){out.push(k);ch=true}})}return out}
+/* where a screen click lands on the plane through the model's middle that faces the camera (or the facing direction when one is known) */
+function rayPlane(x,y,C,N){const r=cv.getBoundingClientRect(),F=draw.F,at=zv=>{const d=ortho?dist:zv+dist;return unview((x-r.width/2-panX)*d/F,-(y-r.height/2-panY)*d/F,zv).map((v,k)=>v+tgt[k])},p0=at(0),p1=at(1),D=V3.sub(p1,p0),dn=V3.dot(D,N);
+ if(Math.abs(dn)<.15)return at(toViewP(C)[2]);const t=-V3.dot(V3.sub(p0,C),N)/dn;return V3.add(p0,V3.mul(D,t))}
+function bodyCenter(){const o=objs[sel];if(!o)return[0,0,0];const m=evaluate(o);if(!m.v.length)return o.pos.slice();const mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];m.v.forEach(v=>{const q=mulv(mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),v);for(let k=0;k<3;k++){const w=q[k]+o.pos[k];if(w<mn[k])mn[k]=w;if(w>mx[k])mx[k]=w}});return[(mn[0]+mx[0])/2,(mn[1]+mx[1])/2,(mn[2]+mx[2])/2]}
+function startFit(){if(rig.joints.length){toast('This scene already has a skeleton. Use Clear Rig first, or keep it and bind a mesh to it.');return}
+ const opts={...rigOpts};
+ const d=unview(0,0,-1);let F=Math.abs(d[0])>Math.abs(d[2])?[Math.sign(d[0]),0,0]:[0,0,Math.sign(d[2])||-1];if(Math.abs(d[1])>.8)F=[0,0,-1];
+ setTool(null);const C=bodyCenter();rigFit={pts:[],C,F,opts};all();toast('Auto-rig: face your character toward the camera (Front view works best) and click, in order: '+FIT_STEPS.join(' → ')+'. Right-click or Backspace undoes the last click, Esc cancels.')}
+function fitClick(e){const r=cv.getBoundingClientRect(),p=rayPlane(e.clientX-r.left,e.clientY-r.top,rigFit.C,rigFit.F);rigFit.pts.push(p);
+ if(rigFit.pts.length>=FIT_STEPS.length){const R=buildBiped(rigFit.pts,rigFit.F,rigFit.opts);rig.joints=R.joints;rig.meta=R.meta;rigSel=R.joints.findIndex(j=>j.name==='Hips');rigFit=null;skinDirty();setTool('joint');all();
+  toast('Skeleton fitted ('+R.joints.length+' bones). Drag any joint to adjust it (left and right sides mirror; Shift moves just that joint), then select your mesh and press Bind skin.');commit();return}
+ draw()}
+function fitUndo(){if(!rigFit)return;rigFit.pts.pop();draw()}
+function fitCancel(){rigFit=null;all();toast('Auto-rig cancelled')}
+addEventListener('keydown',e=>{if(!rigFit)return;if(e.key==='Escape'){e.preventDefault();fitCancel()}else if(e.key==='Backspace'){e.preventDefault();fitUndo()}});
+function jointDrag(e){const dm=drag.jm,dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;const J=rig.joints,k=(ortho?dist:dm.z+dist)/draw.F,w=unview(dx*k,-dy*k,0);
+ const mv=(i,wd)=>{const set=dm.alone?[i]:rigDesc(i);set.forEach(q=>{const j=J[q];j.p=j.p.map((v,a)=>+(v+wd[a]).toFixed(4));if(j.tip)j.tip=j.tip.map((v,a)=>+(v+wd[a]).toFixed(4))})};
+ mv(dm.i,w);if(rigMirror&&rig.meta){const pi=partnerOf(dm.i);if(pi>=0&&pi!==dm.i)mv(pi,[-w[0],w[1],w[2]])}
+ refreshFrames();skinDirty();draw()}
+/* after joints move, every bone's axes are re-aimed along its (new) length */
+function refreshFrames(){const J=rig.joints;J.forEach((j,i)=>{if(!j.fr)return;const kid=J.find(k=>k.parent===i);let x=j.tip?V3.sub(j.tip,j.p):kid?V3.sub(kid.p,j.p):null;if(!x||V3.len(x)<1e-6)return;const old=[j.fr[0][1],j.fr[1][1],j.fr[2][1]];j.fr=boneFrame(x,old)})}
+function boneSeg(J,i,kid){const j=J[i];return j.tip?j.tip:kid[i]>=0?J[kid[i]].p:j.p}
+/* ---- hands ---- */
+const jByName=n=>rig.joints.find(j=>j.name===n);
+const handSides=()=>handSide==='both'?['L','R']:[handSide];
+const CURL={Finger:[90,100,70],Thumb:[45,70,70]};
+function setCurl(s,f,c){const base=f==='Thumb'?CURL.Thumb:CURL.Finger,nb=rig.meta?rig.meta.nb:3;for(let b=1;b<=nb;b++){const j=jByName(s+'_'+f+b);if(!j)continue;const a=base[nb===3?b-1:(b===1?0:1)];j.rot[2]=c*a;clampJ(j)}}
+function getCurl(s,f){const nb=rig.meta?rig.meta.nb:3,j=jByName(s+'_'+f+(nb===3?2:2))||jByName(s+'_'+f+'1');if(!j)return 0;const base=f==='Thumb'?CURL.Thumb:CURL.Finger;return Math.max(0,Math.min(1,j.rot[2]/(base[1]||100)))}
+function setSpread(s,v){for(const f of fingerNames(rig.meta?rig.meta.nf:4)){const j=jByName(s+'_'+f+'1');if(j){j.rot[1]=-j.cx*v*14;clampJ(j)}}}
+function getSpread(s){for(const f of fingerNames(rig.meta?rig.meta.nf:4)){const j=jByName(s+'_'+f+'1');if(j&&Math.abs(j.cx)>1)return Math.max(-1,Math.min(1,-j.rot[1]/(j.cx*14)))}return 0}
+const HPOSE={open:{c:[0,0,0,0,0],s:.6},relax:{c:[.15,.2,.25,.3,.35],s:.1},fist:{c:[.8,1,1,1,1],s:0},point:{c:[.6,0,1,1,1],s:0},peace:{c:[.8,0,0,1,1],s:.5},thumbsup:{c:[0,1,1,1,1],s:0},pinch:{c:[.5,.55,.2,.15,.1],s:.1}};
+function handPose(name){const P=HPOSE[name];if(!P||!rig.meta)return;handSides().forEach(s=>{['Thumb',...fingerNames(rig.meta.nf)].forEach((f,i)=>setCurl(s,f,P.c[i]));setSpread(s,P.s)});skinDirty();panels();draw();commit()}
+function mirrorPose(from){const to=from==='L'?'R':'L';rig.joints.forEach(j=>{if(!j.name.startsWith(from+'_'))return;const t=jByName(to+'_'+j.name.slice(2));if(t)t.rot=[-j.rot[0],-j.rot[1],j.rot[2]]});skinDirty();panels();draw();commit()}
+function clearRig(){if(!rig.joints.length)return;rig.joints=[];rig.meta=null;rigSel=-1;rigFit=null;skinDirty();panels();all();toast('Skeleton removed. Skinned meshes keep their Skin card; delete it with Remove skin.')}
 /* ---- shelves: four tabs of buttons that run the same commands as the keyboard and the right-click menu ---- */
 let shelfIdx=0,rowSel='Primitives';const BR=['#e5484d','#f2b01e','#3fb950','#2dc4ad','#4a7fd1','#b5559c','#ffffff','#8a8a8a'];
 const SHELVES=[
@@ -2009,17 +2120,18 @@ const SHELVES=[
  {n:'Coloring and Rendering',rows:[
   {n:'Coloring',items:[{gl:'Paint'},{c:'Paint tool (click or drag faces)',t:'Paint'},{c:'Paint selected faces',t:'Paint selected'},{c:'Clear face paint',t:'Clear paint'},{sp:1},{gl:'Brush'},{brush:1},{sw:'brush'},{sp:1},{gl:'Object'},{objc:1},{sw:'obj'},{sp:1},{gl:'Display'},{c:'Shaded'},{c:'Shaded + wire'},{c:'Wire'}]},
   {n:'Render 2K',items:[{gl:'Aspect'},{rsel:'asp'},{gl:'Quality'},{rsel:'q'},{sp:1},{c:'Highlight to render',t:'Highlight to Render'},{c:'Render 2K (GPU)',t:'Render 2K · GPU'},{c:'Ray trace 2K (CPU)',t:'Ray Trace 2K · CPU'},{sp:1},{c:'Show last render',t:'Show Render'},{c:'Save last render',t:'Save Render'}]}]},
- {n:'Navigating',items:[{gl:'Camera'},{c:'Front view',t:'Front'},{c:'Back view',t:'Back'},{c:'Left view',t:'Left'},{c:'Right view',t:'Right'},{c:'Top view',t:'Top'},{c:'Bottom view',t:'Bottom'},{c:'Zoom in'},{c:'Zoom out'},{c:'Reset camera',t:'Reset'},{sp:1},{gl:'Cameras'},{c:'Add camera',t:'Add Camera'},{c:'Look through camera',t:'Look Through'},{c:'Back to perspective view',t:'Persp. View'},{sp:1},{gl:'Rigging'},{c:'Joint tool (click to place)',t:'Joint'},{c:'Bind skin to skeleton',t:'Bind skin'},{c:'Remove skin'},{c:'Delete joint'},{c:'Reset pose'}]},
+ {n:'Navigating',items:[{gl:'Camera'},{c:'Front view',t:'Front'},{c:'Back view',t:'Back'},{c:'Left view',t:'Left'},{c:'Right view',t:'Right'},{c:'Top view',t:'Top'},{c:'Bottom view',t:'Bottom'},{c:'Zoom in'},{c:'Zoom out'},{c:'Reset camera',t:'Reset'},{sp:1},{gl:'Cameras'},{c:'Add camera',t:'Add Camera'},{c:'Look through camera',t:'Look Through'},{c:'Back to perspective view',t:'Persp. View'}]},
+ {n:'Rigging',items:[{gl:'Skeleton'},{c:'Auto-rig biped',t:'Auto-Rig Biped'},{c:'Joint tool (click to place)',t:'Joint'},{c:'Delete joint'},{c:'Clear rig',t:'Clear Rig'},{sp:1},{gl:'Skin'},{c:'Bind skin to skeleton',t:'Bind skin'},{c:'Remove skin'},{sp:1},{gl:'Pose'},{c:'Reset pose'},{c:'Mirror pose L to R',t:'Mirror L → R'},{c:'Mirror pose R to L',t:'Mirror R → L'}]},
  {n:'Sculpting',items:[{gl:'Brushes'},{c:'Clay (build up)',t:'Clay'},{c:'Grab (move)',t:'Move'},{c:'Smooth'},{c:'Crease'},{c:'Flatten'},{c:'Inflate'},{c:'Pinch'},{sp:1},{c:'Subtract (reverse brush)',t:'Subtract'},{c:'Symmetry (X mirror)',t:'Symmetry'},{sp:1},{gl:'Radius'},{c:'Smaller brush',t:'−'},{rng:'size'},{c:'Larger brush',t:'+'},{gl:'Intensity'},{rng:'str'},{gl:'Falloff'},{rng:'hard'},{gl:'Resolution'},{rng:'res'},{sp:1},{gl:'Detail'},{c:'Add detail (subdivide)',t:'Add detail'},{c:'Reset sculpt'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{sp:1},{c:'Undo'},{c:'Redo'}]}
  ,{n:'Experimental and proprietary',rows:[{n:'Cut apart',items:[{c:'Separate and Cut',t:'Separate and Cut',ic:'sepc'},{sp:1},{c:'Affect front vertices',t:'Affect Front Vertices'}]}]}
 ];
 /* one numbered tab per sub shelf, in order; the File row lives in the top bar and is not a tab */
-const TAB_INFO={'Primitives':'Add a cube, sphere, torus, trapezoid, teapot or tree','Transform and scene':'Select, move, rotate and scale; choose points, edges or faces; pivot and axis lock; undo, redo, save and load','Modeling tools':'Cut, knife, extrude, bevel, symmetrize, weld, merge, duplicate, delete and soft select','Draw':'Draw shapes straight into the scene','Rotoscope':'Load a reference image behind the model and place it','Coloring':'Paint faces and objects, and choose how the model is displayed','Render 2K':'Render a 2K image with the GPU or the ray tracer','Navigating':'Camera views, zoom, cameras and rigging (joints and skin)','Sculpting':'Sculpt brushes and their size, intensity and falloff','Experimental and proprietary':'Separate and Cut, and Affect Front Vertices'};
+const TAB_INFO={'Primitives':'Add a cube, sphere, torus, trapezoid, teapot or tree','Transform and scene':'Select, move, rotate and scale; choose points, edges or faces; pivot and axis lock; undo, redo, save and load','Modeling tools':'Cut, knife, extrude, bevel, symmetrize, weld, merge, duplicate, delete and soft select','Draw':'Draw shapes straight into the scene','Rotoscope':'Load a reference image behind the model and place it','Coloring':'Paint faces and objects, and choose how the model is displayed','Render 2K':'Render a 2K image with the GPU or the ray tracer','Navigating':'Camera views, zoom and cameras','Rigging':'Auto-rig a biped skeleton with fingers, place joints, bind skin and pose','Sculpting':'Sculpt brushes and their size, intensity and falloff','Experimental and proprietary':'Separate and Cut, and Affect Front Vertices'};
 const TABS=[];SHELVES.forEach((S,si)=>{(S.rows||[{n:S.n}]).forEach(r=>{if(si===0&&r.n==='File')return;const multi=S.rows&&S.rows.length>1;TABS.push({si,row:S.rows?r.n:null,label:multi?r.n:S.n})})});
 /* every group gets its own colour tab so the groups are easy to tell apart (Pivot = yellow, Axis lock = red, ...). Groups without a label take the next colour at each gap. */
 const PALG=['#2dc4ad','#4a7fd1','#f2c200','#e5484d','#a371f7','#f08a24'];
 const GCOL={'Tools':'#4a7fd1','Component':'#3fb950','Pivot':'#f2c200','Axis lock':'#e5484d','Scene':'#a371f7','Soft select':'#f08a24','Selected object':'#22b8cf','Paint':'#e060a8','Brush':'#f08a24','Object':'#2dc4ad','Display':'#4a7fd1','Aspect':'#3fb950','Quality':'#f2c200','Camera':'#4a7fd1','Cameras':'#3fb950','Rigging':'#a371f7','Brushes':'#e5484d','Radius':'#4a7fd1','Intensity':'#f2c200','Falloff':'#3fb950','Resolution':'#a371f7','Detail':'#f08a24'};
-const ROWC={'Primitives':'#f08a24','Transform and scene':'#4a7fd1','Modeling tools':'#2dc4ad','Draw':'#a371f7','Rotoscope':'#e060a8','Coloring':'#e060a8','Render 2K':'#22b8cf','Navigating':'#4a7fd1','Sculpting':'#e5484d','Experimental and proprietary':'#8aa0b8','File':'#22b8cf'};
+const ROWC={'Primitives':'#f08a24','Transform and scene':'#4a7fd1','Modeling tools':'#2dc4ad','Draw':'#a371f7','Rotoscope':'#e060a8','Coloring':'#e060a8','Render 2K':'#22b8cf','Navigating':'#4a7fd1','Rigging':'#a371f7','Sculpting':'#e5484d','Experimental and proprietary':'#8aa0b8','File':'#22b8cf'};
 const ICOL=SHELVES.map(S=>{const out=[];let off=0;const multi=S.rows&&S.rows.length>1;(S.rows||[{n:S.n,items:S.items}]).forEach(r=>{const base=ROWC[multi||r.n==='File'?r.n:S.n]||PALG[0],b0=Math.max(0,PALG.indexOf(base));let cur=base,k=0,lab=false;
   r.items.forEach((it,j)=>{if(it.gl){cur=GCOL[it.gl.trim()]||cur;lab=true}else if(it.sp&&!lab){k++;cur=PALG[(b0+k)%PALG.length]}out[off+j]=cur});off+=r.items.length});return out});
 const gcol=(si,i)=>(ICOL[si]&&ICOL[si][i])||'#8aa0b8';
@@ -2135,7 +2247,7 @@ const vpTargets=()=>{const t=new Set(osel);if(objs[sel])t.add(objs[sel]);return[
 const vpOp=()=>objs[sel]?Math.round(oa(objs[sel])*100):100;
 function vpSet(m){vpTargets().forEach(o=>{o.dm=m});syncShelf();draw();commit()}
 document.addEventListener('input',e=>{const t=e.target;if(!t||!t.dataset||t.dataset.vp!=='op')return;const v=Math.max(.05,Math.min(1,parseFloat(t.value)/100));if(!isFinite(v))return;vpTargets().forEach(o=>{o.op=v>=1?undefined:v});draw()});
-document.addEventListener('change',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.vp==='op')commit()});
+document.addEventListener('change',e=>{const t=e.target;if(t&&t.dataset&&(t.dataset.vp==='op'||t.dataset.jr!==undefined||t.dataset.hc!==undefined))commit();if(t&&t.id==='rgf')rigOpts.fingers=+t.value;else if(t&&t.id==='rgb')rigOpts.bones=+t.value;else if(t&&t.id==='rgt')rigOpts.thumb=t.checked});
 function syncShelf(){
  updateFname();
  document.querySelectorAll('[data-vp="op"]').forEach(e=>{e.disabled=!objs[sel];if(+e.value!==vpOp())e.value=vpOp()});
@@ -2655,6 +2767,7 @@ if(e.button===2){drag.rc=true;return}
  if(scOn&&e.button===0&&!e.altKey){const x=e.clientX-r0.left,y=e.clientY-r0.top;box={x0:x,y0:y,x1:x,y1:y,sc:true};drag.sbx=true;draw();return}
  if(knife&&e.button===0&&!e.altKey){kn={x0:e.clientX-r0.left,y0:e.clientY-r0.top,x1:e.clientX-r0.left,y1:e.clientY-r0.top};drag.kn=true;return}
  if(sculptOn&&e.button===0&&!e.altKey){sculptStart(e);return}
+ if(rigFit&&e.button===0&&!e.altKey){fitClick(e);return}
  if(jointOn&&e.button===0&&!e.altKey){jointClick(e);return}
  if(paintOn&&e.button===0&&!e.altKey){drag.pn=true;paintAt(e);return}
  if(draw.exm&&e.button===0){const x=e.clientX-r0.left,y=e.clientY-r0.top,m=draw.exm,vx=m.x1-m.x0,vy=m.y1-m.y0,L2=vx*vx+vy*vy||1,t=Math.max(0,Math.min(1.08,((x-m.x0)*vx+(y-m.y0)*vy)/L2)),dd=Math.hypot(x-(m.x0+vx*t),y-(m.y0+vy*t));
@@ -2685,6 +2798,7 @@ cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,
  if(drag.rc||drag.orb){if(ortho){panX+=dx;panY+=dy;drag.x=e.clientX;drag.y=e.clientY;draw();return}orbitBy(dx,dy,.008,drag.rc);drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.zm){dist=Math.max(.3,Math.min(80,dist*Math.exp((dy-dx)*.008)));drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.exm&&exNode&&draw.exm){const m=draw.exm,s2=((e.clientX-drag.x)*m.ux+(e.clientY-drag.y)*m.uy)/m.pxu/drag.exm.ks;exNode.p.dist=Math.max(-5,Math.min(5,+(drag.exm.d0+s2).toFixed(3)));const so=objs[sel],i=so.nodes.indexOf(exNode);dirtyFrom(so,i);evaluate(so);draw();return}
+ if(drag.jm){jointDrag(e);return}
  if(drag.jn)return;
  if(drag.pn){paintAt(e);return}
  if(drag.gz){gizmoDrag(e);return}
@@ -2712,7 +2826,7 @@ cv.addEventListener('pointerup',e=>{if(drag&&drag.sbx){const b=box;box=null;drag
  if(drag&&(drag.rc||drag.zm||drag.orb)){drag=null;return}
  if(drag&&drag.exm){drag=null;panels();draw();return}
  if(drag&&drag.sc){sculptEnd();drag=null;panels();return}
- if(drag&&drag.jn){drag=null;panels();return}
+ if(drag&&drag.jn){const mv=drag.jm&&drag.moved>2;drag=null;panels();if(mv)commit();return}
  if(drag&&drag.pn){drag=null;return}
  if(drag&&drag.kn){knifeCut();kn=null;drag=null;all();return}
  if(drag&&drag.loop){if(drag.moved<5)loopInsert(drag.loop);drag=null;all();return}
@@ -2762,7 +2876,7 @@ cv.addEventListener('dblclick',e=>{if(editMode&&(sub==='pt'||sub==='face')&&objs
 let rcD=null;
 cv.addEventListener('pointerdown',e=>{rcD={x:e.clientX,y:e.clientY,m:0}});
 cv.addEventListener('pointermove',e=>{if(rcD)rcD.m=Math.max(rcD.m,Math.hypot(e.clientX-rcD.x,e.clientY-rcD.y))});
-cv.addEventListener('contextmenu',e=>{e.preventDefault();if(rcD&&rcD.m>5)return;if(scOn){setTool(null);all();toast('Separate and Cut off');return}if(ceOn){setTool(null);all();toast('Add loop edge off');return}if(kaOn&&knife){setTool(null);all();toast('Knife Area off');return}if(drawOn){dwClose();return}if(odOn){odClose();return}showCtx(e.clientX,e.clientY)});
+cv.addEventListener('contextmenu',e=>{e.preventDefault();if(rcD&&rcD.m>5)return;if(rigFit){fitUndo();return}if(scOn){setTool(null);all();toast('Separate and Cut off');return}if(ceOn){setTool(null);all();toast('Add loop edge off');return}if(kaOn&&knife){setTool(null);all();toast('Knife Area off');return}if(drawOn){dwClose();return}if(odOn){odClose();return}showCtx(e.clientX,e.clientY)});
 cv.addEventListener('pointermove',e=>{if(ceOn){ceHover(e);return}if(odOn&&!(drag&&drag.od)){odHover(e);return}if(!drawOn||!dw||!dw.pts.length||(drag&&drag.dw))return;const r=cv.getBoundingClientRect();dw.hov={x:e.clientX-r.left,y:e.clientY-r.top,v:curV};draw()});
 $('#ctx').addEventListener('click',e=>{const t=e.target.closest('[data-ci],[data-cs]');if(!t)return;
  if(t.dataset.cs){const o=objs[sel];hideCtx();if(o){o.color=t.dataset.cs;all()}return}

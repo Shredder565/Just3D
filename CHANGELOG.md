@@ -4,6 +4,14 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v148 — Biped Auto-Rig: an easy animation skeleton for any two-legged character (new "Rigging" tab)
+- **Auto-rig biped**: Rigging tab → *Auto-rig biped*. Pick how many fingers (0–4 + thumb) and bones per finger (2 or 3), then click 10 landmarks on your model: top of head, chin, shoulder, elbow, wrist, tip of the middle finger, hip, knee, ankle and the floor under the toes. NOVA builds a full 55-joint skeleton (hips, spine, neck, head, jaw, eyes, clavicles, arms, legs, feet, toes and every finger) sized to your character. Works on cartoon, realistic, upright-creature (turtle) and robot / armour models because you place the landmarks yourself. Right-click or Backspace undoes a landmark, Esc cancels.
+- **Mirrored fitting**: drag any joint to adjust it; the opposite side follows (turn "mirror" off to move one side only). Shift-drag moves just that joint. Left side is blue, right is red, centre is yellow.
+- **Rigging panel**: body-part chips (Body / Head / Jaw / arms / hands / legs) filter the skeleton tree; finger joints are hidden unless you are working on a hand. Joint sliders are named Twist / Side / Bend and every joint has sensible limits, so elbows and knees bend only the right way.
+- **Hands card**: Both / Left / Right, a curl slider for each finger, All fingers, Spread, and one-click poses (Open, Relax, Fist, Point, Peace, Thumbs up, Pinch). Fingers curl toward the palm automatically. *Copy pose L→R / R→L* and *Mirror pose* shortcuts are in the shelf and command list.
+- **Skinning**: *Bind skin* now binds every selected object at once, and on a biped rig each vertex is only influenced by bones within two joints of its nearest bone, so a hand no longer drags the chest.
+- The rig is saved with the file (joints, mirror side and settings). New Rigging shelf (Skeleton / Skin / Pose groups). Joint tool, Delete joint, Clear Rig moved there from Navigating.
+
 ## v147 — Add Vertex (under Knife)
 - **Add Vertex** (Modeling tools, right under Knife Area; also in the right-click command list): click the button, then click anywhere on an edge and a point is added exactly where you clicked, attached to that edge, so the shape does not change. A yellow dot shows where it will go as you move over an edge. Every polygon that touches the edge gets the new point as an extra corner, and the point can be selected and moved like any other. It follows Symmetrize / Mirror Polygons (the mirrored edge gets its point too) and Ctrl+Z removes it. Clicks very close to a corner are ignored so you don't create a doubled point.
 
