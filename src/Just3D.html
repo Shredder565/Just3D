@@ -80,7 +80,7 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 </style></head><body>
 <div id="app">
  <header hidden aria-hidden="true">
-  <div class="hb"><button id="tq" class="on" title="Select tool (Q)">Select (Q)</button><button id="tw" title="Move tool (W)">Move (W)</button><button id="te" title="Rotate tool (E)">Rotate (E)</button><button id="tr" title="Scale tool (R)">Scale (R)</button><span style="width:10px"></span>
+  <div class="hb"><button id="tq" class="on" title="Select tool (Q)">Select (Q)</button><button id="tw" title="Move tool (W)">Move (W)</button><button id="te" title="Scale tool (E)">Scale (E)</button><button id="tr" title="Rotate tool (R)">Rotate (R)</button><span style="width:10px"></span>
   <button data-m="0" class="on">Shaded</button><button data-m="1">Shaded + wire</button><button data-m="2">Wire</button>
   <span style="width:10px"></span>
   <button data-add="Sphere">+ Sphere</button><button data-add="Cube">+ Cube</button><button data-add="Torus">+ Torus</button><button id="gpub" title="Graphics card rendering">GPU</button><button id="addcam" title="Add a camera at the current view (Shift+A)">+ Camera</button>
@@ -688,7 +688,7 @@ function heavyHitMany(pts,only){const hv=draw.heavy||[],out=pts.map(()=>null);if
 let drawHold=false;
 function draw(){
  if(drawHold)return;
- if(!draw.inner){draw.inner=true;const k0=curV;try{activate(0);draw();if(soloV!==0){activate(1);draw()}}finally{activate(k0);draw.inner=false}return}
+ if(!draw.inner){draw.inner=true;const k0=curV;try{activate(0);draw();if(soloV!==0){activate(1);draw()}}finally{activate(k0);draw.inner=false}if(recOn)recFrame();return}
 
  /* the orthographic view is always flat: it can only sit on one of the six straight-on views (Front, Back, Right, Left, Top, Bottom) */
  if(ortho){const q=Math.PI/2;if(Math.abs(pitch)>Math.PI/4){pitch=pitch>0?q:-q;yaw=0}else{pitch=0;yaw=Math.round(yaw/q)*q}}
@@ -791,7 +791,7 @@ function draw(){
     g.beginPath();g.arc(c0[0],c0[1],4,0,TAU);g.fill();g.font='12px system-ui,sans-serif';g.fillText('Extrude '+exNode.p.dist.toFixed(2),tip[0]+10,tip[1]-8);
     draw.exm={x0:c0[0],y0:c0[1],x1:tip[0],y1:tip[1],ux,uy,pxu}}}}
  draw.gz=null;
- if(!knife&&!drawOn&&!odOn&&!ceOn&&!paintOn&&!jointOn&&!sculptOn&&(xe()==='move'||xe()==='rot'||xe()==='scale')&&objs[sel]){const o=objs[sel],Mo=mulM(rotMat(o.rot),diag(o.sc||[1,1,1]));let pl=null;
+ if(!recOn&&!knife&&!drawOn&&!odOn&&!ceOn&&!paintOn&&!jointOn&&!sculptOn&&(xe()==='move'||xe()==='rot'||xe()==='scale')&&objs[sel]){const o=objs[sel],Mo=mulM(rotMat(o.rot),diag(o.sc||[1,1,1]));let pl=null;
   if(editMode){const en=editNode(o),reps=en&&en.out&&en.rep?[...(sub==='face'?facePts(en):selPts)]:[];
    if(reps.length){pl=[0,0,0];reps.forEach(i=>{const P=en.out.v[i];pl[0]+=P[0];pl[1]+=P[1];pl[2]+=P[2]});pl=pl.map(v=>v/reps.length)}}
   else pl=[0,0,0];
@@ -808,7 +808,7 @@ function draw(){
    if(xe()==='scale'){g.fillStyle='#fff';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#888';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else if(xe()==='move'){g.fillStyle='#ffe066';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#5a4a00';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else{g.beginPath();g.arc(ps[0],ps[1],3.5,0,TAU);g.fillStyle='#fff';g.fill()}}}
  if(sculptOn&&sPos&&!draw.hed){g.strokeStyle=acc;g.lineWidth=1.5;g.beginPath();g.arc(sPos.x,sPos.y,sSize,0,TAU);g.stroke();g.globalAlpha=.5;g.beginPath();g.arc(sPos.x,sPos.y,sSize*.5,0,TAU);g.stroke();g.globalAlpha=1}
  if(box){g.setLineDash([4,3]);g.strokeStyle=box.hl?'#f2c230':box.sc?'#e0701b':box.sub?'#e5484d':acc;g.lineWidth=1;g.strokeRect(box.x0,box.y0,box.x1-box.x0,box.y1-box.y0);g.setLineDash([])}
- if(rig.joints.length){const jp=rigPose().P.map(p=>{const s=scr(view(p[0],p[1],p[2]));return[s[0],s[1]]}),colJ=j=>j.name.startsWith('L_')?'#4aa3ff':j.name.startsWith('R_')?'#ff6b6b':'#f2b01e';
+ if(rig.joints.length&&!recOn){const jp=rigPose().P.map(p=>{const s=scr(view(p[0],p[1],p[2]));return[s[0],s[1]]}),colJ=j=>j.name.startsWith('L_')?'#4aa3ff':j.name.startsWith('R_')?'#ff6b6b':'#f2b01e';
   g.lineWidth=2;rig.joints.forEach((j,i)=>{if(j.parent>=0&&jp[j.parent]){g.strokeStyle=colJ(j);g.beginPath();g.moveTo(jp[j.parent][0],jp[j.parent][1]);g.lineTo(jp[i][0],jp[i][1]);g.stroke()}
    if(j.tip&&(j.finger||j.name==='Head'||j.name==='Jaw'||j.name.endsWith('Toes'))){const P=rigPose(),t=V3.add(P.P[i],mulv(P.W[i],V3.sub(j.tip,j.p))),ts=scr(view(t[0],t[1],t[2]));g.strokeStyle=colJ(j);g.beginPath();g.moveTo(jp[i][0],jp[i][1]);g.lineTo(ts[0],ts[1]);g.stroke()}});
   draw.jts=[];rig.joints.forEach((j,i)=>{const r0=j.finger?3.2:5;g.beginPath();g.arc(jp[i][0],jp[i][1],i===rigSel?7:r0,0,TAU);g.fillStyle=i===rigSel?'#fff':colJ(j);g.fill();g.strokeStyle='#000';g.lineWidth=1.2;g.stroke();if(rigMode==='pose'&&(j.parent<0||/^[LR]_(Hand|Foot)$/.test(j.name))){g.beginPath();g.arc(jp[i][0],jp[i][1],10,0,TAU);g.strokeStyle='#ffb300';g.lineWidth=2;g.stroke()}draw.jts.push({i,x:jp[i][0],y:jp[i][1]})});
@@ -1367,7 +1367,7 @@ function ceOverlay(g,acc,view,scr){
 addEventListener('keydown',e=>{if(!ceOn)return;const t=e.target;if(t&&t.matches&&t.matches('input,textarea,select'))return;
  if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();if(ce){ce=null;ceCand=null;draw()}else{setTool(null);all()}}},true);
 /* ---- transforms, tools, multi-select ---- */
-const XF={select:'Select (Q)',move:'Move (W)',rot:'Rotate (E)',scale:'Scale (R)'},I3=[[1,0,0],[0,1,0],[0,0,1]];
+const XF={select:'Select (Q)',move:'Move (W)',rot:'Rotate (R)',scale:'Scale (E)'},I3=[[1,0,0],[0,1,0],[0,0,1]];
 function rotMat(r){const[a,b,c]=r.map(v=>v*Math.PI/180),ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b),cc=Math.cos(c),sc=Math.sin(c);
  return[[cb*cc,sa*sb*cc-ca*sc,ca*sb*cc+sa*sc],[cb*sc,sa*sb*sc+ca*cc,ca*sb*sc-sa*cc],[-sb,sa*cb,ca*cb]]}
 const mulv=(M,v)=>[M[0][0]*v[0]+M[0][1]*v[1]+M[0][2]*v[2],M[1][0]*v[0]+M[1][1]*v[1]+M[1][2]*v[2],M[2][0]*v[0]+M[2][1]*v[1]+M[2][2]*v[2]];
@@ -1381,7 +1381,7 @@ const axisC=v=>{if(axisK===null)return v;const e=[0,0,0];e[axisK]=v[axisK];retur
 const add=e=>e.shiftKey||(multi&&xf==='select');
 /* Select is a selection mode, not a lock: it keeps the transform tool you used last (Move to start with), so the gizmo and dragging still move, rotate or scale the object, points, edges and faces. xe() is that effective transform. */
 let selXf='move';const xe=()=>xf==='select'?selXf:xf;
-function setXf(t){xf=t;if(t!=='select')selXf=t;axisK=null;['select','move','rot','scale'].forEach((k,i)=>$('#t'+'qwer'[i]).classList.toggle('on',k===t));draw()}
+function setXf(t){xf=t;if(t!=='select')selXf=t;axisK=null;['select','move','scale','rot'].forEach((k,i)=>$('#t'+'qwer'[i]).classList.toggle('on',k===t));draw()}
 function startBox(e,x,y){const cu=e.ctrlKey||e.metaKey,ad=add(e)||cu;box={x0:x,y0:y,x1:x,y1:y,add:ad,sub:cu,sh:e.shiftKey||cu};drag.box=true}
 /* crossing selection: anything the box touches is picked, not only things fully inside it */
 function segHitsRect(ax,ay,bx,by,x0,y0,x1,y1){let t0=0,t1=1;const dx=bx-ax,dy=by-ay;
@@ -1609,8 +1609,8 @@ const need=()=>!!objs[sel],inEd=()=>editMode&&!!objs[sel],pick=k=>()=>{if(objs[s
 const CMDS=[
  {g:'Tools',l:'Select',k:'Q',f:()=>setXf(xf==='select'?selXf:'select'),on:()=>xf==='select'},
  {g:'Tools',l:'Move',k:'W',f:()=>setXf('move'),on:()=>xf==='move'},
- {g:'Tools',l:'Rotate',k:'H',f:()=>setXf('rot'),on:()=>xf==='rot'},
- {g:'Tools',l:'Scale',k:'R',f:()=>setXf('scale'),on:()=>xf==='scale'},
+ {g:'Tools',l:'Scale',k:'E',f:()=>setXf('scale'),on:()=>xf==='scale'},
+ {g:'Tools',l:'Rotate',k:'R',f:()=>setXf('rot'),on:()=>xf==='rot'},
  ...['X','Y','Z'].map((a,i)=>({g:'Tools',l:'Lock to '+a+' axis',k:a==='Y'?'Shift+Y':a,f:()=>{axisK=axisK===i?null:i;draw()},on:()=>axisK===i})),
  {g:'Tools',l:'World (free move)',f:()=>{axisK=null;draw();toast('World: no axis lock, so moving is free in every direction')},on:()=>axisK===null},
  {g:'Component mode',l:'Object mode',k:'O',f:()=>{setTool(null);all()},on:()=>!editMode&&!knife&&!drawOn&&!odOn&&!ceOn},
@@ -1704,6 +1704,8 @@ const CMDS=[
  {g:'Rigging',l:'Pose mode (IK)',en:()=>!!(rig.meta&&rig.meta.biped),f:()=>{rigMode=rigMode==='pose'?'adjust':'pose';panels();draw()},on:()=>rigMode==='pose'},
  {g:'Rigging',l:'Set up mouth',en:()=>!!(rig.meta&&rig.meta.biped)&&!hasMouth()&&!rigFit,f:startMouth},
  {g:'Rigging',l:'Lip-sync from text',en:()=>hasMouth(),f:()=>{setTool(null);tlOpen=true;panels();toast('Type your line in the Lip-sync box in the Rigging panel, then press Add lip-sync')}},
+ {g:'File',l:'Record video (MP4)',k:'Alt+R',f:()=>recToggle(),on:()=>recOn},
+ {g:'Animation',l:'Record animation (MP4)',en:()=>rig.joints.length>0,f:()=>recAnimation(),on:()=>recOn&&!!(recSt&&recSt.auto)},
  {g:'Animation',l:'Timeline',en:()=>rig.joints.length>0,f:()=>{tlOpen=!tlOpen;tlRender()},on:()=>tlOpen&&rig.joints.length>0},
  {g:'Animation',l:'Set key',k:'Alt+K',en:()=>rig.joints.length>0,f:()=>{tlStop();setKey(anim.frame)}},
  {g:'Animation',l:'Play / stop animation',k:'Alt+L',en:()=>rig.joints.length>0,f:tlPlayToggle,on:()=>!!tlPlay},
@@ -2171,7 +2173,7 @@ function applyPoseData(p){if(!p)return;rig.joints.forEach(j=>{const r=p.r[j.name
 function gotoFrame(f,play){f=Math.max(0,Math.min(anim.len,f));anim.frame=f;applyPoseData(poseAt(f));tlSync2();if(play)draw();else{panels();draw()}}
 function tlStop(){if(tlPlay){cancelAnimationFrame(tlPlay);tlPlay=0;audioStop();tlSig='';tlRender()}}
 function tlPlayToggle(){if(tlPlay){tlStop();return}if(!keyFrames().length){toast('Pose the skeleton and press Set key first');return}if(anim.frame>=anim.len)anim.frame=0;tlLast=performance.now();audioStart();
- const step=t=>{anim.frame+=(t-tlLast)/1000*anim.fps;tlLast=t;if(anim.frame>=anim.len){if(anim.loop){anim.frame%=anim.len;audioStop();audioStart()}else{anim.frame=anim.len;gotoFrame(anim.frame,true);tlPlay=0;audioStop();tlSig='';tlRender();panels();return}}gotoFrame(anim.frame,true);tlPlay=requestAnimationFrame(step)};tlPlay=requestAnimationFrame(step);tlSig='';tlRender()}
+ const step=t=>{anim.frame+=(t-tlLast)/1000*anim.fps;tlLast=t;if(anim.frame>=anim.len){if(anim.loop){anim.frame%=anim.len;audioStop();audioStart()}else{anim.frame=anim.len;gotoFrame(anim.frame,true);tlPlay=0;audioStop();tlSig='';tlRender();panels();if(recSt&&recSt.auto)setTimeout(recStop,400);return}}gotoFrame(anim.frame,true);tlPlay=requestAnimationFrame(step)};tlPlay=requestAnimationFrame(step);tlSig='';tlRender()}
 function mirrorPoseData(P){const sw=n=>n.startsWith('L_')?'R_'+n.slice(2):n.startsWith('R_')?'L_'+n.slice(2):n,r={},o={};
  for(const n in P.r){const j=jByName(n),v=P.r[n];r[sw(n)]=j&&!j.fr&&!/^[LR]_/.test(n)?[v[0],-v[1],-v[2]]:[-v[0],-v[1],v[2]]}
  for(const n in P.o)o[n]=[-P.o[n][0],P.o[n][1],P.o[n][2]];return{r,o}}
@@ -2198,6 +2200,33 @@ function tlSync(){if(!anim||!$('#tl'))return;if(tlKey()!==tlSig)tlRender()}
  el.addEventListener('change',e=>{e.stopPropagation();const t=e.target,v=t.dataset.tlin;if(v==='f'){tlStop();gotoFrame(+t.value||0)}else if(v==='len'){anim.len=Math.max(2,Math.min(2000,+t.value||48));Object.keys(anim.keys).forEach(k=>{if(+k>anim.len)delete anim.keys[k]});animRev++;anim.frame=Math.min(anim.frame,anim.len);tlSig='';tlRender();commit()}
   else if(v==='fps'){anim.fps=Math.max(1,Math.min(120,+t.value||24));commit()}else if(v==='ease'){anim.ease=t.value;commit()}else if(v==='loop'){anim.loop=t.checked;commit()}else if(v==='auto'){tlAuto=t.checked}});
  el.addEventListener('keydown',e=>e.stopPropagation());el.addEventListener('pointerdown',e=>e.stopPropagation())})();
+/* ===================== MP4 recording of the 3D view ===================== */
+/* The picture is copied straight from the viewport canvases, so the recording holds only the 3D view: no mouse cursor, panels, menus or toasts. */
+var recOn=false,recSt=null;
+function recMime(){if(typeof MediaRecorder==='undefined')return'';const c=['video/mp4;codecs=avc1.640028','video/mp4;codecs=avc1.4D401F','video/mp4;codecs=avc1.42E01E','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];return c.find(t=>{try{return MediaRecorder.isTypeSupported(t)}catch(_){return false}})||''}
+const recTime=()=>{if(!recSt)return'0:00';const s=Math.floor((performance.now()-recSt.t0)/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+function recLabel(){const t=recOn?'■ Stop '+recTime():'● Record';document.querySelectorAll('button.sb[title^="Record video"]').forEach(b=>{b.lastChild&&b.lastChild.nodeType===3?b.lastChild.nodeValue=t:b.append(t);b.classList.toggle('on',recOn);b.style.color=recOn?'#ff5a5a':''})}
+function recStart(auto){if(recOn)return;const mime=recMime();if(!mime||!HTMLCanvasElement.prototype.captureStream){toast('This window cannot record video');return}
+ tlStop();const box=$('#vps').getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1);let W=Math.round(box.width*dpr),H=Math.round(box.height*dpr);const k=Math.min(1,2560/Math.max(W,H));W=Math.round(W*k);H=Math.round(H*k);W-=W%2;H-=H%2;
+ const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d',{alpha:false}),stream=c.captureStream(0),track=stream.getVideoTracks()[0];
+ let aud=null;if(animAudio&&audCtx){try{aud=audCtx.createMediaStreamDestination();aud.stream.getAudioTracks().forEach(t=>stream.addTrack(t))}catch(_){aud=null}}
+ let rec;try{rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:Math.round(Math.max(6e6,Math.min(30e6,W*H*30*.12)))})}catch(e){toast('Could not start recording: '+e.message);return}
+ const chunks=[];rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};rec.onstop=()=>recFinish(chunks,mime);
+ recSt={c,x,W,H,rec,track,aud,t0:performance.now(),mime,auto:!!auto,last:0,loop:anim.loop,iv:0,lab:0};recOn=true;rec.start(500);
+ recSt.iv=setInterval(()=>{if(recOn)draw()},1000/30);recSt.lab=setInterval(recLabel,500);recLabel();draw();
+ toast(auto?'Recording the animation. It stops by itself at the last frame.':'Recording the 3D view. Press Stop to save the video.')}
+function recFrame(){const S=recSt;if(!S||!recOn)return;const now=performance.now();if(now-S.last<28)return;S.last=now;
+ const x=S.x,box=$('#vps').getBoundingClientRect(),sx=S.W/box.width,sy=S.H/box.height;x.fillStyle=getComputedStyle($('#vp')).backgroundColor||'#222';x.fillRect(0,0,S.W,S.H);
+ (soloV===0?[0]:soloV===1?[1]:[0,1]).forEach(k=>{const v=VW[k],r=v.cv.getBoundingClientRect();if(r.width<2||r.height<2)return;const dx=(r.left-box.left)*sx,dy=(r.top-box.top)*sy,dw=r.width*sx,dh=r.height*sy;
+  if(v.glc.style.display==='block'&&v.glc.width>0)x.drawImage(v.glc,dx,dy,dw,dh);x.drawImage(v.cv,dx,dy,dw,dh)});
+ try{S.track.requestFrame()}catch(_){}}
+function recStop(){if(!recOn||!recSt)return;const S=recSt;recOn=false;clearInterval(S.iv);clearInterval(S.lab);tlStop();anim.loop=S.loop;try{S.rec.requestData();S.rec.stop()}catch(_){}try{S.track.stop();if(S.aud)S.aud.stream.getTracks().forEach(t=>t.stop())}catch(_){}recLabel();tlSig='';tlRender();draw()}
+function recFinish(chunks,mime){recSt=null;if(!chunks.length){toast('Nothing was recorded');return}const mp4=mime.indexOf('mp4')>=0,blob=new Blob(chunks,{type:mp4?'video/mp4':'video/webm'}),d=new Date(),p2=n=>String(n).padStart(2,'0'),
+  name='NOVA3D_'+d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate())+'_'+p2(d.getHours())+p2(d.getMinutes())+p2(d.getSeconds())+(mp4?'.mp4':'.webm');
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);
+ toast((mp4?'Saved ':'Saved (this window can only write .webm, not .mp4) ')+name+' ('+(blob.size/1048576).toFixed(1)+' MB)')}
+function recToggle(){recOn?recStop():recStart(false)}
+function recAnimation(){if(recOn){recStop();return}if(!rig.joints.length||!keyFrames().length){toast('Set some keys on the timeline first, or use Record to capture the view as it is');return}tlStop();const lp=anim.loop;anim.loop=false;gotoFrame(0);recStart(true);if(recSt)recSt.loop=lp;else anim.loop=lp;setTimeout(()=>{if(recOn)tlPlayToggle()},400)}
 /* ===================== Mouth rig + phonemes ===================== */
 const MOUTH_STEPS=['the corner of the mouth on either side','the opposite corner of the mouth','the middle of the upper lip','the middle of the lower lip','the tip of the tongue (or a spot just inside the mouth)'];
 var rigMouthTongue=true,lipText='Hello, this is a test.',lipCps=12,animAudio=null,animRev=0,mcSel='AI';
@@ -2259,7 +2288,7 @@ function audioEnv(){if(!animAudio)return;const d=animAudio.buf.getChannelData(0)
 function jawFlap(){if(!hasMouth()){toast('Set up the mouth first');return}if(!animAudio){toast('Load an audio file first');return}tlStop();if(animAudio.fps!==anim.fps)audioEnv();const env=animAudio.env,save=capturePose(),f0=Math.round(anim.frame);
  for(let i=0;i<env.length;i+=2){const a=(env[i-1]||env[i])*.25+env[i]*.5+(env[i+1]||env[i])*.25,v=a<.12?0:Math.min(1,a*1.1);mcApply({jaw:v*.9,spread:v*.15,lift:0,pucker:0,up:v*.25,lo:0,tongue:0});const f=f0+i,K=anim.keys[f]||(anim.keys[f]={r:{},o:{}});rig.joints.forEach(j=>{if(!isFace(j.name))return;K.r[j.name]=j.rot.slice();if(isOffJ(j.name))K.o[j.name]=j.off?j.off.slice():[0,0,0]})}
  applyPoseData(save);anim.len=Math.max(anim.len,f0+env.length);animRev++;tlSig='';tlRender();gotoFrame(f0);commit();toast('Jaw movement keyed from the audio. Use the mouth shapes or text lip-sync for the details.')}
-function audioStart(){if(!animAudio||!audCtx)return;try{audCtx.resume();const s=audCtx.createBufferSource();s.buffer=animAudio.buf;s.connect(audCtx.destination);s.start(0,Math.min(animAudio.dur-.01,anim.frame/anim.fps));animAudio.src=s}catch(_){}}
+function audioStart(){if(!animAudio||!audCtx)return;try{audCtx.resume();const s=audCtx.createBufferSource();s.buffer=animAudio.buf;s.connect(audCtx.destination);if(recSt&&recSt.aud)s.connect(recSt.aud);s.start(0,Math.min(animAudio.dur-.01,anim.frame/anim.fps));animAudio.src=s}catch(_){}}
 function audioStop(){if(animAudio&&animAudio.src){try{animAudio.src.stop()}catch(_){}animAudio.src=null}}
 /* ---- shelves: four tabs of buttons that run the same commands as the keyboard and the right-click menu ---- */
 let shelfIdx=0,rowSel='Primitives';const BR=['#e5484d','#f2b01e','#3fb950','#2dc4ad','#4a7fd1','#b5559c','#ffffff','#8a8a8a'];
@@ -2270,12 +2299,12 @@ const SHELVES=[
   {n:'Modeling tools',items:[{c:'Loop cut'},{c:'Loop cut selected edges',t:'Cut'},{c:'Knife',ic:'knife'},{c:'Knife Area',t:'Knife Area',ic:'karea'},{c:'Add vertex',t:'Add Vertex',ic:'points'},{c:'Add loop edge',t:'Add loop edge',ic:'ledge'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object',t:'Symmetrize Object'},{c:'Smooth surface',t:'Smooth'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Group weld',t:'Group Weld',ic:'bullseye'},{c:'Duplicate',ic:'dup3'},{c:'Group selected',t:'Group',ic:'dup'},{c:'Delete',t:'Delete'},{sp:1},{gl:'Soft select'},{c:'Soft select',t:'Soft Select',ic:'soft'},{soft:'mode'},{soft:'curve'},{soft:'r'}]},
   {n:'Draw',items:[{c:'World Draw',t:'World Draw',ic:'draw'},{c:'Object Draw',t:'Object Draw',ic:'odraw'},{c:'Free Draw',t:'Free Draw',ic:'fdraw'}]},
   {n:'Rotoscope',items:[{c:'Rotoscope: load image',t:'Load image…'},{c:'Rotoscope: move and scale',t:'Move / Scale'},{c:'Rotoscope: show or hide',t:'Visible'},{c:'Rotoscope: remove image',t:'Remove'},{roto:'op'},{roto:'size'},{roto:'x'},{roto:'y'},{rname:1}]},
-  {n:'File',items:[{c:'New file',t:'New File'},{c:'Open file',t:'Open File'},{c:'Save file',t:'Save File'},{c:'Save file as',t:'Save As'},{fname:1},{c:'Export file',t:'Export File'},{fmt:1},{c:'Export and save to this computer',t:'Save to Computer'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Perspective view',t:'Perspective View'},{c:'Orthographic view',t:'Orthographic View'},{sp:1},{gl:'Selected object'},{c:'Object wireframe',t:'Wireframe'},{c:'Object shaded',t:'Shaded'},{c:'Object wireframe + shaded',t:'Wireframe + Shaded'},{vp:'op'}]}]},
+  {n:'File',items:[{c:'New file',t:'New File'},{c:'Open file',t:'Open File'},{c:'Save file',t:'Save File'},{c:'Save file as',t:'Save As'},{fname:1},{c:'Export file',t:'Export File'},{fmt:1},{c:'Export and save to this computer',t:'Save to Computer'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Perspective view',t:'Perspective View'},{c:'Orthographic view',t:'Orthographic View'},{sp:1},{c:'Record video (MP4)',t:'Record',id:'rec'},{sp:1},{gl:'Selected object'},{c:'Object wireframe',t:'Wireframe'},{c:'Object shaded',t:'Shaded'},{c:'Object wireframe + shaded',t:'Wireframe + Shaded'},{vp:'op'}]}]},
  {n:'Coloring and Rendering',rows:[
   {n:'Coloring',items:[{gl:'Paint'},{c:'Paint tool (click or drag faces)',t:'Paint'},{c:'Paint selected faces',t:'Paint selected'},{c:'Clear face paint',t:'Clear paint'},{sp:1},{gl:'Brush'},{brush:1},{sw:'brush'},{sp:1},{gl:'Object'},{objc:1},{sw:'obj'},{sp:1},{gl:'Display'},{c:'Shaded'},{c:'Shaded + wire'},{c:'Wire'}]},
   {n:'Render 2K',items:[{gl:'Aspect'},{rsel:'asp'},{gl:'Quality'},{rsel:'q'},{sp:1},{c:'Highlight to render',t:'Highlight to Render'},{c:'Render 2K (GPU)',t:'Render 2K · GPU'},{c:'Ray trace 2K (CPU)',t:'Ray Trace 2K · CPU'},{sp:1},{c:'Show last render',t:'Show Render'},{c:'Save last render',t:'Save Render'}]}]},
  {n:'Navigating',items:[{gl:'Camera'},{c:'Front view',t:'Front'},{c:'Back view',t:'Back'},{c:'Left view',t:'Left'},{c:'Right view',t:'Right'},{c:'Top view',t:'Top'},{c:'Bottom view',t:'Bottom'},{c:'Zoom in'},{c:'Zoom out'},{c:'Reset camera',t:'Reset'},{sp:1},{gl:'Cameras'},{c:'Add camera',t:'Add Camera'},{c:'Look through camera',t:'Look Through'},{c:'Back to perspective view',t:'Persp. View'}]},
- {n:'Rigging',items:[{gl:'Skeleton'},{c:'Auto-rig biped',t:'Auto-Rig Biped'},{c:'Joint tool (click to place)',t:'Joint'},{c:'Delete joint'},{c:'Clear rig',t:'Clear Rig'},{sp:1},{gl:'Skin'},{c:'Bind skin to skeleton',t:'Bind skin'},{c:'Remove skin'},{sp:1},{gl:'Pose'},{c:'Reset pose'},{c:'Mirror pose L to R',t:'Mirror L → R'},{c:'Mirror pose R to L',t:'Mirror R → L'},{sp:1},{gl:'Animate'},{c:'Pose mode (IK)',t:'Pose (IK)'},{c:'Timeline'},{c:'Set key'},{c:'Play / stop animation',t:'Play'},{c:'Make cycle (mirror at halfway)',t:'Make Cycle'},{sp:1},{gl:'Face'},{c:'Set up mouth',t:'Mouth Setup'},{c:'Lip-sync from text',t:'Lip-Sync'}]},
+ {n:'Rigging',items:[{gl:'Skeleton'},{c:'Auto-rig biped',t:'Auto-Rig Biped'},{c:'Joint tool (click to place)',t:'Joint'},{c:'Delete joint'},{c:'Clear rig',t:'Clear Rig'},{sp:1},{gl:'Skin'},{c:'Bind skin to skeleton',t:'Bind skin'},{c:'Remove skin'},{sp:1},{gl:'Pose'},{c:'Reset pose'},{c:'Mirror pose L to R',t:'Mirror L → R'},{c:'Mirror pose R to L',t:'Mirror R → L'},{sp:1},{gl:'Animate'},{c:'Pose mode (IK)',t:'Pose (IK)'},{c:'Timeline'},{c:'Set key'},{c:'Play / stop animation',t:'Play'},{c:'Make cycle (mirror at halfway)',t:'Make Cycle'},{c:'Record animation (MP4)',t:'Record Animation'},{sp:1},{gl:'Face'},{c:'Set up mouth',t:'Mouth Setup'},{c:'Lip-sync from text',t:'Lip-Sync'}]},
  {n:'Sculpting',items:[{gl:'Brushes'},{c:'Clay (build up)',t:'Clay'},{c:'Grab (move)',t:'Move'},{c:'Smooth'},{c:'Crease'},{c:'Flatten'},{c:'Inflate'},{c:'Pinch'},{sp:1},{c:'Subtract (reverse brush)',t:'Subtract'},{c:'Symmetry (X mirror)',t:'Symmetry'},{sp:1},{gl:'Radius'},{c:'Smaller brush',t:'−'},{rng:'size'},{c:'Larger brush',t:'+'},{gl:'Intensity'},{rng:'str'},{gl:'Falloff'},{rng:'hard'},{gl:'Resolution'},{rng:'res'},{sp:1},{gl:'Detail'},{c:'Add detail (subdivide)',t:'Add detail'},{c:'Reset sculpt'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{sp:1},{c:'Undo'},{c:'Redo'}]}
  ,{n:'Experimental and proprietary',rows:[{n:'Cut apart',items:[{c:'Separate and Cut',t:'Separate and Cut',ic:'sepc'},{sp:1},{c:'Affect front vertices',t:'Affect Front Vertices'}]}]}
 ];
@@ -2352,7 +2381,7 @@ function renderShelf(){const S=SHELVES[shelfIdx];
    if(it.brush)return'<input type="color" id="s_brush" aria-label="Brush color" title="Brush color">';
    if(it.objc)return'<input type="color" id="s_obj" aria-label="Object color" title="Object color">';
    if(it.sw){const b=it.sw==='brush';return(b?BR:SW).map(c=>'<button class="swb" data-'+(b?'sb':'so')+'="'+c+'" style="background:'+c+'" title="'+(b?'Brush':'Object')+' color '+c+'" aria-label="'+(b?'Brush':'Object')+' color '+c+'"></button>').join('')}
-   const c=CMDS.find(x=>x.l===it.c);return'<button class="sb" data-sh="'+i+'" data-ss="'+si+'" title="'+it.c+(c&&c.k?' ('+(c.kl||c.k)+')':'')+'" style="--gc:'+gcol(si,i)+'">'+iconSvg(it.ic)+(it.t||it.c)+'</button>'};
+   const c=CMDS.find(x=>x.l===it.c);return'<button class="sb" data-sh="'+i+'" data-ss="'+si+'" title="'+it.c+(c&&c.k?' ('+(c.kl||c.k)+')':'')+'" style="--gc:'+gcol(si,i)+'">'+iconSvg(it.ic)+(it.id==='rec'?(recOn?'\u25A0 Stop '+recTime():'\u25CF Record'):(it.t||it.c))+'</button>'};
  const GR=shelfGroups(shelfIdx),popB=g=>'<button class="pop" data-pop="'+g.id+'" title="Undock '+g.name+': click, or drag this into the viewport, to make a floating palette" aria-label="Undock '+g.name+'">⧉</button>';
  $('#shelf').className=shelfIdx>=2?'nav':shelfIdx===0?'one':'';let off=0;$('#shelf').innerHTML=(S.rows||[{n:S.n,items:S.items}]).map(r=>{if(shelfIdx===0&&r.n==='File'){off+=r.items.length;return''}if(S.rows&&rowSel&&r.n!==rowSel){off+=r.items.length;return''}const parts=r.items.map((it,j)=>{const i=off+j,g=GR.find(x=>i>=x.a&&i<x.b);
    if(g&&pals[g.id])return'';let h=itemHtml(it,i,shelfIdx);if(g&&g.a===i&&!(it.gl&&!it.gl.trim())){h=it.gl?h.replace('</span>',popB(g)+'</span>'):popB(g)+h}return h}).join('');

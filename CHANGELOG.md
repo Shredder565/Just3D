@@ -4,6 +4,11 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v152 — Record MP4 video; W / E / R keys fixed
+- **Record** (button in the top bar next to Perspective / Orthographic View, or Alt+R): click it, work or animate, click **Stop** and an `.mp4` is saved to your computer. It records only the 3D view, copied straight from the viewport, so there is no mouse cursor, no panels, menus, timeline or messages in the video. In split view both views are recorded side by side. The skeleton dots and the move/rotate/scale handles are hidden while recording so the picture is clean. A red "Stop 0:12" shows the length while it runs. If the timeline has audio loaded, the sound is recorded too.
+- **Record Animation** (Rigging → Animate): plays your timeline once from frame 0 and records it, then stops and saves by itself at the last frame.
+- **Tool keys**: W = Move, E = Scale, R = Rotate, Q = Select. The buttons, tooltips and key list all show these. (Before, E did nothing, R scaled and rotate was on H.)
+
 ## v151 — Double-click row select works on hand-shaped models again
 - **Double-click a face (or point) selects its whole row** by following the mesh itself: the face ring or edge loop that runs most nearly sideways through the one you clicked. Before, a row was "everything at the same height", which only worked on perfectly regular shapes: once you had moved points around, double-click picked a single face. It now works on shaped models, on rotated objects and in either viewport. Shift+double-click still adds to the selection. Triangle areas, poles and other places where a row cannot be followed fall back to the old same-height rule.
 
