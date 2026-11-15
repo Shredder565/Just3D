@@ -95,7 +95,7 @@ input[type=range]{width:100%;accent-color:var(--acc)}
  <div id="rnd" hidden role="dialog" aria-modal="true" aria-labelledby="rndT"><div class="box" style="width:min(1100px,96vw)"><div class="hd" style="margin-bottom:8px"><b id="rndT" style="font-size:14px">Render</b><span class="sp"></span><button id="rndX">Close</button></div><canvas id="rndC" style="width:100%;height:auto;max-height:72vh;object-fit:contain;background:#111;cursor:default"></canvas><div class="row" style="align-items:center;margin-top:8px"><span id="rndS" style="flex:1;color:var(--mut)"></span><button id="rndStop" hidden>Stop</button><button id="rndSave" class="on" disabled>Save PNG</button></div><div style="color:var(--mut);font-size:11.5px;margin-top:4px">Tip: you can also right-click the image and choose Save image as.</div></div></div>
  <div id="dlg" hidden><div class="box"><b>Scene</b><textarea id="dtx" spellcheck="false" aria-label="Scene data"></textarea>
   <div class="row"><button id="dsb">Save to this browser</button><button id="ddl">Download file</button><button id="dcp">Copy text</button></div>
-  <div class="row" style="align-items:center"><button id="dlb">Load from this browser</button><button id="dlt">Load from the text above</button><input type="file" id="dfi" accept=".obj,.json,application/json" aria-label="Open a scene file"><span class="sp"></span><button id="dcl">Close</button></div></div></div>
+  <div class="row" style="align-items:center"><button id="dlb">Load from this browser</button><button id="dlt">Load from the text above</button><input type="file" id="dfi" accept=".obj,.json,.mb,application/json" aria-label="Open a scene file"><span class="sp"></span><button id="dcl">Close</button></div></div></div>
  <div id="toast" role="status" hidden></div>
 </div>
 <script>
@@ -1844,9 +1844,9 @@ async function saveFile(){if(!objs.length){toast('Nothing to save');return}if(!c
   catch(e){try{if(await curFile.handle.requestPermission({mode:'readwrite'})==='granted'){await writeHandle(curFile.handle,text);markSaved();toast('Saved '+curFile.name);return}}catch(_){}curFile.handle=null}}
  anchorSave(curFile.name,text);markSaved();toast('Saved '+curFile.name+' (downloaded again; your browser may add a number to the name)')}
 /* opening a file: the Open button, a file dropped on the window, or a file dropped on the program icon all end up here */
-const OPEN_EXT=/\.(obj|json|txt)$/i;
+const OPEN_EXT=/\.(obj|json|txt|mb)$/i;
 function openText(name,text,handle){if(/\.obj$/i.test(name||'')&&text.slice(0,4096).indexOf('#PROTOXSI ')<0)return importObjFile(name,new TextEncoder().encode(text),handle);if(loadScene(text)){setFile(name,handle||null);return true}return false}
-async function openDropped(f,hp){if(!f)return false;if(!OPEN_EXT.test(f.name||'')){toast('Drop an .obj or .json file ('+(f.name||'that file')+' is not one)');return false}
+async function openDropped(f,hp){if(!f)return false;if(!OPEN_EXT.test(f.name||'')){toast('Drop an .obj, .mb (Maya) or .json file ('+(f.name||'that file')+' is not one)');return false}
  try{let h=null;try{h=hp?await hp:null;if(h&&h.kind!=='file')h=null}catch(_){h=null}return await openFileObj(f,h)}catch(_){toast('Could not read that file');return false}}
 (function(){let depth=0;const hint=()=>{let d=document.getElementById('dropHint');if(!d){d=document.createElement('div');d.id='dropHint';d.textContent='Drop to open';d.style.cssText='position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;font:600 22px system-ui,sans-serif;color:#fff;background:rgba(40,110,220,.35);border:3px dashed #8bb8ff;pointer-events:none';document.body.appendChild(d)}return d};
  const hasFiles=e=>e.dataTransfer&&[...(e.dataTransfer.types||[])].includes('Files');
@@ -1857,8 +1857,8 @@ async function openDropped(f,hp){if(!f)return false;if(!OPEN_EXT.test(f.name||''
  window.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();e.dataTransfer.dropEffect='copy'});
  window.addEventListener('dragleave',e=>{if(!hasFiles(e))return;depth=Math.max(0,depth-1);if(!depth)hint().style.display='none'});
  window.addEventListener('drop',e=>{if(!hasFiles(e))return;e.preventDefault();depth=0;hint().style.display='none';const f=e.dataTransfer.files[0];if(isImg(f)){dropRoto(f,e);return}const it=e.dataTransfer.items&&e.dataTransfer.items[0];let hp=null;try{hp=it&&it.getAsFileSystemHandle?it.getAsFileSystemHandle():null}catch(_){}openDropped(f,hp)})})();
-async function openFile(){if(window.showOpenFilePicker){try{const[h]=await showOpenFilePicker({types:[{description:'NOVA 3D project or OBJ',accept:{'text/plain':['.obj','.json']}}]});await openFileObj(await h.getFile(),h);return}catch(e){if(e&&e.name==='AbortError')return}}
- let i=document.getElementById('openIn');if(!i){i=document.createElement('input');i.type='file';i.id='openIn';i.accept='.obj,.json';i.hidden=true;document.body.appendChild(i);i.onchange=async()=>{const f=i.files[0];i.value='';if(!f)return;try{await openFileObj(f,null)}catch(_){toast('Could not read that file')}}}i.click()}
+async function openFile(){if(window.showOpenFilePicker){try{const[h]=await showOpenFilePicker({types:[{description:'NOVA 3D project, OBJ or Maya binary (.mb)',accept:{'text/plain':['.obj','.json'],'application/octet-stream':['.mb']}}]});await openFileObj(await h.getFile(),h);return}catch(e){if(e&&e.name==='AbortError')return}}
+ let i=document.getElementById('openIn');if(!i){i=document.createElement('input');i.type='file';i.id='openIn';i.accept='.obj,.json,.mb';i.hidden=true;document.body.appendChild(i);i.onchange=async()=>{const f=i.files[0];i.value='';if(!f)return;try{await openFileObj(f,null)}catch(_){toast('Could not read that file')}}}i.click()}
 function worldMeshes(){return objs.filter(o=>!o.hid).map(o=>{const m=evaluate(o),M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),nv=m.v.length,used=new Uint8Array(nv),map=new Int32Array(nv).fill(-1),V=[];
   for(let i=0;i<m.f.length;i++){const f=m.f[i];for(let k=0;k<f.length;k++)used[f[k]]=1}
   for(let i=0;i<nv;i++)if(used[i]){const q=mulv(M,m.v[i]);map[i]=V.length;V.push([q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2]])}
@@ -1910,13 +1910,81 @@ function ObjParser(u8){const n=u8.length,P10=[1,1e1,1e2,1e3,1e4,1e5,1e6,1e7,1e8,
  return{step,finish,total:n,at:()=>pos}}
 function importObj(t){const P=ObjParser(new TextEncoder().encode(t));while(!P.step(1e12));P.finish();all()}
 /* opening an OBJ file: read in slices with a progress message, so a very large model does not freeze the window */
+/* ---- Maya binary (.mb) import: polygon meshes with their transform hierarchy, and cameras (become NOVA cameras) ---- */
+/* A .mb file is a tree of chunks (64-bit "FOR8" files, Maya 2016 and newer): every node is a FOR8 chunk holding a CREA chunk (name and parent) followed by one chunk per attribute. Polygon meshes are stored as vertices (float x,y,z), then edges (two vertex numbers each), then polygons (lists of edge numbers). Maya is right-handed and NOVA is left-handed, so Z is flipped and the polygon order reversed to keep the shape and the views the same. */
+function mbTag(u8,p){return String.fromCharCode(u8[p],u8[p+1],u8[p+2],u8[p+3])}
+function mbCStr(u8,p,end){let q=p,s='';while(q<end&&u8[q]){s+=String.fromCharCode(u8[q]);q++}return[s,q+1]}
+function parseMB(buf){const u8=new Uint8Array(buf),dv=new DataView(buf),n=u8.length,sz=p=>dv.getUint32(p+8)*4294967296+dv.getUint32(p+12);
+ if(n<32||mbTag(u8,0)!=='FOR8'||mbTag(u8,16)!=='Maya')throw new Error('mb format');
+ const nodes=[],end=Math.min(n,16+sz(0));let p=20;
+ while(p+16<=end){const tag=mbTag(u8,p),s=sz(p);
+  if(tag==='FOR8'||tag==='LIS8'||tag==='CAT8'){const typ=mbTag(u8,p+16);
+   if(tag==='FOR8'&&(typ==='XFRM'||typ==='DCAM'||typ==='DMSH')){const pend=Math.min(end,p+16+s),node={type:typ,name:'',parent:'',a:{},mesh:null};let c=p+20;
+    while(c+16<=pend){const t=mbTag(u8,c),cs=sz(c);if(t==='FOR8'||t==='LIS8'||t==='CAT8'){c+=16+cs;continue}
+     const d0=c+16,d1=d0+cs;
+     if(t==='CREA'){const[nm,q]=mbCStr(u8,d0+1,d1);/* the first byte is a node-type code, then the name */node.name=nm;if(d1-q>16)node.parent=mbCStr(u8,q,d1)[0]}
+     else if(t==='MESH')node.mesh={off:d0,len:cs};
+     else if(t==='DBLE'||t==='DBL2'||t==='DBL3'){const[nm,q]=mbCStr(u8,d0,d1),k=t==='DBLE'?1:t==='DBL2'?2:3;if(d1-q-1>=8*k){const arr=[];for(let i=0;i<k;i++)arr.push(dv.getFloat64(q+1+8*i));node.a[nm]=arr}}
+     c+=Math.ceil((16+cs)/8)*8}
+    nodes.push(node)}
+   p+=16+s}
+  else p+=Math.ceil((16+s)/8)*8}
+ return{u8,dv,nodes}}
+/* 4x4 matrices as arrays of rows; column vectors */
+const mbI=()=>[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]];
+function mbMul(A,B){const C=[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]];for(let i=0;i<4;i++)for(let j=0;j<4;j++){let s=0;for(let k=0;k<4;k++)s+=A[i][k]*B[k][j];C[i][j]=s}return C}
+const mbT=v=>{const M=mbI();M[0][3]=v[0];M[1][3]=v[1];M[2][3]=v[2];return M};
+const mbS=v=>{const M=mbI();M[0][0]=v[0];M[1][1]=v[1];M[2][2]=v[2];return M};
+function mbR(ax,a){const M=mbI(),c=Math.cos(a),s=Math.sin(a);if(ax===0){M[1][1]=c;M[1][2]=-s;M[2][1]=s;M[2][2]=c}else if(ax===1){M[0][0]=c;M[0][2]=s;M[2][0]=-s;M[2][2]=c}else{M[0][0]=c;M[0][1]=-s;M[1][0]=s;M[1][1]=c}return M}
+const MB_ORDER=['xyz','yzx','zxy','xzy','yxz','zyx'];
+/* Maya's transform: T * Rpt * Rp * R * Rp^-1 * Spt * Sp * S * Sp^-1 (column form) */
+function mbLocal(a){const g=(k,d)=>a[k]||d,t=g('t',[0,0,0]),r=g('r',[0,0,0]),s=g('s',[1,1,1]),rp=g('rp',[0,0,0]),rpt=g('rpt',[0,0,0]),sp=g('sp',[0,0,0]),spt=g('spt',[0,0,0]),neg=v=>v.map(x=>-x),
+  ord=MB_ORDER[Math.max(0,Math.min(5,Math.round((a.ro||[0])[0])))];let R=mbI();for(const ch of ord){const ax='xyz'.indexOf(ch);R=mbMul(mbR(ax,r[ax]),R)}
+ let M=mbT(t);M=mbMul(M,mbT(rpt));M=mbMul(M,mbT(rp));M=mbMul(M,R);M=mbMul(M,mbT(neg(rp)));M=mbMul(M,mbT(spt));M=mbMul(M,mbT(sp));M=mbMul(M,mbS(s));M=mbMul(M,mbT(neg(sp)));return M}
+/* world matrix of a transform node, from its parents */
+function mbWorld(by,name,depth){const n=by.get(name);if(!n||depth>64)return mbI();if(n.wm)return n.wm;const L=mbLocal(n.a);n.wm=n.parent&&by.has(n.parent)?mbMul(mbWorld(by,n.parent,depth+1),L):L;return n.wm}
+/* Maya (right-handed) to NOVA (left-handed): negate Z. Returns position, rotation in degrees (NOVA's Z-Y-X order) and scale. */
+function mbToNova(W){const m=[1,1,-1,1],P=W.map((row,i)=>row.map((x,j)=>x*m[i]*m[j])),pos=[P[0][3],P[1][3],P[2][3]],sc=[0,1,2].map(j=>Math.hypot(P[0][j],P[1][j],P[2][j])||1);
+ const R=[0,1,2].map(i=>[0,1,2].map(j=>P[i][j]/sc[j])),det=R[0][0]*(R[1][1]*R[2][2]-R[1][2]*R[2][1])-R[0][1]*(R[1][0]*R[2][2]-R[1][2]*R[2][0])+R[0][2]*(R[1][0]*R[2][1]-R[1][1]*R[2][0]);
+ if(det<0){sc[0]=-sc[0];for(let i=0;i<3;i++)R[i][0]=-R[i][0]}
+ const b=Math.asin(Math.max(-1,Math.min(1,-R[2][0]))),cb=Math.cos(b);let a,c;if(Math.abs(cb)>1e-6){a=Math.atan2(R[2][1],R[2][2]);c=Math.atan2(R[1][0],R[0][0])}else{a=Math.atan2(-R[1][2],R[1][1]);c=0}
+ const D=180/Math.PI,r5=x=>+x.toFixed(5);return{pos:pos.map(r5),rot:[a*D,b*D,c*D].map(r5),sc:sc.map(r5),R,P}}
+/* The MESH chunk is: the attribute name and a flag byte, then arrays that each start with a 32-bit count (all values big-endian): vertex coordinates (float x,y,z), edges (two words each: start vertex with bit 31 set, end vertex), then polygons as lists of edge numbers (bit 31 = the edge is walked backwards, bits 29-30 both set = last edge of the polygon). Normals and UVs follow and are not needed. */
+function mbDecodeMesh(dv,u8,off,len){const end=off+len;let p=off;while(p<end&&u8[p])p++;p+=2;
+ const rd=()=>{if(p+4>end)throw 0;const v=dv.getUint32(p);p+=4;return v};
+ try{const nf=rd();if(nf<9||nf%3||p+4*nf>end)return null;const V=nf/3,v0=p;p+=4*nf;
+  const C=rd();if(C<6||(C&1)||p+4*C>end)return null;const E=C/2,e0=p;p+=4*C;
+  const fc=rd();if(fc<3||p+4*fc>end)return null;const f0=p;
+  const A=new Int32Array(E),B=new Int32Array(E);for(let k=0;k<E;k++){const a=dv.getUint32(e0+8*k),b=dv.getUint32(e0+8*k+4);if((a&0x7fffffff)>=V||b>=V)return null;A[k]=a&0x7fffffff;B[k]=b}
+  const v=new Array(V);for(let k=0;k<V;k++){const q=v0+12*k;v[k]=[dv.getFloat32(q),dv.getFloat32(q+4),-dv.getFloat32(q+8)]}
+  const f=[];let cur=[];for(let k=0;k<fc;k++){const w=dv.getUint32(f0+4*k),r=w&0x1fffffff;if(r>=E)return null;cur.push((w&0x80000000)?B[r]:A[r]);if(((w>>>29)&3)===3){if(cur.length>=3){cur.reverse();f.push(cur)}cur=[]}}
+  return f.length?{v,f}:null}catch(_){return null}}
+async function importMayaFile(name,buf,handle){const tick=()=>new Promise(r=>setTimeout(r));
+ try{toast('Reading '+name+' ...');await tick();let M;try{M=parseMB(buf)}catch(_){toast('That is not a Maya binary (.mb) file from Maya 2016 or newer');return false}
+  const by=new Map();M.nodes.forEach(n=>{if(n.type==='XFRM')by.set(n.name,n)});
+  const mShapes=M.nodes.filter(n=>n.type==='DMSH'&&n.mesh),cShapes=M.nodes.filter(n=>n.type==='DCAM'),nice=n=>(n.parent||n.name).replace(/[:|]+/g,'_'),parentW=n=>n.parent&&by.has(n.parent)?mbWorld(by,n.parent,0):mbI();
+  let nm=0,nc=0,ortho_=0,bad=0,faces=0,firstCam=-1;
+  for(let i=0;i<mShapes.length;i++){const n=mShapes[i];toast('Reading mesh '+(i+1)+' of '+mShapes.length+' ('+n.name+') ...');await tick();
+   const m=mbDecodeMesh(M.dv,M.u8,n.mesh.off,n.mesh.len);if(!m||!m.f.length){bad++;continue}
+   const x=mbToNova(parentW(n)),ob=addObj('Mesh',0);ob.name=nice(n);ob.pos=x.pos;ob.rot=x.rot;ob.sc=x.sc;ob.nodes[0].mesh=m;ob.nodes[0].dirty=true;nm++;faces+=m.f.length;await tick()}
+  cShapes.forEach(n=>{if((n.a.o||[0])[0]>.5){ortho_++;return}
+   const P=mbToNova(parentW(n)).P,ex=[P[0][3],P[1][3],P[2][3]];
+   /* a Maya camera looks down its own -Z; NOVA cameras turn by yaw and pitch only, so any roll is dropped */
+   let fw=[P[0][2],P[1][2],P[2][2]];/* with Z flipped, the camera's forward is NOVA's +Z axis of the converted matrix */const fl=Math.hypot(fw[0],fw[1],fw[2])||1;fw=fw.map(v=>v/fl);
+   const coi=(n.a.coi&&n.a.coi[0]>0)?n.a.coi[0]:10,focal=(n.a.fl&&n.a.fl[0]>0)?n.a.fl[0]:35,vap=n.a.cap&&n.a.cap[1]>0?n.a.cap[1]*25.4:24,r5=v=>+v.toFixed(5);
+   cams.push({name:nice(n),tgt:[0,1,2].map(k=>r5(ex[k]+fw[k]*coi)),yaw:Math.atan2(-fw[0],fw[2]),pitch:Math.asin(Math.max(-1,Math.min(1,fw[1]))),dist:coi,pan:[0,0],f:r5(focal*24/vap)});if(firstCam<0)firstCam=cams.length-1;nc++});
+  if(!nm&&!nc){toast('No polygon meshes or perspective cameras were found in '+name);return false}
+  if(firstCam>=0)camSel=firstCam;commit();$('#dlg').hidden=true;all();panels();
+  toast('Opened '+name+': '+(nm?nm+' mesh'+(nm>1?'es':'')+' ('+faces.toLocaleString()+' faces)':'no meshes')+', '+nc+' camera'+(nc===1?'':'s')+(ortho_?' ('+ortho_+' orthographic camera'+(ortho_>1?'s':'')+' skipped)':'')+(bad?', '+bad+' mesh'+(bad>1?'es':'')+' could not be read':'')+(nc?'. Select a camera in the Explorer, then Look through.':''));return true}
+ catch(err){toast('Could not read that Maya file');return false}}
 async function importObjFile(name,u8,handle){const P=ObjParser(u8);let last=0;
  try{toast('Reading '+name+' ...');while(!P.step(3e6)){const t=performance.now();if(t-last>200){last=t;toast('Reading '+name+' ... '+Math.round(P.at()/P.total*100)+'%')}await new Promise(r=>setTimeout(r))}
   toast('Building the model ...');await new Promise(r=>setTimeout(r));const k=P.finish();commit();$('#dlg').hidden=true;setFile(name,handle||null);all();
   const fc=objs.slice(-k).reduce((a,o)=>a+evaluate(o).f.length,0);toast('Opened '+name+' ('+fc.toLocaleString()+' faces'+(k>1?', '+k+' objects':'')+')');return true}
  catch(err){toast(err&&err.message==='no faces'?'That OBJ file has no faces':'Could not read that file');return false}}
 async function openFileObj(f,handle){if(!f)return false;
- try{if(/\.obj$/i.test(f.name||'')){const u8=new Uint8Array(await f.arrayBuffer());let head='';const hl=Math.min(u8.length,4096);for(let i=0;i<hl;i++)head+=String.fromCharCode(u8[i]);
+ try{if(/\.mb$/i.test(f.name||''))return await importMayaFile(f.name,await f.arrayBuffer(),handle);
+  if(/\.obj$/i.test(f.name||'')){const u8=new Uint8Array(await f.arrayBuffer());let head='';const hl=Math.min(u8.length,4096);for(let i=0;i<hl;i++)head+=String.fromCharCode(u8[i]);
    if(head.indexOf('#PROTOXSI ')<0)return await importObjFile(f.name,u8,handle);
    const t=new TextDecoder().decode(u8);if(loadScene(t)){setFile(f.name,handle||null);return true}return false}
   const t=await f.text();if(loadScene(t)){setFile(f.name,handle||null);return true}return false}
@@ -3061,7 +3129,7 @@ $('#dlb').onclick=()=>{try{const s=localStorage.getItem('protoxsi.scene');if(!s)
 $('#dlt').onclick=()=>loadScene($('#dtx').value);
 $('#dcp').onclick=async()=>{try{await navigator.clipboard.writeText($('#dtx').value);toast('Copied')}catch(_){$('#dtx').select();toast('Press Ctrl+C to copy the selected text')}};
 $('#ddl').onclick=async()=>{try{const d=await claude.use('downloads');if(!d){toast('Downloads are not available here');return}await d.save({filename:'scene.json',data:snap(true)});toast('Scene saved')}catch(err){if(!err||err.code!=='declined')toast('Could not save the file')}};
-$('#dfi').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{$('#dtx').value=await f.text();loadScene($('#dtx').value)}catch(_){toast('Could not read that file')}};
+$('#dfi').onchange=async e=>{const f=e.target.files[0];if(!f)return;if(/\.mb$/i.test(f.name)){e.target.value='';await openFileObj(f,null);return}try{$('#dtx').value=await f.text();loadScene($('#dtx').value)}catch(_){toast('Could not read that file')}};
 document.addEventListener('click',e=>{const id=e.target.id;if(id==='bun')undo();else if(id==='bre')redo();else if(id==='bsc')openScene();commit()});
 document.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.nk!==undefined){const o=objs[sel],nn=o&&o.nodes[+t.dataset.nk];if(nn)t.value=nn.p[t.dataset.kk]}});
 document.addEventListener('change',()=>commit());
@@ -3128,7 +3196,7 @@ function showTip(){const t=$('#tip'),ok=$('#tipOk'),no=$('#tipNo'),L={};
 setSolo(1);$('#toast').hidden=true;
 /* a file dropped on the program icon: the launcher writes it next to the page as open-*.js and starts us with #open=<that file> */
 let launchOpen=null;try{const m=/[#&]open=([\w.\-]+\.js)$/.exec(location.hash);if(m)launchOpen=m[1]}catch(_){}
-if(launchOpen){const sc=document.createElement('script');sc.src=launchOpen;sc.onload=()=>{try{const o=window.__J3D_OPEN;if(o&&typeof o.text==='string'){if(!OPEN_EXT.test(o.name||''))toast('Drop an .obj or .json file');else openText(o.name,o.text,null)}}catch(_){toast('Could not open that file')}try{history.replaceState(null,'',location.pathname+location.search)}catch(_){}};sc.onerror=()=>toast('Could not open that file');document.head.appendChild(sc)}
+if(launchOpen){const sc=document.createElement('script');sc.src=launchOpen;sc.onload=()=>{try{const o=window.__J3D_OPEN;if(o&&typeof o.b64==='string'){/* a binary file (Maya .mb) sent by the app as base64 */const bin=atob(o.b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);window.__J3D_OPEN=null;importMayaFile(o.name,u.buffer,null)}else if(o&&typeof o.text==='string'){if(!OPEN_EXT.test(o.name||''))toast('Drop an .obj, .mb or .json file');else openText(o.name,o.text,null)}}catch(_){toast('Could not open that file')}try{history.replaceState(null,'',location.pathname+location.search)}catch(_){}};sc.onerror=()=>toast('Could not open that file');document.head.appendChild(sc)}
 else (function(){let no=false;try{no=localStorage.getItem('simply3d.noTip')==='1'}catch(_){}if(!no)showTip()})();
 /* the native Windows app shows this page in its own window and exposes j3dTitle so the window title follows the page title */
 try{const tt=document.querySelector('title');if(tt)new MutationObserver(()=>{try{window.j3dTitle&&window.j3dTitle(document.title)}catch(_){}}).observe(tt,{childList:true,characterData:true,subtree:true})}catch(_){}

@@ -7,6 +7,7 @@ package main
 
 import (
 	_ "embed"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -170,8 +171,14 @@ func openArg(dir string) string {
 		return ""
 	}
 	name, _ := json.Marshal(filepath.Base(path))
-	text, _ := json.Marshal(strings.ToValidUTF8(string(data), "�"))
-	js := fmt.Sprintf("window.__J3D_OPEN={name:%s,text:%s};\n", name, text)
+	var js string
+	if strings.EqualFold(filepath.Ext(path), ".mb") {
+		// Maya binary files are not text: send them as base64 and let the page decode them
+		js = fmt.Sprintf("window.__J3D_OPEN={name:%s,b64:\"%s\"};\n", name, base64.StdEncoding.EncodeToString(data))
+	} else {
+		text, _ := json.Marshal(strings.ToValidUTF8(string(data), "�"))
+		js = fmt.Sprintf("window.__J3D_OPEN={name:%s,text:%s};\n", name, text)
+	}
 	fn := fmt.Sprintf("open-%d.js", time.Now().UnixNano())
 	if os.WriteFile(filepath.Join(dir, fn), []byte(js), 0o644) != nil {
 		return ""

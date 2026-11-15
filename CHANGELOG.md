@@ -4,6 +4,13 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v157 — Open Maya binary (.mb) files, with Maya cameras
+- **Open File, drag and drop, or dragging a .mb onto the NOVA 3D icon now opens Maya binary (.mb) files** saved by Maya 2016 or newer (tested on a Maya 2026 file with 758,547 triangles: it opens in about one second).
+- **Meshes:** every polygon mesh is imported as its own object, named after its Maya transform, with the full parent/child transform chain (position, rotation in any rotate order, scale, pivots) applied. Polygons of any size are kept.
+- **Cameras:** every perspective camera becomes one of NOVA's own cameras (Explorer, *Cameras*), with its position, aim at Maya's center of interest and focal length (adjusted for the film aperture when the file sets one). Pick it in the Explorer and press **Look through**. Orthographic cameras (Maya's default top, front and side) are skipped. NOVA cameras do not roll, so any roll on a Maya camera is dropped.
+- **Axis convention:** Maya is right-handed and NOVA is left-handed, so Z is flipped (and the polygon order reversed) so the scene and every camera view look the same as in Maya.
+- Not imported yet: NURBS and subdivision surfaces, materials and textures, UVs, normals, skeletons and animation curves, and 32-bit .mb files from Maya 2015 and older. ASCII .ma files are not supported yet.
+
 ## v156 — Transform gizmo always shows all three axes
 - **Move, Scale and Rotate** now always show X, Y and Z. Each axis is labelled with its letter (red X, green Y, blue Z). When an axis points straight at the camera (for example Z in the Front view, which used to disappear), it is drawn as a short diagonal arrow instead, and you can still grab and drag it to move or scale along that axis.
 - **Rotate** also draws a thin line for each axis next to its ring.
