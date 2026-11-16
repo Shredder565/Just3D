@@ -97,11 +97,7 @@ input[type=range]{width:100%;accent-color:var(--acc)}
  <input id="pcol" type="color" value="#e5484d" aria-label="Paint color" title="Paint color" style="width:30px;height:26px;padding:0;border:1px solid var(--line);background:none"><button id="tpn" title="Paint faces (B): click or drag over faces. Shift erases, Ctrl+click picks a color">Paint</button><button id="bun" title="Undo (Ctrl+Z)">Undo</button><button id="bre" title="Redo (Ctrl+Shift+Z)">Redo</button><button id="bsc" title="Save or load the scene (Ctrl+S)">Scene</button><span style="margin-left:auto;padding-left:12px;color:var(--mut);white-space:nowrap">Drag pans · Alt+drag or right-drag orbits · middle-drag zooms · right-click for commands</span></div></header>
  <div id="shelfTabs" role="tablist" aria-label="Shelves"></div>
  <aside><div id="selPanel" role="group" aria-label="Select"><div class="sph">Select</div><div class="spg">
-  <button id="spArrow" class="spa on" title="Select tool (Q): click an object, or a point, edge or polygon, to select it" aria-label="Select tool"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 3 L7 25 L12.6 19.8 L16.4 28.6 L20.4 26.9 L16.6 18.3 L24 18 Z" fill="#fff" stroke="#222" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
-  <button data-sf="group" title="Select a whole group by clicking any object in it">Group</button><button data-sf="center" title="Select an object by clicking its center point">Center</button>
-  <button data-sf="object" class="on" title="Select whole objects">Object</button><button data-sf="pt" title="Select points">Point</button>
-  <button data-sf="edge" title="Select edges">Edge</button><button data-sf="face" title="Select polygons">Polygon</button>
-  <button id="spSample" class="wide" title="Sample: drag across the model to select every point, edge or polygon you pass over">Sample</button></div></div><div id="sideTabs" role="tablist" aria-label="Shelves"></div></aside>
+  <button data-sf="object" class="on wide" title="Select tool: click an object to select it. Shift adds to the selection, Ctrl removes.">Object</button></div></div><div id="sideTabs" role="tablist" aria-label="Shelves"></div></aside>
  <div id="vps"><div id="vp"><canvas id="glc" aria-hidden="true"></canvas><canvas id="cv"></canvas><div id="stat" class="stat"></div><span class="vlab">Perspective</span><canvas id="vcube" class="vcube" aria-label="Perspective view cube: click a face to look from that side, drag to orbit"></canvas></div><div id="vp2"><canvas id="glcB" aria-hidden="true"></canvas><canvas id="cvB"></canvas><div id="statB" class="stat"></div><span class="vlab">Orthographic</span><button class="vnav" data-d="up" style="top:6px;right:76px" aria-label="Top view">▲</button><button class="vnav" data-d="down" style="top:142px;right:76px" aria-label="Bottom view">▼</button><button class="vnav" data-d="left" style="top:74px;right:144px" aria-label="Previous side view">◀</button><button class="vnav" data-d="right" style="top:74px;right:8px" aria-label="Next side view">▶</button><canvas id="vcubeB" class="vcube" aria-label="Orthographic view cube: click a face to look from that side, drag to orbit"></canvas></div></div>
  <div id="rside"><div id="explorerBox"><div class="sec" style="margin-top:0">Explorer</div><div id="tree"></div></div><div id="props"></div></div>
  <div id="ctx" role="menu" hidden></div>
@@ -1444,17 +1440,15 @@ function sampleAt(e){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.c
  draw()}
 /* Select panel (top of the left side): the arrow is the select tool, the buttons choose what it picks */
 function syncSelPanel(){const P=$('#selPanel');if(!P)return;const comp=editMode&&(sub==='pt'||sub==='edge'||sub==='face'),other=knife||drawOn||odOn||ceOn||paintOn||sculptOn||jointOn||wpOn;
- $('#spArrow').classList.toggle('on',xf==='select'&&!other);
- P.querySelectorAll('[data-sf]').forEach(b=>{const k=b.dataset.sf;b.classList.toggle('on',!other&&(comp?k===sub:(!editMode&&k===selFilt)))});
- $('#spSample').classList.toggle('on',sampleOn&&comp)}
+  P.querySelectorAll('[data-sf]').forEach(b=>{const k=b.dataset.sf;b.classList.toggle('on',!other&&(comp?k===sub:(!editMode&&k===selFilt)))});
+ }
 function selPick(k){
  if(knife||drawOn||odOn||ceOn||paintOn||sculptOn||jointOn||wpOn||(editMode&&(sub==='loop'||sub==='av')))setTool(null);
  if(k==='pt'||k==='edge'||k==='face'){if(!(editMode&&sub===k))setTool(k)}
  else{selFilt=k;if(editMode)setTool(null);camSel=-1}
  setXf('select');syncSelPanel();all();
  toast(k==='object'?'Object: click an object to select it. Shift adds to the selection.':k==='group'?'Group: click an object to select its whole group.':k==='center'?'Center: click an object\'s center point to select it.':'Click to select '+(k==='pt'?'points':k==='edge'?'edges':'polygons')+'; drag a box to select several.')}
-$('#spArrow').addEventListener('click',()=>{if(knife||drawOn||odOn||ceOn||paintOn||sculptOn||jointOn||wpOn)setTool(null);setXf('select');syncSelPanel()});
-$('#selPanel').addEventListener('click',e=>{const b=e.target.closest('[data-sf]');if(b)selPick(b.dataset.sf);else if(e.target.closest('#spSample')){if(!editMode){selPick('face')}sampleOn=!sampleOn;setXf('select');syncSelPanel();toast(sampleOn?'Sample is on: drag across the model to select everything you pass over.':'Sample is off.')}});
+$('#selPanel').addEventListener('click',e=>{const b=e.target.closest('[data-sf]');if(b)selPick(b.dataset.sf)});
 function startBox(e,x,y){const cu=e.ctrlKey||e.metaKey,ad=add(e)||cu;box={x0:x,y0:y,x1:x,y1:y,add:ad,sub:cu,sh:e.shiftKey||cu};drag.box=true}
 /* crossing selection: anything the box touches is picked, not only things fully inside it */
 function segHitsRect(ax,ay,bx,by,x0,y0,x1,y1){let t0=0,t1=1;const dx=bx-ax,dy=by-ay;
