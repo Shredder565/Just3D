@@ -4,6 +4,15 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v158 — One-click skeleton binding and weight painting
+- **Binding is now one click.** In the Rigging panel (right side) the new **Skin** section has **Bind selected model to skeleton** (and **Bind all models**). If the model is part of a group the whole group is bound. If there is no skeleton yet, Bind starts **Auto-rig biped** and binds your model the moment the skeleton is finished.
+- **Auto-rig now binds for you.** When the auto-rig finishes, the selected model is bound straight away. Drag joints to fit the skeleton and the automatic weights follow them; open Pose (IK) to move the character.
+- **Better automatic weights.** Weights are now stored per point (up to 4 bones each) instead of being re-guessed on every frame, then eased along the surface so neighbouring points agree. Posing is faster, and a part no longer snaps between bones. Falloff and Blend in the Skin card still control the automatic result.
+- **New Paint weights tool** (Rigging shelf, Skin section of the Rigging panel, or Shift+P). The model turns into a heat map of the chosen bone: blue = none, green = half, red = all. Pick the bone in the skeleton list (or Ctrl+click the model to pick the bone that owns that spot), then drag: **Add**, **Remove** or **Smooth** (Shift+drag always smooths), with Brush size and Strength sliders. Painting works across every bound part of a character at once, only touches what you can see, and can also paint the left/right mirror bone on the other side.
+- **Smooth all** smooths every weight on the selected model; **Reset to automatic** throws painted weights away; **Unbind** removes the skin.
+- Painted weights are part of undo/redo and are saved in the project file. Deleting a bone keeps the painted weights of the others.
+- Models with 60,000+ polygons still bind (with automatic weights) but cannot be painted, because the heat map needs the normal renderer; a message says so.
+
 ## v157 — Open Maya binary (.mb) files, with Maya cameras
 - **Open File, drag and drop, or dragging a .mb onto the NOVA 3D icon now opens Maya binary (.mb) files** saved by Maya 2016 or newer (tested on a Maya 2026 file with 758,547 triangles: it opens in about one second).
 - **Meshes:** every polygon mesh is imported as its own object, named after its Maya transform, with the full parent/child transform chain (position, rotation in any rotate order, scale, pivots) applied. Polygons of any size are kept.

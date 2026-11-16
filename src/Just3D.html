@@ -413,20 +413,54 @@ function smoothObj(){const o=objs[sel];if(!o)return;const m=evaluate(o);if(!m.f.
  toast('Surface smoothed; the shape is kept. Change amount and the sharp-edge angle in the Smooth card (right panel); delete the card to undo.')}
 /* Skin: each point follows the nearest bones. On a biped skeleton only bones within two steps of the nearest one are used, so a finger never takes weight from its neighbour's far end and an arm never from the hip. */
 function hopTable(J){const n=J.length,D=[];for(let i=0;i<n;i++){D[i]=new Array(n).fill(99);D[i][i]=0}J.forEach((j,i)=>{if(j.parent>=0&&J[j.parent]){D[i][j.parent]=1;D[j.parent][i]=1}});for(let k=0;k<n;k++)for(let i=0;i<n;i++)for(let q=0;q<n;q++)if(D[i][k]+D[k][q]<D[i][q])D[i][q]=D[i][k]+D[k][q];return D}
+/* Skin weights live on the Skin card, per point: up to 4 bones each (0..255). Automatic weights are recomputed when the skeleton or the Skin settings change; painted weights are kept. */
+const WREG=new Map(),WID=new WeakMap();let wseq=0;
+function swTok(sw){let id=WID.get(sw);if(!id){id=++wseq;WID.set(sw,id)}WREG.set(id,sw);return{$W:id}}
+function u8b64(u){let s='';for(let i=0;i<u.length;i+=24576)s+=String.fromCharCode.apply(null,u.subarray(i,i+24576));return btoa(s)}
+function b64u8(s){const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
+const swPack=sw=>({nv:sw.nv,ji:u8b64(new Uint8Array(sw.ji.buffer,sw.ji.byteOffset,sw.ji.byteLength)),wt:u8b64(sw.wt)});
+function swUnpack(o){const j8=b64u8(o.ji);return{nv:o.nv,ji:new Uint16Array(j8.buffer,0,j8.length>>1),wt:b64u8(o.wt),auto:false}}
+const swClone=sw=>({nv:sw.nv,ji:sw.ji.slice(),wt:sw.wt.slice(),auto:false});
+const rigSig=()=>rig.joints.length+':'+rig.joints.map(j=>j.p.join(',')+(j.tip?'t'+j.tip.join(','):'')+'p'+j.parent).join('|');
+function swRead(sw,i){const r={},b=i*4;for(let k=0;k<4;k++){const w=sw.wt[b+k];if(w){const j=sw.ji[b+k];r[j]=(r[j]||0)+w/255}}return r}
+function swPut(sw,i,e){const b=i*4,q=e.map(x=>Math.round(x[1]*255));let d=255-q.reduce((a,x)=>a+x,0);q[0]+=d;for(let k=0;k<4;k++){if(k<e.length){sw.ji[b+k]=e[k][0];sw.wt[b+k]=q[k]}else{sw.ji[b+k]=0;sw.wt[b+k]=0}}}
+function swWrite(sw,i,r,grp){let e=Object.keys(r).map(k=>[+k,r[k]]).filter(x=>x[1]>1e-4).sort((a,b)=>b[1]-a[1]).slice(0,4);if(!e.length)e=[[0,1]];const s=e.reduce((a,x)=>a+x[1],0)||1;e=e.map(x=>[x[0],x[1]/s]);swPut(sw,i,e);const g=grp&&grp.get(i);if(g)g.forEach(q=>swPut(sw,q,e))}
+function autoWeights(m,o,p){const J=rig.joints,nv=m.v.length,nj=J.length,Mo=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),NB=Math.max(1,Math.round(p.blend)),fo=p.falloff,
+ kid=J.map((j,i)=>J.findIndex(k=>k.parent===i)),segB=J.map((j,i)=>boneSeg(J,i,kid)),bip=rig.meta&&rig.meta.biped,hop=bip?hopTable(J):null,rep=weldRep(m),dense=nv*nj<=3e6;
+ const ji=new Uint16Array(nv*4),wt=new Uint8Array(nv*4),D=dense?new Float32Array(nv*nj):null,dd=new Float64Array(nj),A=new Float64Array(nj*3),AB=new Float64Array(nj*3),L2=new Float64Array(nj);
+ for(let k=0;k<nj;k++){const a=J[k].p,b=segB[k];for(let c=0;c<3;c++){A[k*3+c]=a[c];AB[k*3+c]=b[c]-a[c]}L2[k]=AB[k*3]*AB[k*3]+AB[k*3+1]*AB[k*3+1]+AB[k*3+2]*AB[k*3+2]||1e-9}
+ for(let i=0;i<nv;i++){const q=mulv(Mo,m.v[i]),x=q[0]+o.pos[0],y=q[1]+o.pos[1],z=q[2]+o.pos[2];let n0=0,b0=1e30;
+  for(let k=0;k<nj;k++){const k3=k*3,ax=AB[k3],ay=AB[k3+1],az=AB[k3+2],t=Math.max(0,Math.min(1,((x-A[k3])*ax+(y-A[k3+1])*ay+(z-A[k3+2])*az)/L2[k])),d=Math.hypot(x-(A[k3]+ax*t),y-(A[k3+1]+ay*t),z-(A[k3+2]+az*t));dd[k]=d;if(d<b0){b0=d;n0=k}}
+  const pick=[];for(let k=0;k<nj;k++){if(hop&&hop[n0][k]>2)continue;const d=dd[k];if(pick.length<NB||d<pick[pick.length-1][1]){let a=pick.length;while(a>0&&pick[a-1][1]>d)a--;pick.splice(a,0,[k,d]);if(pick.length>NB)pick.pop()}}
+  const w=pick.map(([k,d])=>1/Math.pow(d+.05,fo)),sum=w.reduce((a,v)=>a+v,0)||1;
+  if(dense){const row=i*nj;pick.forEach(([k],a)=>{D[row+k]=w[a]/sum})}else{const e=pick.map(([k],a)=>[k,w[a]/sum]).slice(0,4),s2=e.reduce((a,x)=>a+x[1],0)||1;swPut({ji,wt},i,e.map(x=>[x[0],x[1]/s2]))}}
+ if(dense){
+  /* ease the weights along the surface so neighbouring points agree; a point never borrows from a part it is not connected to */
+  const deg=new Int32Array(nv+1),F=m.f;for(let fi=0;fi<F.length;fi++){const f=F[fi],n=f.length;for(let k=0;k<n;k++){const a=rep[f[k]],b=rep[f[(k+1)%n]];if(a<0||b<0||a===b)continue;deg[a+1]++;deg[b+1]++}}
+  for(let i=0;i<nv;i++)deg[i+1]+=deg[i];const pos=deg.slice(0,nv),nb=new Int32Array(deg[nv]);
+  for(let fi=0;fi<F.length;fi++){const f=F[fi],n=f.length;for(let k=0;k<n;k++){const a=rep[f[k]],b=rep[f[(k+1)%n]];if(a<0||b<0||a===b)continue;nb[pos[a]++]=b;nb[pos[b]++]=a}}
+  for(let pass=0;pass<2;pass++){const T=D.slice();for(let i=0;i<nv;i++){if(rep[i]!==i)continue;const s0=deg[i],s1=deg[i+1];if(s1===s0)continue;const row=i*nj,inv=.5/(s1-s0);
+    for(let k=0;k<nj;k++){let a=0;for(let q=s0;q<s1;q++)a+=T[nb[q]*nj+k];D[row+k]=T[row+k]*.5+a*inv}}}
+  for(let i=0;i<nv;i++){const r=rep[i];if(r>=0&&r!==i)D.copyWithin(i*nj,r*nj,r*nj+nj)}
+  for(let i=0;i<nv;i++){const row=i*nj,e=[];for(let k=0;k<nj;k++){const v=D[row+k];if(v>.004){let a=e.length;while(a>0&&e[a-1][1]<v)a--;if(a<4){e.splice(a,0,[k,v]);if(e.length>4)e.pop()}}}
+   if(!e.length)e.push([0,1]);const s2=e.reduce((a,x)=>a+x[1],0);swPut({ji,wt},i,e.map(x=>[x[0],x[1]/s2]))}}
+ return{nv,ji,wt,auto:true,sig:rigSig(),nb:NB,fo}}
 FOPS.Skin={p:{falloff:[2,.5,6,.1],blend:[3,1,6,1]},fn:(m,p,n)=>{const o=n.owner,J=rig.joints;if(!o||!J.length)return m;
- const{P,W}=rigPose(),Mo=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),NB=Math.round(p.blend),kid=J.map((j,i)=>J.findIndex(k=>k.parent===i)),segB=J.map((j,i)=>boneSeg(J,i,kid)),bip=rig.meta&&rig.meta.biped,hop=bip?hopTable(J):null;
- return mv(m,v=>{const q=mulv(Mo,v),w=[q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2]],ws=[];
-  J.forEach((j,i)=>{const a=j.p,b=segB[i],ab=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],l2=ab[0]*ab[0]+ab[1]*ab[1]+ab[2]*ab[2]||1e-9,
-   t=Math.max(0,Math.min(1,((w[0]-a[0])*ab[0]+(w[1]-a[1])*ab[1]+(w[2]-a[2])*ab[2])/l2));ws.push([i,Math.hypot(w[0]-(a[0]+ab[0]*t),w[1]-(a[1]+ab[1]*t),w[2]-(a[2]+ab[2]*t))])});
-  ws.sort((x,y)=>x[1]-y[1]);const n0=ws[0][0],cand=hop?ws.filter(q=>hop[n0][q[0]]<=2):ws;const use=cand.slice(0,NB).map(([i,d])=>[i,1/Math.pow(d+.05,p.falloff)]),sum=use.reduce((s,x)=>s+x[1],0)||1,r=[0,0,0];
-  use.forEach(([i,wt])=>{const t=mulv(W[i],[w[0]-J[i].p[0],w[1]-J[i].p[1],w[2]-J[i].p[2]]),k=wt/sum;r[0]+=k*(P[i][0]+t[0]);r[1]+=k*(P[i][1]+t[1]);r[2]+=k*(P[i][2]+t[2])});
-  return wl(o,[r[0]-o.pos[0],r[1]-o.pos[1],r[2]-o.pos[2]])})}};
+ const{P,W}=rigPose(),Mo=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),nv=m.v.length,nj=J.length;let sw=n.sw;
+ if(!sw||sw.nv!==nv)sw=n.sw=autoWeights(m,o,p);
+ else if(sw.auto&&(sw.sig!==rigSig()||sw.nb!==Math.max(1,Math.round(p.blend))||sw.fo!==p.falloff)&&!(drag&&drag.jm))sw=n.sw=autoWeights(m,o,p);
+ const out=new Array(nv),ji=sw.ji,wt=sw.wt;
+ for(let i=0;i<nv;i++){const q=mulv(Mo,m.v[i]),wx=q[0]+o.pos[0],wy=q[1]+o.pos[1],wz=q[2]+o.pos[2],b=i*4;let r0=0,r1=0,r2=0,tot=0;
+  for(let k=0;k<4;k++){const w8=wt[b+k];if(!w8)continue;const j=ji[b+k];if(j>=nj)continue;const kw=w8/255,Jp=J[j].p,t=mulv(W[j],[wx-Jp[0],wy-Jp[1],wz-Jp[2]]),Pj=P[j];r0+=kw*(Pj[0]+t[0]);r1+=kw*(Pj[1]+t[1]);r2+=kw*(Pj[2]+t[2]);tot+=kw}
+  if(tot<.999){const kw=1-tot;r0+=kw*wx;r1+=kw*wy;r2+=kw*wz}
+  out[i]=wl(o,[r0-o.pos[0],r1-o.pos[1],r2-o.pos[2]])}
+ return{v:out,f:m.f}}};
 const IMPRINT={p:{},fn:(m,p,n)=>n.path?imprint(m,n.path):m};
 const CONNECT={p:{},fn:(m,p,n)=>n.pairs?connectEdges(m,n.pairs):m};
 const TY={...GEN,...OPS,...FOPS,Edit:EDITOP,Imprint:IMPRINT,Connect:CONNECT};
 /* ---------- scene + dependency graph ---------- */
 const mk=t=>({type:t,on:true,out:null,dirty:true,off:t==='Edit'?{}:null,fl:null,p:Object.fromEntries(Object.entries(TY[t].p).map(([k,s])=>[k,s[0]]))});
-let cams=[],camSel=-1,camAct=-1,tgt=[0,0,0],gridOn=true,exNode=null,exSel=new Set();let uid=0,groups=[],gid2=0;const osel=new Set();const objs=[];let sel=0,mode=0,editMode=false,sub='pt',knife=false,kaOn=false,scOn=false,kn=null,drawOn=false,dw=null,odOn=false,odFree=false,od=null,odCand=null,ceOn=false,ce=null,ceCand=null,xf='select',axisK=null,multi=true,box=null,selEdges=new Set(),ringPrev=null,hoverK=null,paintOn=false,jointOn=false,sculptOn=false,sBrush='clay',sSize=60,sStr=.5,sHard=.35,sRes=6,sSub=false,sSym=false,sNow=false,sMode=null,sVF=null,sLast=null,sPos=null,sGrab=null,rig={joints:[],meta:null},rigSel=-1,jid=0,lastEdge=null,selPts=new Set(),stats={ran:0,hit:0};
+let cams=[],camSel=-1,camAct=-1,tgt=[0,0,0],gridOn=true,exNode=null,exSel=new Set();let uid=0,groups=[],gid2=0;const osel=new Set();const objs=[];let sel=0,mode=0,editMode=false,sub='pt',knife=false,kaOn=false,scOn=false,kn=null,drawOn=false,dw=null,odOn=false,odFree=false,od=null,odCand=null,ceOn=false,ce=null,ceCand=null,xf='select',axisK=null,multi=true,box=null,selEdges=new Set(),ringPrev=null,hoverK=null,paintOn=false,wpOn=false,wpMode='add',wpSize=44,wpStr=.4,wpMir=true,wpRev=0,wpS=null,wpHC=new Map(),jointOn=false,sculptOn=false,sBrush='clay',sSize=60,sStr=.5,sHard=.35,sRes=6,sSub=false,sSym=false,sNow=false,sMode=null,sVF=null,sLast=null,sPos=null,sGrab=null,rig={joints:[],meta:null},rigSel=-1,jid=0,lastEdge=null,selPts=new Set(),stats={ran:0,hit:0};
 /* new objects go to the dead center of the scene: their bounding box is centered on the world origin */
 function centerNew(o){const m=evaluate(o),mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];m.f.flat().forEach(i=>{for(let k=0;k<3;k++){mn[k]=Math.min(mn[k],m.v[i][k]);mx[k]=Math.max(mx[k],m.v[i][k])}});if(mn[0]>mx[0])return o;o.pos=[0,1,2].map(k=>-+((mn[k]+mx[k])/2).toFixed(5));return o}
 function addObj(type,x,ops=[]){const o={name:type+(++uid),pos:[x,0,0],rot:[0,0,0],sc:[1,1,1],hue:0,color:['#3aa393','#c9783a','#4a7fd1','#c9a93a','#b5559c'][uid%5],fc:{},nodes:[mk(type),...ops.map(mk)]};objs.push(o);sel=objs.length-1;osel.clear();selPts.clear();return o}
@@ -434,9 +468,9 @@ function dirtyFrom(o,i){for(let j=i;j<o.nodes.length;j++)o.nodes[j].dirty=true}
 const editNode=o=>{const n=o&&o.nodes[o.nodes.length-1];return n&&n.type==='Edit'?n:undefined};
 function ensureEdit(o){let n=editNode(o);if(!n){n=mk('Edit');o.nodes.push(n)}return n}
 function setTool(t){if(t==='ce'&&objs[sel]){const m=evaluate(objs[sel]);if(m&&m.f&&m.f.length>=HEAVY_MIN&&gpuOn&&GL&&!GL.lost){toast('This model has '+m.f.length.toLocaleString()+' polygons, which is too many for '+'Add loop edge'+' to stay responsive. Use Loop cut (Component mode) to add loops on a model this size.');return}}
- const same=t==='sepcut'?scOn:t==='ce'?ceOn:t==='karea'?knife&&kaOn:t==='odraw'?odOn&&!odFree:t==='fdraw'?odOn&&odFree:t==='draw'?drawOn:t==='knife'?knife&&!kaOn&&!scOn:t==='paint'?paintOn:t==='joint'?jointOn:t==='sculpt'?sculptOn:(editMode&&sub===t);editMode=false;knife=false;kaOn=false;scOn=false;paintOn=false;jointOn=false;sculptOn=false;kn=null;drawOn=false;dw=null;odOn=false;odFree=false;od=null;odCand=null;ceOn=false;ce=null;ceCand=null;selPts.clear();
- if(!same&&t){if(t==='ce')ceOn=true;else if(t==='odraw')odOn=true;else if(t==='fdraw'){odOn=true;odFree=true}else if(t==='draw')drawOn=true;else if(t==='knife')knife=true;else if(t==='karea'){knife=true;kaOn=true}else if(t==='sepcut'){knife=true;scOn=true}else if(t==='sculpt')sculptOn=true;else if(t==='joint')jointOn=true;else if(t==='paint')paintOn=true;else{editMode=true;sub=t;if(xf==='select')setXf('move')}}
- $('#tpt').classList.toggle('on',editMode&&sub==='pt');$('#tfc').classList.toggle('on',editMode&&sub==='face');$('#tkn').classList.toggle('on',knife);$('#tdg').classList.toggle('on',editMode&&sub==='edge');$('#tlp').classList.toggle('on',editMode&&sub==='loop');$('#tpn').classList.toggle('on',paintOn);ringPrev=null;hoverK=null}
+ const same=t==='sepcut'?scOn:t==='ce'?ceOn:t==='karea'?knife&&kaOn:t==='odraw'?odOn&&!odFree:t==='fdraw'?odOn&&odFree:t==='draw'?drawOn:t==='knife'?knife&&!kaOn&&!scOn:t==='paint'?paintOn&&!wpOn:t==='wpaint'?wpOn:t==='joint'?jointOn:t==='sculpt'?sculptOn:(editMode&&sub===t);editMode=false;knife=false;kaOn=false;scOn=false;paintOn=false;wpOn=false;jointOn=false;sculptOn=false;kn=null;drawOn=false;dw=null;odOn=false;odFree=false;od=null;odCand=null;ceOn=false;ce=null;ceCand=null;selPts.clear();
+ if(!same&&t){if(t==='ce')ceOn=true;else if(t==='odraw')odOn=true;else if(t==='fdraw'){odOn=true;odFree=true}else if(t==='draw')drawOn=true;else if(t==='knife')knife=true;else if(t==='karea'){knife=true;kaOn=true}else if(t==='sepcut'){knife=true;scOn=true}else if(t==='sculpt')sculptOn=true;else if(t==='joint')jointOn=true;else if(t==='paint')paintOn=true;else if(t==='wpaint'){paintOn=true;wpOn=true}else{editMode=true;sub=t;if(xf==='select')setXf('move')}}
+ $('#tpt').classList.toggle('on',editMode&&sub==='pt');$('#tfc').classList.toggle('on',editMode&&sub==='face');$('#tkn').classList.toggle('on',knife);$('#tdg').classList.toggle('on',editMode&&sub==='edge');$('#tlp').classList.toggle('on',editMode&&sub==='loop');$('#tpn').classList.toggle('on',paintOn&&!wpOn);ringPrev=null;hoverK=null}
 /* lazy evaluation: a node recomputes only if it or anything upstream changed */
 function evaluate(o){let cur=null;
  o.nodes.forEach((n,i)=>{
@@ -504,7 +538,7 @@ GP.line=(a,za,b,zb,c)=>{GP.L.push(a[0],a[1],gpuZ(za),c[0],c[1],c[2],c[3],b[0],b[
 const om=o=>o.dm!==undefined?o.dm:mode,oa=o=>o.op!==undefined?o.op:1;
 function gpuPolys(polys,acc){const A=hexRgb(acc).map(v=>v/255);
  for(const p of polys){const o=objs[p.oi],isel=p.oi===sel||osel.has(o),m=om(o),al=oa(o),wire=m>0||editMode||knife||ceOn,fill=m<2||sculptOn||(editMode&&m!==2);
-  if(fill){let c;if(m===2)c=[6/255,6/255,6/255,al];else{const C=hexRgb((o.fc&&o.fc[p.fi])||o.color),f=(.3+.7*p.sh)*(isel?1:.88);c=[Math.min(1,C[0]*f/255),Math.min(1,C[1]*f/255),Math.min(1,C[2]*f/255),al]}
+  if(fill){let c;if(m===2)c=[6/255,6/255,6/255,al];else{const C=hexRgb(fcol(o,p.fi)),f=(.3+.7*p.sh)*(isel?1:.88);c=[Math.min(1,C[0]*f/255),Math.min(1,C[1]*f/255),Math.min(1,C[2]*f/255),al]}
    if(editMode&&sub==='face'&&p.oi===sel&&selPts.has(p.fi))c=[c[0]*.4+A[0]*.6,c[1]*.4+A[1]*.6,c[2]*.4+A[2]*.6,al];GP.tri(p.pts,p.zs,c,p.tri)}
   else if(editMode&&m===2&&sub==='face'&&p.oi===sel&&selPts.has(p.fi))GP.tri(p.pts,p.zs,[A[0],A[1],A[2],.45*al],p.tri);
   if(wire){const c=isel?[A[0],A[1],A[2],al]:[.63,.67,.72,.55*al],n=p.pts.length;for(let i=0;i<n;i++){const j=(i+1)%n;GP.line(p.pts[i],p.zs[i],p.pts[j],p.zs[j],c)}}}}
@@ -523,7 +557,7 @@ function heavyProg(gl){if(GL.hprog)return GL.hprog;
 function heavyWriter(buf,o,m,tint){const V=m.v,F=m.f,fl=new Float32Array(buf),i16=new Int16Array(buf),u8=new Uint8Array(buf),col=new Map(),rgb=h=>{let c=col.get(h);if(!c){c=hexRgb(h);col.set(h,c)}return c};
  return(fi,w)=>{const f=F[fi];if(!f)return w;const n=f.length;if(n<3)return w;
   let nx=0,ny=0,nz=0;for(let k=0;k<n;k++){const u=V[f[k]],q2=V[f[(k+1)%n]];nx+=(u[1]-q2[1])*(u[2]+q2[2]);ny+=(u[2]-q2[2])*(u[0]+q2[0]);nz+=(u[0]-q2[0])*(u[1]+q2[1])}
-  const L=Math.hypot(nx,ny,nz)||1,qx=Math.round(nx/L*32767),qy=Math.round(ny/L*32767),qz=Math.round(nz/L*32767);let C=rgb((o.fc&&o.fc[fi])||o.color);if(tint)C=[C[0]*.4+tint[0]*.6,C[1]*.4+tint[1]*.6,C[2]*.4+tint[2]*.6];
+  const L=Math.hypot(nx,ny,nz)||1,qx=Math.round(nx/L*32767),qy=Math.round(ny/L*32767),qz=Math.round(nz/L*32767);let C=rgb(fcol(o,fi));if(tint)C=[C[0]*.4+tint[0]*.6,C[1]*.4+tint[1]*.6,C[2]*.4+tint[2]*.6];
   const put=j=>{const a=V[f[j]],b=w*6,q3=w*12,r=w*24;fl[b]=a[0];fl[b+1]=a[1];fl[b+2]=a[2];i16[q3+6]=qx;i16[q3+7]=qy;i16[q3+8]=qz;u8[r+20]=C[0];u8[r+21]=C[1];u8[r+22]=C[2];u8[r+23]=255;w++};
   if(n===3){put(0);put(1);put(2)}else if(n===4){put(0);put(1);put(2);put(0);put(2);put(3)}else for(const t of triFace(f,V)){put(t[0]);put(t[1]);put(t[2])}
   return w}}
@@ -740,7 +774,7 @@ function draw(){
  polys.sort((p,q)=>q.z-p.z);const bigD=hvAll.map(r=>{r.P=projAll(r.o,r.m);return{PX:r.P.PX,PY:r.P.PY,PZ:r.P.PZ,f:r.m.f}});if((editMode||sculptOn||paintOn)&&!((sculptOn||paintOn)&&drag&&(drag.sc||drag.pn)&&draw.zb&&bigD.length&&draw.zb.big))buildDepth(polys,W,H,bigD);else if(!(editMode||sculptOn||paintOn))draw.zb=null;
  g.lineJoin='round';
  if(useGPU)gpuPolys(polys,acc);else for(const p of polys){const o=objs[p.oi],m=om(o),al=oa(o);g.globalAlpha=al;g.beginPath();p.pts.forEach((s,i)=>i?g.lineTo(s[0],s[1]):g.moveTo(s[0],s[1]));g.closePath();
-  if(m<2||sculptOn||(editMode&&m!==2)){const C=hexRgb((o.fc&&o.fc[p.fi])||o.color),f=(.3+.7*p.sh)*(p.oi===sel||osel.has(o)?1:.88);g.fillStyle=m===2?'#060606':`rgb(${C[0]*f|0},${C[1]*f|0},${C[2]*f|0})`;g.fill()}
+  if(m<2||sculptOn||(editMode&&m!==2)){const C=hexRgb(fcol(o,p.fi)),f=(.3+.7*p.sh)*(p.oi===sel||osel.has(o)?1:.88);g.fillStyle=m===2?'#060606':`rgb(${C[0]*f|0},${C[1]*f|0},${C[2]*f|0})`;g.fill()}
   if(m>0||editMode||knife||ceOn){g.strokeStyle=(p.oi===sel||osel.has(o))?acc:'rgba(160,170,180,.55)';g.lineWidth=.6;g.stroke()}
   else if(m===0){g.strokeStyle=g.fillStyle;g.lineWidth=.5;g.stroke()}
   if(editMode&&sub==='face'&&p.oi===sel&&selPts.has(p.fi)){g.globalAlpha=.6*al;g.fillStyle=acc;g.fill()}g.globalAlpha=1}
@@ -808,7 +842,7 @@ function draw(){
     else{g.beginPath();A.ring.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.stroke();g.lineWidth=1;g.globalAlpha=.55;g.beginPath();g.moveTo(ps[0],ps[1]);g.lineTo(A.tip[0],A.tip[1]);g.stroke();g.globalAlpha=1}
     {const dx=A.tip[0]-ps[0],dy=A.tip[1]-ps[1],dl=Math.hypot(dx,dy)||1;g.font='bold 12px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.lineWidth=3;g.strokeStyle='rgba(0,0,0,.75)';g.strokeText('XYZ'[k],A.tip[0]+dx/dl*14,A.tip[1]+dy/dl*14);g.fillStyle=cols[k];g.fillText('XYZ'[k],A.tip[0]+dx/dl*14,A.tip[1]+dy/dl*14);g.textAlign='left';g.textBaseline='alphabetic'}});
    if(xe()==='scale'){g.fillStyle='#fff';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#888';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else if(xe()==='move'){g.fillStyle='#ffe066';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#5a4a00';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else{g.beginPath();g.arc(ps[0],ps[1],3.5,0,TAU);g.fillStyle='#fff';g.fill()}}}
- if(sculptOn&&sPos&&!draw.hed){g.strokeStyle=acc;g.lineWidth=1.5;g.beginPath();g.arc(sPos.x,sPos.y,sSize,0,TAU);g.stroke();g.globalAlpha=.5;g.beginPath();g.arc(sPos.x,sPos.y,sSize*.5,0,TAU);g.stroke();g.globalAlpha=1}
+ if((sculptOn||wpOn)&&sPos&&!draw.hed){const bs=wpOn?wpSize:sSize;g.strokeStyle=acc;g.lineWidth=1.5;g.beginPath();g.arc(sPos.x,sPos.y,bs,0,TAU);g.stroke();g.globalAlpha=.5;g.beginPath();g.arc(sPos.x,sPos.y,bs*.5,0,TAU);g.stroke();g.globalAlpha=1}
  if(box){g.setLineDash([4,3]);g.strokeStyle=box.hl?'#f2c230':box.sc?'#e0701b':box.sub?'#e5484d':acc;g.lineWidth=1;g.strokeRect(box.x0,box.y0,box.x1-box.x0,box.y1-box.y0);g.setLineDash([])}
  if(rig.joints.length&&!recOn){const jp=rigPose().P.map(p=>{const s=scr(view(p[0],p[1],p[2]));return[s[0],s[1]]}),colJ=j=>j.name.startsWith('L_')?'#4aa3ff':j.name.startsWith('R_')?'#ff6b6b':'#f2b01e';
   g.lineWidth=2;rig.joints.forEach((j,i)=>{if(j.parent>=0&&jp[j.parent]){g.strokeStyle=colJ(j);g.beginPath();g.moveTo(jp[j.parent][0],jp[j.parent][1]);g.lineTo(jp[i][0],jp[i][1]);g.stroke()}
@@ -890,7 +924,7 @@ document.addEventListener('click',e=>{const t=e.target,d=t.dataset,o=objs[sel];
  else if(d.sa){const en=editNode(o);if(en&&en.rep){if(sub==='face')en.out.f.forEach((_,i)=>selPts.add(i));else en.rep.forEach((r,i)=>r===i&&selPts.add(i))}all()}
  else if(d.jsel!==undefined){rigSel=+d.jsel;panels();draw()}
  else if(d.mp!==undefined)mouthPose(d.mp);
- else if(d.rg){const v=d.v;if(d.rg==='fit')startFit();else if(d.rg==='part'){rigSel=+v;panels();draw()}else if(d.rg==='resetj'){const j=rig.joints[rigSel];if(j){j.rot=[0,0,0];if(j.parent<0||isOffJ(j.name))j.off=null;skinDirty();tlAutoKey(isFace(j.name)?'face':'body');panels();draw();commit()}}
+ else if(d.rg){const v=d.v;if(d.rg==='fit')startFit();else if(d.rg==='bind'){bindSkin();commit()}else if(d.rg==='bindall'){bindSkin(false,true);commit()}else if(d.rg==='wpt')wpTool();else if(d.rg==='wpm'){wpMode=v;panels()}else if(d.rg==='wpmir'){wpMir=t.checked}else if(d.rg==='rebind')resetWeights();else if(d.rg==='wsmooth')wpSmoothAll();else if(d.rg==='unbind'){unbindSkin();commit()}else if(d.rg==='part'){rigSel=+v;panels();draw()}else if(d.rg==='resetj'){const j=rig.joints[rigSel];if(j){j.rot=[0,0,0];if(j.parent<0||isOffJ(j.name))j.off=null;skinDirty();tlAutoKey(isFace(j.name)?'face':'body');panels();draw();commit()}}
   else if(d.rg==='hside'){handSide=v;panels()}else if(d.rg==='hpose')handPose(v);else if(d.rg==='mpose')mirrorPose(v);else if(d.rg==='reset')resetPose();else if(d.rg==='clear')clearRig();else if(d.rg==='mirror'){rigMirror=t.checked}else if(d.rg==='mouth')startMouth();else if(d.rg==='keymouth')keyMouth();else if(d.rg==='clearmouth')clearMouthKeys();else if(d.rg==='rmmouth')removeMouth();else if(d.rg==='lipsync'){const ta=$('#liptext');if(ta)lipText=ta.value;lipSyncText(lipText,lipCps)}else if(d.rg==='audio')audPick();else if(d.rg==='flap')jawFlap();else if(d.rg==='rmaudio'){tlStop();audioStop();animAudio=null;tlSig='';tlRender();panels()}else if(d.rg==='mode'){rigMode=v;panels();draw()}else if(d.rg==='plant'){rigPlant=t.checked}}
  else if(d.sw){o.color=d.sw;all()}
  else if(d.pf&&sub==='face'){paintFaces(false)}
@@ -916,6 +950,7 @@ document.addEventListener('input',e=>{const t=e.target,d=t.dataset,o=objs[sel];i
   const sl=t.parentElement.querySelector('input[type=range]');if(sl)sl.value=v;dirtyFrom(o,i);draw()}
  else if(d.pos!==undefined){o.pos[+d.pos]=+t.value;t.nextElementSibling.textContent=t.value;draw()}
  else if(d.rot!==undefined){o.rot[+d.rot]=+t.value;t.nextElementSibling.textContent=t.value;draw()}
+ else if(d.wp!==undefined){const v=+t.value;if(d.wp==='size')wpSize=v;else wpStr=v;t.nextElementSibling.textContent=v;draw()}
  else if(d.mc!==undefined){tlStop();mouthSet(d.mc,+t.value);t.nextElementSibling.textContent=(+t.value).toFixed(2)}
  else if(d.jo!==undefined){const j=rig.joints[rigSel];if(j){tlStop();j.off=j.off||[0,0,0];j.off[+d.jo]=+t.value;t.nextElementSibling.textContent=t.value;skinDirty();draw()}}
  else if(d.jr!==undefined){const j=rig.joints[rigSel];if(j){tlStop();j.rot[+d.jr]=+t.value;clampJ(j);t.nextElementSibling.textContent=t.value;skinDirty();draw()}}
@@ -1714,7 +1749,10 @@ const CMDS=[
  {g:'Animation',l:'Play / stop animation',k:'Alt+L',en:()=>rig.joints.length>0,f:tlPlayToggle,on:()=>!!tlPlay},
  {g:'Animation',l:'Make cycle (mirror at halfway)',en:()=>!!(rig.meta&&rig.meta.biped),f:makeCycle},
  {g:'Rigging',l:'Joint tool (click to place)',k:'J',f:()=>{setTool('joint');all()},on:()=>jointOn},
- {g:'Rigging',l:'Bind skin to skeleton',k:'Shift+K',en:()=>need()&&rig.joints.length>0,f:bindSkin},
+ {g:'Rigging',l:'Bind skin to skeleton',k:'Shift+K',en:need,f:()=>bindSkin()},
+ {g:'Rigging',l:'Paint weights',k:'Shift+P',en:()=>need()&&rig.joints.length>0,f:wpTool,on:()=>wpOn},
+ {g:'Rigging',l:'Smooth weights',en:()=>hasSkin(),f:()=>wpSmoothAll()},
+ {g:'Rigging',l:'Reset weights to automatic',en:()=>hasSkin(),f:resetWeights},
  {g:'Rigging',l:'Remove skin',k:'Shift+U',en:()=>hasSkin(),f:unbindSkin},
  {g:'Rigging',l:'Delete joint',k:'Shift+X',en:()=>rigSel>=0&&!!rig.joints[rigSel],f:delJoint},
  {g:'Rigging',l:'Reset pose',k:'Shift+J',en:()=>rig.joints.length>0,f:resetPose},
@@ -1793,12 +1831,12 @@ let curFile={name:'',handle:null,saved:null};
 const MREG=new Map(),MID=new WeakMap();let mseq=0;const BIGM=20000;
 function meshTok(m){let id=MID.get(m);if(!id){id=++mseq;MID.set(m,id)}MREG.set(id,m);return {$M:id}}
 function meshMem(){let t=0;MREG.forEach(m=>{t+=(m.v.length+m.f.length)*50});return t}
-function pruneMeshes(){if(!MREG.size)return;const used=new Set(),sc=x=>{const re=/"\$M":(\d+)/g;let r;while((r=re.exec(x)))used.add(+r[1])};undoSt.forEach(sc);redoSt.forEach(sc);sc(lastSnap);if(curFile&&curFile.saved)sc(curFile.saved);[...MREG.keys()].forEach(k=>{if(!used.has(k))MREG.delete(k)})}
+function pruneMeshes(){if(!MREG.size&&!WREG.size)return;const um=new Set(),uw=new Set(),sc=x=>{const re=/"\$([MW])":(\d+)/g;let r;while((r=re.exec(x)))(r[1]==='M'?um:uw).add(+r[2])};undoSt.forEach(sc);redoSt.forEach(sc);sc(lastSnap);if(curFile&&curFile.saved)sc(curFile.saved);[...MREG.keys()].forEach(k=>{if(!um.has(k))MREG.delete(k)});[...WREG.keys()].forEach(k=>{if(!uw.has(k))WREG.delete(k)})}
 function snap(full){return JSON.stringify({v:1,rig:rig.joints,rigm:rig.meta,anim:anim&&Object.keys(anim.keys).length?anim:undefined,groups:groups,cams:cams,objs:objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name,pos:o.pos,rot:o.rot,sc:o.sc||[1,1,1],color:o.color,fc:o.fc,cnm:o.cnm&&Object.keys(o.cnm).length?o.cnm:undefined,dm:o.dm,op:o.op,
- nodes:o.nodes.filter(n=>!(n.type==='Edit'&&!Object.keys(n.off).length)).map(n=>({type:n.type,on:n.on,p:n.p,off:n.off,fl:n.fl,edge:n.edge||null,mesh:n.mesh?(full||n.mesh.v.length+n.mesh.f.length<BIGM?n.mesh:meshTok(n.mesh)):null,path:n.path||null,pairs:n.pairs||null}))}))})}
+ nodes:o.nodes.filter(n=>!(n.type==='Edit'&&!Object.keys(n.off).length)).map(n=>({type:n.type,on:n.on,p:n.p,off:n.off,fl:n.fl,edge:n.edge||null,mesh:n.mesh?(full||n.mesh.v.length+n.mesh.f.length<BIGM?n.mesh:meshTok(n.mesh)):null,path:n.path||null,pairs:n.pairs||null,sw:n.type==='Skin'&&n.sw&&!n.sw.auto?(full?swPack(n.sw):swTok(n.sw)):undefined}))}))})}
 function restore(s){const sc=JSON.parse(s);if(!sc||!Array.isArray(sc.objs))throw new Error('bad scene');
  const next=sc.objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name||'Object',pos:o.pos||[0,0,0],rot:o.rot||[0,0,0],sc:o.sc||[1,1,1],hue:0,color:o.color||'#3aa393',fc:o.fc||{},cnm:o.cnm||{},dm:o.dm,op:o.op,
-  nodes:(o.nodes||[]).filter(n=>TY[n.type]).map(n=>{const k=mk(n.type);Object.assign(k.p,n.p||{});k.on=n.on!==false;if(n.off)k.off=n.off;k.fl=n.fl||null;if(n.edge)k.edge=n.edge;if(n.mesh){if(n.mesh.$M){k.mesh=MREG.get(n.mesh.$M);if(!k.mesh)throw new Error('bad scene')}else k.mesh=n.mesh}if(n.path)k.path=n.path;if(n.pairs)k.pairs=n.pairs;return k})}));
+  nodes:(o.nodes||[]).filter(n=>TY[n.type]).map(n=>{const k=mk(n.type);Object.assign(k.p,n.p||{});k.on=n.on!==false;if(n.off)k.off=n.off;k.fl=n.fl||null;if(n.edge)k.edge=n.edge;if(n.mesh){if(n.mesh.$M){k.mesh=MREG.get(n.mesh.$M);if(!k.mesh)throw new Error('bad scene')}else k.mesh=n.mesh}if(n.path)k.path=n.path;if(n.pairs)k.pairs=n.pairs;if(n.sw){k.sw=n.sw.$W?WREG.get(n.sw.$W):swUnpack(n.sw);if(!k.sw)throw new Error('bad scene')}return k})}));
  if(!next.every(o=>o.nodes.length&&GEN[o.nodes[0].type]))throw new Error('bad scene');
  objs.length=0;next.forEach(o=>objs.push(o));rig.joints=(sc.rig||[]).map(j=>({...j,rot:j.rot||[0,0,0]}));rig.meta=sc.rigm||null;anim=sc.anim?{fps:24,len:48,frame:0,keys:{},loop:true,ease:'smooth',...sc.anim}:{fps:24,len:48,frame:0,keys:{},loop:true,ease:'smooth'};animRev++;tlStop();groups=(sc.groups||[]).map(g=>({id:g.id,name:g.name,open:g.open!==false}));gid2=groups.reduce((m,g)=>Math.max(m,g.id),0);cams=(sc.cams||[]).map(c=>({name:c.name||'camera',tgt:c.tgt||[0,0,0],yaw:c.yaw||0,pitch:c.pitch||0,dist:c.dist||9,pan:c.pan||[0,0],f:c.f||35}));if(camSel>=cams.length)camSel=-1;if(camAct>=cams.length){camAct=-1;tgt=[0,0,0]}osel.clear();rigSel=-1;sel=Math.min(sel,Math.max(0,objs.length-1));selPts.clear();selEdges.clear();ringPrev=null;all()}
 function commit(){softCache=null;const s=snap();if(s!==lastSnap){undoSt.push(lastSnap);undoSel.push(preSel||selState());if(undoSt.length>100){undoSt.shift();undoSel.shift()}redoSt.length=0;redoSel.length=0;lastSnap=s;while(undoSt.length>1&&undoSt.reduce((a,x)=>a+x.length,0)+lastSnap.length+meshMem()>6e8){undoSt.shift();undoSel.shift();pruneMeshes()}pruneMeshes()}updateFname()}
@@ -2085,14 +2123,22 @@ function jointClick(e){drag.jn=true;const r=cv.getBoundingClientRect(),x=e.clien
 function delJoint(){if(rigSel<0||!rig.joints[rigSel])return;const J=rig.joints,rm=new Set([rigSel]);let ch=true;
  while(ch){ch=false;J.forEach((j,i)=>{if(!rm.has(i)&&rm.has(j.parent)){rm.add(i);ch=true}})}
  const map=new Map();let k=0;J.forEach((j,i)=>{if(!rm.has(i))map.set(i,k++)});
- rig.joints=J.filter((j,i)=>!rm.has(i)).map(j=>({...j,parent:j.parent<0?-1:map.get(j.parent)}));rigSel=-1;skinDirty();panels();draw()}
+ skinRemap(i=>map.has(i)?map.get(i):-1);rig.joints=J.filter((j,i)=>!rm.has(i)).map(j=>({...j,parent:j.parent<0?-1:map.get(j.parent)}));rigSel=-1;skinDirty();panels();draw()}
 const hasAnySkinOrRig=()=>rig.joints.length>0;
 const hasSkin=()=>{const o=objs[sel];return !!(o&&o.nodes.some(n=>n.type==='Skin'))};
-function skinDirty(){objs.forEach(o=>{const i=o.nodes.findIndex(n=>n.type==='Skin');if(i>=0)dirtyFrom(o,i)})}
-function bindSkin(){const o=objs[sel];if(!o)return;if(!rig.joints.length){toast('Add joints first: use Auto-rig biped, or the Joint tool (J)');return}
- const list=[o,...osel].filter((q,i,a)=>q&&objs.includes(q)&&a.indexOf(q)===i&&!q.nodes.some(n=>n.type==='Skin'));if(!list.length){toast('The selected object is already bound');return}
- list.forEach(q=>{const nn=mk('Skin'),L=q.nodes.length-1;if(q.nodes[L].type==='Edit'){q.nodes.splice(L,0,nn);dirtyFrom(q,L)}else q.nodes.push(nn)});if(rig.meta&&rig.meta.biped)rigMode='pose';all();toast('Bound '+list.length+' object'+(list.length>1?'s':'')+' to the skeleton. Pose mode is on: drag a hand or foot (IK) or the hips, use the sliders, or set keys on the timeline. Change falloff/blend in the Skin card (blend 1 = rigid parts, good for robots and armour).')}
-function unbindSkin(){const o=objs[sel];if(!o)return;const i=o.nodes.findIndex(n=>n.type==='Skin');if(i<0)return;o.nodes.splice(i,1);dirtyFrom(o,i);all()}
+function skinDirty(wipe){objs.forEach(o=>{const i=o.nodes.findIndex(n=>n.type==='Skin');if(i>=0){if(wipe)o.nodes[i].sw=null;dirtyFrom(o,i)}})}
+/* bones were deleted: painted weights follow the surviving bones (a point left with none goes to the first bone) */
+function skinRemap(f){objs.forEach(o=>o.nodes.forEach(n=>{if(n.type!=='Skin'||!n.sw||n.sw.auto)return;const sw=swClone(n.sw);for(let i=0;i<sw.nv;i++){const r=swRead(n.sw,i),q={};for(const k in r){const t=f(+k);if(t>=0)q[t]=(q[t]||0)+r[k]}swWrite(sw,i,q)}n.sw=sw}))}
+let bindAfterFit=false;
+/* one click: with no skeleton yet it starts the auto-rig and binds the model when the rig is done; otherwise it binds the selected model(s) with automatic weights */
+function bindSkin(quiet,every){const o=objs[sel];if(!o)return false;
+ if(!rig.joints.length){bindAfterFit=true;toast('There is no skeleton yet, so Auto-rig biped is starting. Click the points it asks for; your model is bound the moment the skeleton is done.');startFit();return false}
+ const base=every===true?objs.filter(q=>!q.hid):skinTargets(),list=base.filter((q,i,a)=>q&&objs.includes(q)&&a.indexOf(q)===i&&!q.nodes.some(n=>n.type==='Skin'));if(!list.length){if(quiet!==true)toast('That model is already bound. Use Paint weights to fix the skin, or Reset weights to go back to automatic ones.');return true}
+ list.forEach(q=>{const nn=mk('Skin'),L=q.nodes.length-1;if(q.nodes[L].type==='Edit'){q.nodes.splice(L,0,nn);dirtyFrom(q,L)}else q.nodes.push(nn)});if(quiet!==true){if(rig.meta&&rig.meta.biped)rigMode='pose'}all();
+ if(quiet!==true)toast('Bound '+list.length+' object'+(list.length>1?'s':'')+' to the skeleton with automatic weights. Pose mode is on: drag a hand or foot (IK) or the hips. If a part bends wrongly, press Paint weights and brush it right.');
+ return true}
+function unbindSkin(){const L=skinTargets();let n=0;L.forEach(o=>{const i=o.nodes.findIndex(n=>n.type==='Skin');if(i<0)return;o.nodes.splice(i,1);dirtyFrom(o,i);n++});if(wpOn)setTool(null);all()}
+function resetWeights(){const L=skinTargets();let k=0;L.forEach(o=>{const i=o.nodes.findIndex(n=>n.type==='Skin');if(i<0)return;o.nodes[i].sw=null;dirtyFrom(o,i);k++});if(!k){toast('Bind the model first');return}wpRev++;all();commit();toast('Weights are automatic again.')}
 function resetPose(){tlStop();rig.joints.forEach(j=>{j.rot=[0,0,0];if(j.off)j.off=null});skinDirty();tlAutoKey('all');panels();draw()}
 function mouthCard(){
  if(!hasMouth())return'<div class="sec">Mouth and phonemes</div><div class="card"><div style="font-size:12px;opacity:.85;margin-bottom:4px">Adds lip, mouth-corner and tongue joints so you can pose every speech sound. Works on cartoon, realistic and creature faces: you click the mouth corners, the middle of the upper and lower lip, and the tongue tip.</div><label><input type="checkbox" id="rgmt" '+(rigMouthTongue?'checked':'')+'> Include a tongue</label><button data-rg="mouth" style="margin-top:6px">Set up mouth</button></div>';
@@ -2112,7 +2158,7 @@ function jointCard(){const J=rig.joints,meta=rig.meta,bip=!!(meta&&meta.biped);
   '<button data-rg="fit" style="margin-top:6px">Start auto-rig</button></div><div style="font-size:12px;opacity:.8;margin:6px 0">Or place joints one at a time with the Joint tool (J).</div>'}
  const dep=i=>{let d=0,k=J[i].parent;while(k>=0&&J[k]&&d<50){d++;k=J[k].parent}return d},S=J[rigSel];
  const mj=n=>/^[LR]_MouthCorner$|^Lip_|^Tongue$/.test(n),vis=(j)=>{if(mj(j.name))return !!(S&&(S.name==='Jaw'||S.name==='Head'||mj(S.name)));if(!j.finger)return true;return !!(S&&((S.finger&&S.hand===j.hand)||S.name===j.hand+'_Hand'))};
- let h='';if(bip&&hasAnySkinOrRig()){h+='<div class="sec">Mode</div><div class="card"><div class="row" style="gap:4px"><button data-rg="mode" data-v="adjust" class="'+(rigMode==='adjust'?'on':'')+'">Adjust joints</button><button data-rg="mode" data-v="pose" class="'+(rigMode==='pose'?'on':'')+'">Pose (IK)</button></div><div style="font-size:12px;opacity:.85;margin:4px 0">'+(rigMode==='pose'?'Drag a hand or foot: the arm or leg follows (IK). Drag the hips to move the whole body.':'Drag joints to fit the skeleton to your model. Switch to Pose to animate.')+'</div><label><input type="checkbox" data-rg="plant" '+(rigPlant?'checked':'')+'> Keep feet planted when moving the hips</label></div>'}
+ let h=skinCard();if(bip&&hasAnySkinOrRig()){h+='<div class="sec">Mode</div><div class="card"><div class="row" style="gap:4px"><button data-rg="mode" data-v="adjust" class="'+(rigMode==='adjust'?'on':'')+'">Adjust joints</button><button data-rg="mode" data-v="pose" class="'+(rigMode==='pose'?'on':'')+'">Pose (IK)</button></div><div style="font-size:12px;opacity:.85;margin:4px 0">'+(rigMode==='pose'?'Drag a hand or foot: the arm or leg follows (IK). Drag the hips to move the whole body.':'Drag joints to fit the skeleton to your model. Switch to Pose to animate.')+'</div><label><input type="checkbox" data-rg="plant" '+(rigPlant?'checked':'')+'> Keep feet planted when moving the hips</label></div>'}
  h+='<div class="sec">Skeleton</div>';
  if(bip){h+='<div class="row" style="flex-wrap:wrap;gap:4px">'+[['Body','Hips'],['Head','Head'],['Jaw','Jaw'],['L Arm','L_UpperArm'],['R Arm','R_UpperArm'],['L Hand','L_Hand'],['R Hand','R_Hand'],['L Leg','L_UpperLeg'],['R Leg','R_UpperLeg']].map(([t,n])=>{const i=J.findIndex(j=>j.name===n);return i<0?'':'<button data-rg="part" data-v="'+i+'" class="'+(i===rigSel?'on':'')+'">'+t+'</button>'}).join('')+'</div>'}
  h+=J.map((j,i)=>vis(j)?'<div class="n'+(i===rigSel?' sel':'')+'" data-jsel="'+i+'" style="margin-left:'+dep(i)*12+'px">'+j.name+'</div>':'').join('');
@@ -2127,6 +2173,75 @@ function jointCard(){const J=rig.joints,meta=rig.meta,bip=!!(meta&&meta.biped);
  if(bip)h+=mouthCard();
  h+='<div class="row" style="gap:4px;margin-top:6px;flex-wrap:wrap">'+(bip?'<label><input type="checkbox" data-rg="mirror" '+(rigMirror?'checked':'')+'> Mirror left and right when dragging joints</label>':'')+'<button data-rg="reset">Reset pose</button><button data-rg="clear">Clear rig</button></div>';
  return h}
+/* ===================== Weight painting ===================== */
+const WP_RAMP=[[29,59,143],[0,170,200],[40,200,80],[240,220,40],[235,40,40]];
+function wpRamp(t){t=Math.max(0,Math.min(1,t))*4;const k=Math.min(3,Math.floor(t)),u=t-k,a=WP_RAMP[k],b=WP_RAMP[k+1];return'#'+[0,1,2].map(c=>(Math.round(a[c]+(b[c]-a[c])*u)|256).toString(16).slice(1)).join('')}
+const wpNode=o=>o&&o.nodes.find(n=>n.type==='Skin');
+/* colour of one face while painting: how much the chosen bone owns it (blue none, green half, red all) */
+function fcol(o,fi){if(wpOn){const n=wpNode(o),m=o.nodes[o.nodes.length-1].out;
+  if(n&&n.sw&&m&&m.v.length===n.sw.nv&&rigSel>=0&&m.f[fi]){let H=wpHC.get(o);if(!H||H.m!==m||H.rev!==wpRev||H.j!==rigSel||H.sw!==n.sw){H={m,rev:wpRev,j:rigSel,sw:n.sw,c:[]};wpHC.set(o,H)}
+   let c=H.c[fi];if(!c){const f=m.f[fi],sw=n.sw;let a=0;for(const v of f){const b=v*4;for(let k=0;k<4;k++)if(sw.ji[b+k]===rigSel)a+=sw.wt[b+k]/255}c=H.c[fi]=wpRamp(a/f.length)}return c}}
+ return(o.fc&&o.fc[fi])||o.color}
+const skinTargets=()=>{const o=objs[sel];if(!o)return[];return[o,...osel,...(o.g?objs.filter(q=>q.g===o.g):[])].filter((q,i,a)=>q&&a.indexOf(q)===i&&objs.includes(q))};
+function wpTool(){if(wpOn){setTool(null);panels();draw();return}
+ const o=objs[sel];if(!o){toast('Select the model first');return}
+ if(!rig.joints.length){toast('There is no skeleton yet. Use Auto-rig biped (or the Joint tool), then bind and paint.');return}
+ const m0=evaluate(o);if(m0.f.length>=HEAVY_MIN&&gpuOn&&GL&&!GL.lost){toast('This model has '+m0.f.length.toLocaleString()+' polygons, too many to paint weights on smoothly. Binding still works with automatic weights. For painting, use a lighter version of the model.');return}
+ if(!skinTargets().some(wpNode))bindSkin(true);evaluate(o);
+ if(rigSel<0||!rig.joints[rigSel])rigSel=Math.max(0,rig.joints.findIndex(j=>j.parent<0));
+ setTool('wpaint');wpRev++;panels();draw();toast('Paint weights: the colours show how much the chosen bone moves each part (blue none, red all). Pick the bone in the list on the right, then drag on the model. Shift+drag smooths; Ctrl+click on the model picks the bone that owns that spot.')}
+function wpHit(x,y){if(!draw.polys)return null;const ok=new Map();
+ for(let k=draw.polys.length-1;k>=0;k--){const p=draw.polys[k];if(!inPoly(x,y,p.pts))continue;const o=objs[p.oi];if(!o)continue;let sk=ok.get(o);if(sk===undefined)ok.set(o,sk=!!wpNode(o));if(!sk)continue;const m=o.nodes[o.nodes.length-1].out,f=m&&m.f[p.fi];if(!f)continue;
+  for(let j=1;j<p.pts.length-1;j++){const A=p.pts[0],B=p.pts[j],C=p.pts[j+1],den=(B[1]-C[1])*(A[0]-C[0])+(C[0]-B[0])*(A[1]-C[1]);if(Math.abs(den)<1e-9)continue;
+   const l1=((B[1]-C[1])*(x-C[0])+(C[0]-B[0])*(y-C[1]))/den,l2=((C[1]-A[1])*(x-C[0])+(A[0]-C[0])*(y-C[1]))/den,l3=1-l1-l2;if(l1<-.001||l2<-.001||l3<-.001)continue;
+   const a=m.v[f[0]],b=m.v[f[j]],c=m.v[f[j+1]],P=[0,1,2].map(i=>l1*a[i]+l2*b[i]+l3*c[i]),q=mulv(mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),P);
+   return{o,P,W:[q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2]],z:l1*p.zs[0]+l2*p.zs[j]+l3*p.zs[j+1]}}}
+ return null}
+function wpSelect(S,H,R,front){const V=S.m.v,rp=S.rep,R2=R*R,out=[],o=S.o,Ms=front?mulM(rotMat(o.rot),diag(o.sc||[1,1,1])):null;
+ for(let i=0;i<V.length;i++){if(rp[i]!==i)continue;const P=V[i],dx=P[0]-H[0],dy=P[1]-H[1],dz=P[2]-H[2],d2=dx*dx+dy*dy+dz*dz;if(d2>=R2)continue;
+  if(front){const q=mulv(Ms,P),w=toViewP([q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2]]),s=scrPt(w);if(!vis(s[0],s[1],w[2]))continue}
+  out.push({i,d:Math.sqrt(d2)/R})}
+ return out}
+function wpNbrs(S,i){const T=S.T,F=S.m.f,rep=S.rep,set=new Set();for(let q=T.start[i];q<T.start[i+1];q++){for(const u of F[T.list[q]]){const r=rep[u];if(r>=0&&r!==i)set.add(r)}}return set}
+function wpVert(S,i,j,b,mode){const sw=S.sw,r=swRead(sw,i),J=rig.joints;
+ if(mode==='smooth'){const nb=[...wpNbrs(S,i)];if(!nb.length)return;const acc={};nb.forEach(q=>{const rq=swRead(sw,q);for(const k in rq)acc[k]=(acc[k]||0)+rq[k]/nb.length});const s=Math.min(1,b*1.2);new Set([...Object.keys(r),...Object.keys(acc)]).forEach(k=>{r[k]=(r[k]||0)*(1-s)+(acc[k]||0)*s})}
+ else{const w0=r[j]||0;
+  if(mode==='add'){const w1=w0+(1-w0)*b,rest=1-w0,sc=rest>1e-6?(1-w1)/rest:0;for(const k in r)if(+k!==j)r[k]*=sc;r[j]=w1}
+  else{const w1=w0*(1-b),others=1-w0;if(others>1e-6){const sc=(1-w1)/others;for(const k in r)if(+k!==j)r[k]*=sc}else{const par=J[j]&&J[j].parent>=0?J[j].parent:(j===0?-1:0);if(par<0)return;r[par]=(r[par]||0)+(w0-w1)}r[j]=w1}}
+ swWrite(sw,i,r,S.grp)}
+const mirJName=n=>n.replace(/^L_/,'\0').replace(/^R_/,'L_').replace(/^\0/,'R_');
+const wpMesh=o=>o.nodes[o.nodes.length-1].out;
+/* every skinned model gets its own working copy of the weights the first time the brush touches it in a stroke, so each stroke is one undo step */
+function wpState(o){let S=wpS.st.get(o);if(S)return S;const n=wpNode(o);if(!n)return null;let m=evaluate(o);
+ if(!n.sw||n.sw.nv!==m.v.length){dirtyFrom(o,o.nodes.indexOf(n));m=evaluate(o)}if(!n.sw||n.sw.nv!==m.v.length)return null;
+ const rep=weldRep(m),grp=new Map();for(let i=0;i<rep.length;i++){const q=rep[i];if(q>=0&&q!==i){let l=grp.get(q);if(!l)grp.set(q,l=[]);l.push(i)}}
+ S={o,n,m,sw:n.sw,rep,grp,T:canonCSR(m),dirty:false,cl:false};wpS.st.set(o,S);return S}
+function wpDab(x,y){const W=wpS;if(!W)return;const hit=wpHit(x,y);if(!hit)return;const Rw=wpSize*((ortho?dist:hit.z+dist)/draw.F),J=rig.joints,passes=[{Hw:hit.W,j:rigSel,front:true}];
+ if(wpMir&&J[rigSel]){const mj=J.findIndex(q=>q.name===mirJName(J[rigSel].name)),a=symEdit?symAxis():0,Hm=hit.W.slice();Hm[a]=-Hm[a];passes.push({Hw:Hm,j:mj>=0?mj:rigSel,front:false})}
+ passes.forEach(ps=>objs.forEach(o=>{if(o.hid||!wpNode(o))return;const S=wpState(o);if(!S)return;const ks=((o.sc||[1,1,1]).reduce((s,v)=>s+v,0)/3)||1,Ho=wl(o,[ps.Hw[0]-o.pos[0],ps.Hw[1]-o.pos[1],ps.Hw[2]-o.pos[2]]);
+  const L=wpSelect(S,Ho,Rw/ks,ps.front);if(!L.length)return;if(!S.cl){S.n.sw=S.sw=swClone(S.n.sw);S.cl=true}L.forEach(({i,d})=>wpVert(S,i,ps.j,fall(d)*wpStr,W.mode));S.dirty=true}))}
+function wpFlush(){const W=wpS;if(!W)return;W.st.forEach(S=>{if(!S.dirty)return;S.dirty=false;wpRev++;dirtyFrom(S.o,S.o.nodes.indexOf(S.n));S.m=evaluate(S.o)})}
+function wpStart(e){drag.wp=true;const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;sPos={x,y};
+ if(rigSel<0||!rig.joints[rigSel]){toast('Pick a bone in the list on the right first');return}
+ if(e.ctrlKey||e.metaKey){const hit=wpHit(x,y);if(!hit)return;const o=hit.o,n=wpNode(o),m=evaluate(o);if(!n.sw||n.sw.nv!==m.v.length)return;const J=rig.joints,sw=n.sw,rep=weldRep(m),ks=((o.sc||[1,1,1]).reduce((s,v)=>s+v,0)/3)||1,R=wpSize*((ortho?dist:hit.z+dist)/draw.F)*.5/ks,acc={};
+  for(let i=0;i<m.v.length;i++){if(rep[i]!==i)continue;const P=m.v[i];if(Math.hypot(P[0]-hit.P[0],P[1]-hit.P[1],P[2]-hit.P[2])>R)continue;const q=swRead(sw,i);for(const k in q)acc[k]=(acc[k]||0)+q[k]}
+  let best=-1,bv=0;for(const k in acc)if(acc[k]>bv){bv=acc[k];best=+k}if(best>=0&&J[best]){rigSel=best;toast('Painting '+J[best].name);panels();draw()}return}
+ wpS={st:new Map(),mode:e.shiftKey?'smooth':wpMode,last:{x,y}};
+ wpDab(x,y);if(!wpS.st.size){toast('Click on a bound model to paint it');wpS=null;return}wpFlush();draw()}
+function wpMove(e){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;sPos={x,y};const W=wpS;if(W){const sp=Math.max(3,wpSize*.25),dx=x-W.last.x,dy=y-W.last.y,L=Math.hypot(dx,dy);
+  if(L>=sp){const n=Math.min(30,Math.floor(L/sp));for(let k=1;k<=n;k++)wpDab(W.last.x+dx/L*sp*k,W.last.y+dy/L*sp*k);W.last={x:W.last.x+dx/L*sp*n,y:W.last.y+dy/L*sp*n}}wpFlush()}draw()}
+function wpEnd(){if(wpS){wpFlush();commit()}wpS=null}
+function wpSmoothAll(){const L=skinTargets().filter(wpNode);if(!L.length){toast('Bind the model first');return}let done=0;
+ L.forEach(o=>{const n=wpNode(o),m=evaluate(o);if(!n.sw||n.sw.nv!==m.v.length||m.v.length>150000)return;const rep=weldRep(m),grp=new Map();for(let i=0;i<rep.length;i++){const q=rep[i];if(q>=0&&q!==i){let l=grp.get(q);if(!l)grp.set(q,l=[]);l.push(i)}}
+  n.sw=swClone(n.sw);const S={o,n,m,sw:n.sw,rep,grp,T:canonCSR(m)};for(let pass=0;pass<2;pass++)for(let i=0;i<m.v.length;i++)if(rep[i]===i)wpVert(S,i,0,.6,'smooth');dirtyFrom(o,o.nodes.indexOf(n));done++});
+ wpRev++;all();commit();toast(done?'Weights smoothed.':'Nothing to smooth (the model may be too dense)')}
+function skinCard(){const o=objs[sel];if(!o||!rig.joints.length)return'';const n=wpNode(o);let h='<div class="sec">Skin</div><div class="card">';
+ if(!n)h+='<div style="font-size:12px;opacity:.85;margin-bottom:4px">Select your model and press Bind. NOVA weights every point to the nearest bones by itself, so you can pose it right away. Then use Paint weights to fix any spot.</div><div class="row" style="flex-wrap:wrap;gap:4px"><button data-rg="bind">Bind selected model to skeleton</button>'+(objs.length>1?'<button data-rg="bindall">Bind all models</button>':'')+'</div>';
+ else{const painted=n.sw&&!n.sw.auto;h+='<div style="font-size:12px;opacity:.85;margin-bottom:4px">Bound. Weights: '+(painted?'<b>painted</b> (kept when you move joints)':'<b>automatic</b> (they follow when you move joints)')+'.</div><div class="row" style="flex-wrap:wrap;gap:4px"><button data-rg="wpt" class="'+(wpOn?'on':'')+'">'+(wpOn?'Stop painting':'Paint weights')+'</button><button data-rg="wsmooth">Smooth all</button><button data-rg="rebind">Reset to automatic</button><button data-rg="unbind">Unbind</button></div>';
+  if(wpOn){const J=rig.joints,S=J[rigSel];h+='<div class="row" style="gap:4px;margin-top:6px">'+[['add','Add'],['sub','Remove'],['smooth','Smooth']].map(([k,t])=>'<button data-rg="wpm" data-v="'+k+'" class="'+(wpMode===k?'on':'')+'">'+t+'</button>').join('')+'</div>'+
+   '<label>Brush size<input type="range" data-wp="size" min="10" max="160" step="1" value="'+wpSize+'"><output>'+wpSize+'</output></label><label>Strength<input type="range" data-wp="str" min=".05" max="1" step=".05" value="'+wpStr+'"><output>'+wpStr+'</output></label>'+
+   '<label><input type="checkbox" data-rg="wpmir" '+(wpMir?'checked':'')+'> Paint the other side too (left and right)</label><div style="font-size:12px;margin-top:4px">Painting bone: <b>'+(S?S.name:'none, pick one below')+'</b>. Pick a bone in the list below, or Ctrl+click the model. Shift+drag smooths.</div>'}}
+ return h+'</div>'}
 /* ===================== Biped auto-rig ===================== */
 const V3={sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],add:(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],mul:(a,k)=>[a[0]*k,a[1]*k,a[2]*k],dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
  cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],len:a=>Math.hypot(a[0],a[1],a[2]),norm:a=>{const l=Math.hypot(a[0],a[1],a[2])||1;return[a[0]/l,a[1]/l,a[2]/l]},
@@ -2183,8 +2298,9 @@ function startFit(){if(rig.joints.length){toast('This scene already has a skelet
  setTool(null);const C=bodyCenter();rigFit={pts:[],C,F,opts};all();toast('Auto-rig: face your character toward the camera (Front view works best) and click, in order: '+FIT_STEPS.join(' → ')+'. Right-click or Backspace undoes the last click, Esc cancels.')}
 function fitClick(e){const r=cv.getBoundingClientRect(),p=rayPlane(e.clientX-r.left,e.clientY-r.top,rigFit.C,rigFit.F);rigFit.pts.push(p);
  if(rigFit.kind==='mouth'){if(rigFit.pts.length>=rigFit.steps.length){buildMouth(rigFit.pts,rigFit.F,rigFit.steps.length>4,rigFit.headH);rigFit=null;skinDirty();rigMode='adjust';all();toast('Mouth added: corners, upper and lower lip'+(rig.joints.some(j=>j.name==='Tongue')?', tongue':'')+'. Drag any of them to fine-tune (left and right mirror). Then use the Mouth shapes below.');commit();return}draw();return}
- if(rigFit.pts.length>=FIT_STEPS.length){const R=buildBiped(rigFit.pts,rigFit.F,rigFit.opts);rig.joints=R.joints;rig.meta=R.meta;rigSel=R.joints.findIndex(j=>j.name==='Hips');rigFit=null;skinDirty();setTool('joint');all();
-  toast('Skeleton fitted ('+R.joints.length+' bones). Drag any joint to adjust it (left and right sides mirror; Shift moves just that joint), then select your mesh and press Bind skin.');commit();return}
+ if(rigFit.pts.length>=FIT_STEPS.length){const R=buildBiped(rigFit.pts,rigFit.F,rigFit.opts);rig.joints=R.joints;rig.meta=R.meta;rigSel=R.joints.findIndex(j=>j.name==='Hips');rigFit=null;skinDirty(true);setTool('joint');all();
+  const bo=objs[sel]&&!objs[sel].nodes.some(n=>n.type==='Skin');bindAfterFit=false;if(bo)bindSkin(true);
+  toast('Skeleton fitted ('+R.joints.length+' bones)'+(bo?' and your model is bound to it':'')+'. Drag any joint to adjust it (left and right sides mirror; Shift moves just that joint); the weights follow. Open Pose (IK) to move it, or Paint weights to fine-tune the skin.');commit();return}
  draw()}
 function fitUndo(){if(!rigFit)return;rigFit.pts.pop();draw()}
 function fitCancel(){rigFit=null;all();toast('Setup cancelled')}
@@ -2207,7 +2323,7 @@ function getSpread(s){for(const f of fingerNames(rig.meta?rig.meta.nf:4)){const 
 const HPOSE={open:{c:[0,0,0,0,0],s:.6},relax:{c:[.15,.2,.25,.3,.35],s:.1},fist:{c:[.8,1,1,1,1],s:0},point:{c:[.6,0,1,1,1],s:0},peace:{c:[.8,0,0,1,1],s:.5},thumbsup:{c:[0,1,1,1,1],s:0},pinch:{c:[.5,.55,.2,.15,.1],s:.1}};
 function handPose(name){const P=HPOSE[name];if(!P||!rig.meta)return;handSides().forEach(s=>{['Thumb',...fingerNames(rig.meta.nf)].forEach((f,i)=>setCurl(s,f,P.c[i]));setSpread(s,P.s)});tlStop();skinDirty();tlAutoKey();panels();draw();commit()}
 function mirrorPose(from){const to=from==='L'?'R':'L';rig.joints.forEach(j=>{if(!j.name.startsWith(from+'_'))return;const t=jByName(to+'_'+j.name.slice(2));if(t){t.rot=[-j.rot[0],-j.rot[1],j.rot[2]];if(j.off||t.off)t.off=j.off?[-j.off[0],j.off[1],j.off[2]]:null}});tlStop();skinDirty();tlAutoKey('all');panels();draw();commit()}
-function clearRig(){if(!rig.joints.length)return;tlStop();rig.joints=[];rig.meta=null;anim={fps:24,len:48,frame:0,keys:{},loop:true,ease:'smooth'};animRev++;rigMode='adjust';rigSel=-1;rigFit=null;skinDirty();panels();all();toast('Skeleton removed. Skinned meshes keep their Skin card; delete it with Remove skin.')}
+function clearRig(){if(!rig.joints.length)return;tlStop();rig.joints=[];rig.meta=null;anim={fps:24,len:48,frame:0,keys:{},loop:true,ease:'smooth'};animRev++;rigMode='adjust';rigSel=-1;rigFit=null;skinDirty(true);panels();all();toast('Skeleton removed. Skinned meshes keep their Skin card; delete it with Remove skin.')}
 /* ===================== IK + animation timeline ===================== */
 const IKCH={Hand:['UpperArm','LowerArm'],Foot:['UpperLeg','LowerLeg']};
 function ikChain(i){const j=rig.joints[i];if(!j||!rig.meta||!rig.meta.biped)return null;const m=/^([LR])_(Hand|Foot)$/.exec(j.name);if(!m)return null;const a=rig.joints.findIndex(q=>q.name===m[1]+'_'+IKCH[m[2]][0]),b=rig.joints.findIndex(q=>q.name===m[1]+'_'+IKCH[m[2]][1]);return a<0||b<0?null:[a,b,i]}
@@ -2346,7 +2462,7 @@ function mouthSet(k,val){if(!hasMouth())return;const v=mcGet();v[k]=val;mcApply(
 function keyMouth(){tlStop();tlAutoKey('face',true);commit();toast('Mouth key set on frame '+Math.round(anim.frame))}
 function clearMouthKeys(){let n=0;keyFrames().forEach(f=>{const K=anim.keys[f];for(const k in K.r)if(isFace(k)){delete K.r[k];n++}for(const k in K.o)if(isFace(k))delete K.o[k];if(!Object.keys(K.r).length&&!Object.keys(K.o).length)delete anim.keys[f]});animRev++;tlSig='';tlRender();commit();toast(n?'Mouth keys cleared':'No mouth keys to clear')}
 function removeMouth(){if(!hasMouth())return;tlStop();clearMouthKeys();const names=['L_MouthCorner','R_MouthCorner','Lip_Upper','Lip_Lower','Tongue'],map=[];let n=0;rig.joints.forEach((j,i)=>{map[i]=names.includes(j.name)?-1:n++});
- rig.joints=rig.joints.filter(j=>!names.includes(j.name)).map(j=>({...j,parent:j.parent<0?-1:map[j.parent]}));delete rig.meta.mouth;rigSel=-1;skinDirty();panels();all();commit()}
+ skinRemap(i=>map[i]);rig.joints=rig.joints.filter(j=>!names.includes(j.name)).map(j=>({...j,parent:j.parent<0?-1:map[j.parent]}));delete rig.meta.mouth;rigSel=-1;skinDirty();panels();all();commit()}
 /* ---- text to mouth shapes ---- */
 function textToVis(t){t=t.toLowerCase();const out=[],P=(v,w)=>out.push({v,w});let i=0;const di={th:'L',sh:'WQ',ch:'WQ',oo:'U',ou:'O',ow:'O',ew:'U',ee:'E',ea:'E',ie:'E',ai:'AI',ay:'AI',oa:'O',oi:'O',ph:'FV',wh:'WQ',qu:'WQ'};
  const sg={a:'AI',e:'E',i:'AI',o:'O',u:'U',y:'E',w:'WQ',q:'WQ',m:'MBP',b:'MBP',p:'MBP',f:'FV',v:'FV',l:'L',n:'L',t:'L',d:'L'};
@@ -2385,7 +2501,7 @@ const SHELVES=[
   {n:'Coloring',items:[{gl:'Paint'},{c:'Paint tool (click or drag faces)',t:'Paint'},{c:'Paint selected faces',t:'Paint selected'},{c:'Clear face paint',t:'Clear paint'},{sp:1},{gl:'Brush'},{brush:1},{sw:'brush'},{sp:1},{gl:'Object'},{objc:1},{sw:'obj'},{sp:1},{gl:'Display'},{c:'Shaded'},{c:'Shaded + wire'},{c:'Wire'}]},
   {n:'Render 2K',items:[{gl:'Aspect'},{rsel:'asp'},{gl:'Quality'},{rsel:'q'},{sp:1},{c:'Highlight to render',t:'Highlight to Render'},{c:'Render 2K (GPU)',t:'Render 2K · GPU'},{c:'Ray trace 2K (CPU)',t:'Ray Trace 2K · CPU'},{sp:1},{c:'Show last render',t:'Show Render'},{c:'Save last render',t:'Save Render'}]}]},
  {n:'Navigating',items:[{gl:'Camera'},{c:'Front view',t:'Front'},{c:'Back view',t:'Back'},{c:'Left view',t:'Left'},{c:'Right view',t:'Right'},{c:'Top view',t:'Top'},{c:'Bottom view',t:'Bottom'},{c:'Zoom in'},{c:'Zoom out'},{c:'Reset camera',t:'Reset'},{sp:1},{gl:'Cameras'},{c:'Add camera',t:'Add Camera'},{c:'Look through camera',t:'Look Through'},{c:'Back to perspective view',t:'Persp. View'}]},
- {n:'Rigging',items:[{gl:'Skeleton'},{c:'Auto-rig biped',t:'Auto-Rig Biped'},{c:'Joint tool (click to place)',t:'Joint'},{c:'Delete joint'},{c:'Clear rig',t:'Clear Rig'},{sp:1},{gl:'Skin'},{c:'Bind skin to skeleton',t:'Bind skin'},{c:'Remove skin'},{sp:1},{gl:'Pose'},{c:'Reset pose'},{c:'Mirror pose L to R',t:'Mirror L → R'},{c:'Mirror pose R to L',t:'Mirror R → L'},{sp:1},{gl:'Animate'},{c:'Pose mode (IK)',t:'Pose (IK)'},{c:'Timeline'},{c:'Set key'},{c:'Play / stop animation',t:'Play'},{c:'Make cycle (mirror at halfway)',t:'Make Cycle'},{c:'Record animation (MP4)',t:'Record Animation'},{sp:1},{gl:'Face'},{c:'Set up mouth',t:'Mouth Setup'},{c:'Lip-sync from text',t:'Lip-Sync'}]},
+ {n:'Rigging',items:[{gl:'Skeleton'},{c:'Auto-rig biped',t:'Auto-Rig Biped'},{c:'Joint tool (click to place)',t:'Joint'},{c:'Delete joint'},{c:'Clear rig',t:'Clear Rig'},{sp:1},{gl:'Skin'},{c:'Bind skin to skeleton',t:'Bind skin'},{c:'Paint weights',t:'Paint Weights'},{c:'Smooth weights'},{c:'Reset weights to automatic',t:'Reset Weights'},{c:'Remove skin'},{sp:1},{gl:'Pose'},{c:'Reset pose'},{c:'Mirror pose L to R',t:'Mirror L → R'},{c:'Mirror pose R to L',t:'Mirror R → L'},{sp:1},{gl:'Animate'},{c:'Pose mode (IK)',t:'Pose (IK)'},{c:'Timeline'},{c:'Set key'},{c:'Play / stop animation',t:'Play'},{c:'Make cycle (mirror at halfway)',t:'Make Cycle'},{c:'Record animation (MP4)',t:'Record Animation'},{sp:1},{gl:'Face'},{c:'Set up mouth',t:'Mouth Setup'},{c:'Lip-sync from text',t:'Lip-Sync'}]},
  {n:'Sculpting',items:[{gl:'Brushes'},{c:'Clay (build up)',t:'Clay'},{c:'Grab (move)',t:'Move'},{c:'Smooth'},{c:'Crease'},{c:'Flatten'},{c:'Inflate'},{c:'Pinch'},{sp:1},{c:'Subtract (reverse brush)',t:'Subtract'},{c:'Symmetry (X mirror)',t:'Symmetry'},{sp:1},{gl:'Radius'},{c:'Smaller brush',t:'−'},{rng:'size'},{c:'Larger brush',t:'+'},{gl:'Intensity'},{rng:'str'},{gl:'Falloff'},{rng:'hard'},{gl:'Resolution'},{rng:'res'},{sp:1},{gl:'Detail'},{c:'Add detail (subdivide)',t:'Add detail'},{c:'Reset sculpt'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{sp:1},{c:'Undo'},{c:'Redo'}]}
  ,{n:'Experimental and proprietary',rows:[{n:'Cut apart',items:[{c:'Separate and Cut',t:'Separate and Cut',ic:'sepc'},{sp:1},{c:'Affect front vertices',t:'Affect Front Vertices'}]}]}
 ];
@@ -2984,8 +3100,8 @@ var ringEl=null;
 function brushRing(){const on=sculptOn&&sPos&&draw.hed;if(!on){if(ringEl)ringEl.style.display='none';return}
  if(!ringEl){ringEl=document.createElement('div');ringEl.style.cssText='position:absolute;pointer-events:none;border-radius:50%;box-sizing:border-box;border:1.5px solid var(--acc);z-index:3';const i=document.createElement('div');i.style.cssText='position:absolute;left:25%;top:25%;width:50%;height:50%;border-radius:50%;box-sizing:border-box;border:1.5px solid var(--acc);opacity:.5';ringEl.appendChild(i)}
  const host=cv.parentNode;if(ringEl.parentNode!==host)host.appendChild(ringEl);const st=ringEl.style;st.display='block';st.left=(cv.offsetLeft+sPos.x-sSize)+'px';st.top=(cv.offsetTop+sPos.y-sSize)+'px';st.width=st.height=(2*sSize)+'px'}
-cv.addEventListener('pointermove',e=>{if(!sculptOn)return;const r=cv.getBoundingClientRect();sPos={x:e.clientX-r.left,y:e.clientY-r.top};if(!drag){if(draw.hed)brushRing();else draw()}});
-cv.addEventListener('pointerleave',()=>{if(sculptOn&&!drag){sPos=null;if(draw.hed)brushRing();else draw()}});
+cv.addEventListener('pointermove',e=>{if(!sculptOn&&!wpOn)return;const r=cv.getBoundingClientRect();sPos={x:e.clientX-r.left,y:e.clientY-r.top};if(!drag){if(draw.hed)brushRing();else draw()}});
+cv.addEventListener('pointerleave',()=>{if((sculptOn||wpOn)&&!drag){sPos=null;if(draw.hed)brushRing();else draw()}});
 /* Add detail bakes the sculpt so far, then splits every face into four so you can keep building finer shapes */
 function addDetail(quiet){const o=objs[sel];if(!o)return;const m=evaluate(o),total=m.f.reduce((s,f)=>s+f.length,0);
  if(total>20000){toast('Already very dense. More detail would make it slow.');return}
@@ -3046,6 +3162,7 @@ if(e.button===2){drag.rc=true;return}
  if(sculptOn&&e.button===0&&!e.altKey){sculptStart(e);return}
  if(rigFit&&e.button===0&&!e.altKey){fitClick(e);return}
  if(jointOn&&e.button===0&&!e.altKey){jointClick(e);return}
+ if(wpOn&&e.button===0&&!e.altKey){wpStart(e);return}
  if(paintOn&&e.button===0&&!e.altKey){drag.pn=true;paintAt(e);return}
  if(draw.exm&&e.button===0){const x=e.clientX-r0.left,y=e.clientY-r0.top,m=draw.exm,vx=m.x1-m.x0,vy=m.y1-m.y0,L2=vx*vx+vy*vy||1,t=Math.max(0,Math.min(1.08,((x-m.x0)*vx+(y-m.y0)*vy)/L2)),dd=Math.hypot(x-(m.x0+vx*t),y-(m.y0+vy*t));
   if(dd<12){const so=objs[sel],ks=(((so&&so.sc)||[1,1,1]).reduce((a,b)=>a+b,0)/3)||1;drag.exm={d0:exNode.p.dist,ks};return}}
@@ -3072,6 +3189,7 @@ cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,
  if(drag.od){odMove(e);return}
  if(drag.ro){rotoDrag(e);return}
  if(drag.sc){sculptMove(e);return}
+ if(drag.wp){wpMove(e);return}
  if(drag.rc||drag.orb){if(ortho){panX+=dx;panY+=dy;drag.x=e.clientX;drag.y=e.clientY;draw();return}orbitBy(dx,dy,.008,drag.rc);drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.zm){dist=Math.max(.3,Math.min(80,dist*Math.exp((dy-dx)*.008)));drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.exm&&exNode&&draw.exm){const m=draw.exm,s2=((e.clientX-drag.x)*m.ux+(e.clientY-drag.y)*m.uy)/m.pxu/drag.exm.ks;exNode.p.dist=Math.max(-5,Math.min(5,+(drag.exm.d0+s2).toFixed(3)));const so=objs[sel],i=so.nodes.indexOf(exNode);dirtyFrom(so,i);evaluate(so);draw();return}
@@ -3104,7 +3222,8 @@ cv.addEventListener('pointerup',e=>{if(drag&&drag.sbx){const b=box;box=null;drag
  if(drag&&(drag.rc||drag.zm||drag.orb)){drag=null;return}
  if(drag&&drag.exm){drag=null;panels();draw();return}
  if(drag&&drag.sc){sculptEnd();drag=null;panels();return}
- if(drag&&drag.jn){const mv=(drag.jm||drag.ik)&&drag.moved>2,ik=!!drag.ik;drag=null;if(mv&&ik)tlAutoKey();panels();if(mv)commit();return}
+ if(drag&&drag.wp){wpEnd();drag=null;panels();return}
+ if(drag&&drag.jn){const mv=(drag.jm||drag.ik)&&drag.moved>2,ik=!!drag.ik;if(drag.jm&&mv)skinDirty();drag=null;if(mv&&ik)tlAutoKey();panels();if(mv)commit();return}
  if(drag&&drag.pn){drag=null;return}
  if(drag&&drag.kn){knifeCut();kn=null;drag=null;all();return}
  if(drag&&drag.loop){if(drag.moved<5)loopInsert(drag.loop);drag=null;all();return}
