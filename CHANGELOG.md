@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v164 — Coloring is shelf 4, Rendering is shelf 5
+- The numbered shelves are now: 1 Primitives, 2 Transform and scene, 3 Modeling tools, **4 Coloring**, **5 Render 2K**, 6 Draw, 7 Rotoscope, 8 Navigating, 9 Rigging, 10 Sculpting, 11 Experimental and proprietary.
+
 ## v163 — Numbered shelves spread across the top
 - The numbered shelf buttons 1–11 now run in one row across the full width of the window, directly under the NOVA 3D bar, spread evenly from left to right instead of being clustered in the left frame. Clicking one still opens its tools in the same place in the left frame, under the Object select button. (On a narrow window the row wraps.)
 
