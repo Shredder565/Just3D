@@ -4,6 +4,11 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v159 — Select panel, and "Symmetrize" renamed
+- **New Select panel at the top of the left side, above the numbered shelves.** The big arrow is the Select tool. Next to it: **Group** (click any object to select its whole group), **Center** (click an object's center dot to select it), **Object** (click an object to select it), **Point**, **Edge** and **Polygon** (select those parts of the model), and **Sample** (drag across the model and every point, edge or polygon you pass over is selected). The active choice is highlighted.
+- **Click now chooses.** With the Select tool, a plain click selects what you clicked and replaces the old selection. Shift+click adds, Ctrl+click removes. (Before, every click was added to the selection.)
+- **"Symmetrize 4-Way" is now just "Symmetrize"** (Modeling tools shelf, above Symmetrize Object; Ctrl+Shift+Y). One click mirrors the object left to right or right to left, whichever side has the cuts and shape changes, onto the side that is missing them, and then keeps copying every edit left/right and front/back until you click it again. If both sides already match it says so and just turns live mirroring on. The old single-plane toggle is still available as the command *Symmetrize one plane* (Ctrl+Alt+Y).
+
 ## v158 — One-click skeleton binding and weight painting
 - **Binding is now one click.** In the Rigging panel (right side) the new **Skin** section has **Bind selected model to skeleton** (and **Bind all models**). If the model is part of a group the whole group is bound. If there is no skeleton yet, Bind starts **Auto-rig biped** and binds your model the moment the skeleton is finished.
 - **Auto-rig now binds for you.** When the auto-rig finishes, the selected model is bound straight away. Drag joints to fit the skeleton and the automatic weights follow them; open Pose (IK) to move the character.

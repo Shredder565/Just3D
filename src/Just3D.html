@@ -58,6 +58,15 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 #shelfTabs{grid-column:1/4;display:flex;align-items:center;gap:4px;overflow-x:auto;padding:4px 10px;background:var(--panel);box-sizing:border-box}
 #fileBar{display:flex;align-items:center;gap:12px;flex:1 1 0;min-width:0}#fileBar .tools{flex-wrap:wrap;flex:1 1 0!important;min-width:0;row-gap:4px}#shelfTabs{overflow-x:visible}#fileBar .tg{display:flex;align-items:center;gap:4px;flex:none}#sideTabs{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;color:var(--tx)}#shelfTabs .logo{margin-right:18px}#sideTabs .tab{min-height:30px;padding:4px 10px;font-weight:600;white-space:normal;line-height:1.2;text-align:left;width:100%}#sideTabs .tabrow{display:flex;flex-wrap:wrap;gap:4px}#sideTabs .tabrow .tab{border-left:6px solid var(--gc,#8aa0b8)}#sideTabs .tabrow .tab.on{background:var(--gc,#2dc4ad);color:#10202c;border-color:var(--gc,#2dc4ad)}#shelf .sb[style*="--gc"],#fileBar .sb[style*="--gc"],.fpal .sb[style*="--gc"]{border-left:5px solid var(--gc)}#shelf.nav .tools .gl[style*="--gc"],#shelf .gl[style*="--gc"],#fileBar .gl[style*="--gc"],.fpal .gl[style*="--gc"]{background:var(--gc);color:#10202c!important;font-weight:700;font-size:11.5px;padding:2px 9px;border-radius:4px}#sideTabs .tabrow .tab{flex:0 1 auto;width:auto;min-height:28px;padding:3px 8px;font-size:12px;text-align:left;display:inline-flex;align-items:center;gap:5px;line-height:1.15}#sideTabs .tabrow .tab .tnum{font-weight:800;min-width:14px;text-align:center}#sideTabs .tabrow .tab .tn{margin:0;font-weight:600}#shelf .srow>.gl.rl{display:none}#sideTabs .shead{display:flex;align-items:stretch;gap:4px}#sideTabs .shead .tab.on{flex:1 1 0;min-width:0;width:auto}#sideTabs .smin{display:flex;gap:3px;flex:none}#sideTabs .tab.mini{width:auto;min-width:30px;padding:4px 7px;text-align:center;font-weight:700;opacity:.85}#sideTabs .tab.mini:hover{opacity:1}
 #sideTabs .tab .tn{font-weight:500;margin-left:4px}
+#selPanel{margin:0 0 8px;padding:5px 6px 7px;background:#a9a69f;border:1px solid #6f6d68;border-radius:5px;color:#17181a;box-shadow:inset 0 1px 0 #ffffff55;max-width:230px}
+#selPanel .sph{text-align:right;font-weight:700;font-size:14px;letter-spacing:.3px;color:#2a2926;text-shadow:0 1px 0 #ffffff66;margin:0 4px 4px}
+#selPanel .spg{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+#selPanel button{font:600 12px/1.1 system-ui,Segoe UI,sans-serif;padding:5px 4px;min-height:26px;border:1px solid #5d5b57;border-radius:12px;background:linear-gradient(#cfccc5,#b3b0a8);color:#17181a;cursor:pointer;box-shadow:0 1px 0 #ffffff55 inset}
+#selPanel button:hover{background:linear-gradient(#dedbd4,#c2bfb7)}
+#selPanel button.on{background:#f6f5f1;box-shadow:inset 0 1px 3px #0005;border-color:#3a3935}
+#selPanel .spa{grid-row:1/3;grid-column:1;border-radius:50%;width:62px;height:62px;min-height:0;padding:0;justify-self:center;align-self:center;display:flex;align-items:center;justify-content:center}
+#selPanel .spa svg{width:34px;height:34px}
+#selPanel .wide{grid-column:1/3}
 #shelf .tools,#fileBar .tools{display:flex;align-items:center;gap:4px;flex:none}#shelf .sb,#fileBar .sb{padding:4px 9px;white-space:nowrap}#shelf .sb:disabled,#fileBar .sb:disabled{opacity:.35;cursor:default}
 #shelf .srow,#fileBar .srow{display:flex;align-items:center;gap:12px;overflow-x:auto;min-height:32px}
 .fpal{position:absolute;z-index:6;background:#2b2f35;border:1px solid #555c66;border-radius:6px;box-shadow:0 4px 14px #0008;color:#e6e9ee;user-select:none;touch-action:none}
@@ -87,7 +96,12 @@ input[type=range]{width:100%;accent-color:var(--acc)}
   <button id="del">Delete object</button><button id="dup">Duplicate</button><button id="bgr" title="Group the selected objects (Shift+G). Shift+click adds objects to the selection.">Group</button><button id="bug" title="Ungroup (Ctrl+Shift+G)">Ungroup</button><button id="tpt" title="Select and move points">Points</button><button id="tfc" title="Select and move polygon faces">Faces</button><button id="tdg" title="Select and move edges">Edges</button><button id="tlp" title="Insert an edge loop: hover an edge to preview the ring, click to cut">Loop cut</button><button id="tkn" title="Slice the object along a line, like Maya's Cut Faces tool">Knife</button>
  <input id="pcol" type="color" value="#e5484d" aria-label="Paint color" title="Paint color" style="width:30px;height:26px;padding:0;border:1px solid var(--line);background:none"><button id="tpn" title="Paint faces (B): click or drag over faces. Shift erases, Ctrl+click picks a color">Paint</button><button id="bun" title="Undo (Ctrl+Z)">Undo</button><button id="bre" title="Redo (Ctrl+Shift+Z)">Redo</button><button id="bsc" title="Save or load the scene (Ctrl+S)">Scene</button><span style="margin-left:auto;padding-left:12px;color:var(--mut);white-space:nowrap">Drag pans · Alt+drag or right-drag orbits · middle-drag zooms · right-click for commands</span></div></header>
  <div id="shelfTabs" role="tablist" aria-label="Shelves"></div>
- <aside><div id="sideTabs" role="tablist" aria-label="Shelves"></div></aside>
+ <aside><div id="selPanel" role="group" aria-label="Select"><div class="sph">Select</div><div class="spg">
+  <button id="spArrow" class="spa on" title="Select tool (Q): click an object, or a point, edge or polygon, to select it" aria-label="Select tool"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 3 L7 25 L12.6 19.8 L16.4 28.6 L20.4 26.9 L16.6 18.3 L24 18 Z" fill="#fff" stroke="#222" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
+  <button data-sf="group" title="Select a whole group by clicking any object in it">Group</button><button data-sf="center" title="Select an object by clicking its center point">Center</button>
+  <button data-sf="object" class="on" title="Select whole objects">Object</button><button data-sf="pt" title="Select points">Point</button>
+  <button data-sf="edge" title="Select edges">Edge</button><button data-sf="face" title="Select polygons">Polygon</button>
+  <button id="spSample" class="wide" title="Sample: drag across the model to select every point, edge or polygon you pass over">Sample</button></div></div><div id="sideTabs" role="tablist" aria-label="Shelves"></div></aside>
  <div id="vps"><div id="vp"><canvas id="glc" aria-hidden="true"></canvas><canvas id="cv"></canvas><div id="stat" class="stat"></div><span class="vlab">Perspective</span><canvas id="vcube" class="vcube" aria-label="Perspective view cube: click a face to look from that side, drag to orbit"></canvas></div><div id="vp2"><canvas id="glcB" aria-hidden="true"></canvas><canvas id="cvB"></canvas><div id="statB" class="stat"></div><span class="vlab">Orthographic</span><button class="vnav" data-d="up" style="top:6px;right:76px" aria-label="Top view">▲</button><button class="vnav" data-d="down" style="top:142px;right:76px" aria-label="Bottom view">▼</button><button class="vnav" data-d="left" style="top:74px;right:144px" aria-label="Previous side view">◀</button><button class="vnav" data-d="right" style="top:74px;right:8px" aria-label="Next side view">▶</button><canvas id="vcubeB" class="vcube" aria-label="Orthographic view cube: click a face to look from that side, drag to orbit"></canvas></div></div>
  <div id="rside"><div id="explorerBox"><div class="sec" style="margin-top:0">Explorer</div><div id="tree"></div></div><div id="props"></div></div>
  <div id="ctx" role="menu" hidden></div>
@@ -460,7 +474,7 @@ const CONNECT={p:{},fn:(m,p,n)=>n.pairs?connectEdges(m,n.pairs):m};
 const TY={...GEN,...OPS,...FOPS,Edit:EDITOP,Imprint:IMPRINT,Connect:CONNECT};
 /* ---------- scene + dependency graph ---------- */
 const mk=t=>({type:t,on:true,out:null,dirty:true,off:t==='Edit'?{}:null,fl:null,p:Object.fromEntries(Object.entries(TY[t].p).map(([k,s])=>[k,s[0]]))});
-let cams=[],camSel=-1,camAct=-1,tgt=[0,0,0],gridOn=true,exNode=null,exSel=new Set();let uid=0,groups=[],gid2=0;const osel=new Set();const objs=[];let sel=0,mode=0,editMode=false,sub='pt',knife=false,kaOn=false,scOn=false,kn=null,drawOn=false,dw=null,odOn=false,odFree=false,od=null,odCand=null,ceOn=false,ce=null,ceCand=null,xf='select',axisK=null,multi=true,box=null,selEdges=new Set(),ringPrev=null,hoverK=null,paintOn=false,wpOn=false,wpMode='add',wpSize=44,wpStr=.4,wpMir=true,wpRev=0,wpS=null,wpHC=new Map(),jointOn=false,sculptOn=false,sBrush='clay',sSize=60,sStr=.5,sHard=.35,sRes=6,sSub=false,sSym=false,sNow=false,sMode=null,sVF=null,sLast=null,sPos=null,sGrab=null,rig={joints:[],meta:null},rigSel=-1,jid=0,lastEdge=null,selPts=new Set(),stats={ran:0,hit:0};
+let cams=[],camSel=-1,camAct=-1,tgt=[0,0,0],gridOn=true,exNode=null,exSel=new Set();let uid=0,groups=[],gid2=0;const osel=new Set();const objs=[];let sel=0,mode=0,editMode=false,sub='pt',knife=false,kaOn=false,scOn=false,kn=null,drawOn=false,dw=null,odOn=false,odFree=false,od=null,odCand=null,ceOn=false,ce=null,ceCand=null,xf='select',axisK=null,multi=false,box=null,selEdges=new Set(),ringPrev=null,hoverK=null,selFilt='object',sampleOn=false,paintOn=false,wpOn=false,wpMode='add',wpSize=44,wpStr=.4,wpMir=true,wpRev=0,wpS=null,wpHC=new Map(),jointOn=false,sculptOn=false,sBrush='clay',sSize=60,sStr=.5,sHard=.35,sRes=6,sSub=false,sSym=false,sNow=false,sMode=null,sVF=null,sLast=null,sPos=null,sGrab=null,rig={joints:[],meta:null},rigSel=-1,jid=0,lastEdge=null,selPts=new Set(),stats={ran:0,hit:0};
 /* new objects go to the dead center of the scene: their bounding box is centered on the world origin */
 function centerNew(o){const m=evaluate(o),mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];m.f.flat().forEach(i=>{for(let k=0;k<3;k++){mn[k]=Math.min(mn[k],m.v[i][k]);mx[k]=Math.max(mx[k],m.v[i][k])}});if(mn[0]>mx[0])return o;o.pos=[0,1,2].map(k=>-+((mn[k]+mx[k])/2).toFixed(5));return o}
 function addObj(type,x,ops=[]){const o={name:type+(++uid),pos:[x,0,0],rot:[0,0,0],sc:[1,1,1],hue:0,color:['#3aa393','#c9783a','#4a7fd1','#c9a93a','#b5559c'][uid%5],fc:{},nodes:[mk(type),...ops.map(mk)]};objs.push(o);sel=objs.length-1;osel.clear();selPts.clear();return o}
@@ -470,7 +484,7 @@ function ensureEdit(o){let n=editNode(o);if(!n){n=mk('Edit');o.nodes.push(n)}ret
 function setTool(t){if(t==='ce'&&objs[sel]){const m=evaluate(objs[sel]);if(m&&m.f&&m.f.length>=HEAVY_MIN&&gpuOn&&GL&&!GL.lost){toast('This model has '+m.f.length.toLocaleString()+' polygons, which is too many for '+'Add loop edge'+' to stay responsive. Use Loop cut (Component mode) to add loops on a model this size.');return}}
  const same=t==='sepcut'?scOn:t==='ce'?ceOn:t==='karea'?knife&&kaOn:t==='odraw'?odOn&&!odFree:t==='fdraw'?odOn&&odFree:t==='draw'?drawOn:t==='knife'?knife&&!kaOn&&!scOn:t==='paint'?paintOn&&!wpOn:t==='wpaint'?wpOn:t==='joint'?jointOn:t==='sculpt'?sculptOn:(editMode&&sub===t);editMode=false;knife=false;kaOn=false;scOn=false;paintOn=false;wpOn=false;jointOn=false;sculptOn=false;kn=null;drawOn=false;dw=null;odOn=false;odFree=false;od=null;odCand=null;ceOn=false;ce=null;ceCand=null;selPts.clear();
  if(!same&&t){if(t==='ce')ceOn=true;else if(t==='odraw')odOn=true;else if(t==='fdraw'){odOn=true;odFree=true}else if(t==='draw')drawOn=true;else if(t==='knife')knife=true;else if(t==='karea'){knife=true;kaOn=true}else if(t==='sepcut'){knife=true;scOn=true}else if(t==='sculpt')sculptOn=true;else if(t==='joint')jointOn=true;else if(t==='paint')paintOn=true;else if(t==='wpaint'){paintOn=true;wpOn=true}else{editMode=true;sub=t;if(xf==='select')setXf('move')}}
- $('#tpt').classList.toggle('on',editMode&&sub==='pt');$('#tfc').classList.toggle('on',editMode&&sub==='face');$('#tkn').classList.toggle('on',knife);$('#tdg').classList.toggle('on',editMode&&sub==='edge');$('#tlp').classList.toggle('on',editMode&&sub==='loop');$('#tpn').classList.toggle('on',paintOn&&!wpOn);ringPrev=null;hoverK=null}
+ $('#tpt').classList.toggle('on',editMode&&sub==='pt');$('#tfc').classList.toggle('on',editMode&&sub==='face');$('#tkn').classList.toggle('on',knife);$('#tdg').classList.toggle('on',editMode&&sub==='edge');$('#tlp').classList.toggle('on',editMode&&sub==='loop');$('#tpn').classList.toggle('on',paintOn&&!wpOn);ringPrev=null;hoverK=null;if(typeof syncSelPanel==='function')syncSelPanel()}
 /* lazy evaluation: a node recomputes only if it or anything upstream changed */
 function evaluate(o){let cur=null;
  o.nodes.forEach((n,i)=>{
@@ -843,6 +857,7 @@ function draw(){
     {const dx=A.tip[0]-ps[0],dy=A.tip[1]-ps[1],dl=Math.hypot(dx,dy)||1;g.font='bold 12px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.lineWidth=3;g.strokeStyle='rgba(0,0,0,.75)';g.strokeText('XYZ'[k],A.tip[0]+dx/dl*14,A.tip[1]+dy/dl*14);g.fillStyle=cols[k];g.fillText('XYZ'[k],A.tip[0]+dx/dl*14,A.tip[1]+dy/dl*14);g.textAlign='left';g.textBaseline='alphabetic'}});
    if(xe()==='scale'){g.fillStyle='#fff';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#888';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else if(xe()==='move'){g.fillStyle='#ffe066';g.fillRect(ps[0]-6,ps[1]-6,12,12);g.strokeStyle='#5a4a00';g.lineWidth=1;g.strokeRect(ps[0]-6,ps[1]-6,12,12)}else{g.beginPath();g.arc(ps[0],ps[1],3.5,0,TAU);g.fillStyle='#fff';g.fill()}}}
  if((sculptOn||wpOn)&&sPos&&!draw.hed){const bs=wpOn?wpSize:sSize;g.strokeStyle=acc;g.lineWidth=1.5;g.beginPath();g.arc(sPos.x,sPos.y,bs,0,TAU);g.stroke();g.globalAlpha=.5;g.beginPath();g.arc(sPos.x,sPos.y,bs*.5,0,TAU);g.stroke();g.globalAlpha=1}
+ if(selFilt==='center'&&!editMode&&!sculptOn&&!paintOn)centers.forEach((c,i)=>{if(c[0]<-1e8)return;g.fillStyle=(i===sel||osel.has(objs[i]))?'#ff7a1a':'#ffd24a';g.strokeStyle='#222';g.lineWidth=1;g.beginPath();g.arc(c[0],c[1],5,0,TAU);g.fill();g.stroke()});
  if(box){g.setLineDash([4,3]);g.strokeStyle=box.hl?'#f2c230':box.sc?'#e0701b':box.sub?'#e5484d':acc;g.lineWidth=1;g.strokeRect(box.x0,box.y0,box.x1-box.x0,box.y1-box.y0);g.setLineDash([])}
  if(rig.joints.length&&!recOn){const jp=rigPose().P.map(p=>{const s=scr(view(p[0],p[1],p[2]));return[s[0],s[1]]}),colJ=j=>j.name.startsWith('L_')?'#4aa3ff':j.name.startsWith('R_')?'#ff6b6b':'#f2b01e';
   g.lineWidth=2;rig.joints.forEach((j,i)=>{if(j.parent>=0&&jp[j.parent]){g.strokeStyle=colJ(j);g.beginPath();g.moveTo(jp[j.parent][0],jp[j.parent][1]);g.lineTo(jp[i][0],jp[i][1]);g.stroke()}
@@ -1418,7 +1433,28 @@ const axisC=v=>{if(axisK===null)return v;const e=[0,0,0];e[axisK]=v[axisK];retur
 const add=e=>e.shiftKey||(multi&&xf==='select');
 /* Select is a selection mode, not a lock: it keeps the transform tool you used last (Move to start with), so the gizmo and dragging still move, rotate or scale the object, points, edges and faces. xe() is that effective transform. */
 let selXf='move';const xe=()=>xf==='select'?selXf:xf;
-function setXf(t){xf=t;if(t!=='select')selXf=t;axisK=null;['select','move','scale','rot'].forEach((k,i)=>$('#t'+'qwer'[i]).classList.toggle('on',k===t));draw()}
+function setXf(t){xf=t;if(t!=='select')selXf=t;axisK=null;['select','move','scale','rot'].forEach((k,i)=>$('#t'+'qwer'[i]).classList.toggle('on',k===t));syncSelPanel();draw()}
+/* Sample: drag across the model and everything under the cursor is selected, also between mouse events */
+function sampleAt(e){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,pts=[];
+ if(drag&&drag.sl){const dx=x-drag.sl[0],dy=y-drag.sl[1],n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/4));for(let i=1;i<=n;i++)pts.push([drag.sl[0]+dx*i/n,drag.sl[1]+dy*i/n])}else pts.push([x,y]);if(drag)drag.sl=[x,y];
+ pts.forEach(([px,py])=>{
+  if(sub==='face'){let h=null;if(draw.hed){const q=hugeFaceAt(px,py);if(q)h=q}else if(draw.polys)for(let k=draw.polys.length-1;k>=0&&!h;k--){const q=draw.polys[k];if(q.oi===sel&&inPoly(px,py,q.pts))h=q}if(h)selPts.add(h.fi)}
+  else if(sub==='edge'){const h=nearEdge(px,py);if(h){selEdges.add(h.k);lastEdge=h;syncEdges()}}
+  else{let h=null;if(draw.hed&&draw.hed.pb)h=hugePick(px,py);else for(const q of draw.pts||[])if(Math.hypot(q.x-px,q.y-py)<11&&(!h||q.z<h.z))h=q;if(h)selPts.add(h.i)}});
+ draw()}
+/* Select panel (top of the left side): the arrow is the select tool, the buttons choose what it picks */
+function syncSelPanel(){const P=$('#selPanel');if(!P)return;const comp=editMode&&(sub==='pt'||sub==='edge'||sub==='face'),other=knife||drawOn||odOn||ceOn||paintOn||sculptOn||jointOn||wpOn;
+ $('#spArrow').classList.toggle('on',xf==='select'&&!other);
+ P.querySelectorAll('[data-sf]').forEach(b=>{const k=b.dataset.sf;b.classList.toggle('on',!other&&(comp?k===sub:(!editMode&&k===selFilt)))});
+ $('#spSample').classList.toggle('on',sampleOn&&comp)}
+function selPick(k){
+ if(knife||drawOn||odOn||ceOn||paintOn||sculptOn||jointOn||wpOn||(editMode&&(sub==='loop'||sub==='av')))setTool(null);
+ if(k==='pt'||k==='edge'||k==='face'){if(!(editMode&&sub===k))setTool(k)}
+ else{selFilt=k;if(editMode)setTool(null);camSel=-1}
+ setXf('select');syncSelPanel();all();
+ toast(k==='object'?'Object: click an object to select it. Shift adds to the selection.':k==='group'?'Group: click an object to select its whole group.':k==='center'?'Center: click an object\'s center point to select it.':'Click to select '+(k==='pt'?'points':k==='edge'?'edges':'polygons')+'; drag a box to select several.')}
+$('#spArrow').addEventListener('click',()=>{if(knife||drawOn||odOn||ceOn||paintOn||sculptOn||jointOn||wpOn)setTool(null);setXf('select');syncSelPanel()});
+$('#selPanel').addEventListener('click',e=>{const b=e.target.closest('[data-sf]');if(b)selPick(b.dataset.sf);else if(e.target.closest('#spSample')){if(!editMode){selPick('face')}sampleOn=!sampleOn;setXf('select');syncSelPanel();toast(sampleOn?'Sample is on: drag across the model to select everything you pass over.':'Sample is off.')}});
 function startBox(e,x,y){const cu=e.ctrlKey||e.metaKey,ad=add(e)||cu;box={x0:x,y0:y,x1:x,y1:y,add:ad,sub:cu,sh:e.shiftKey||cu};drag.box=true}
 /* crossing selection: anything the box touches is picked, not only things fully inside it */
 function segHitsRect(ax,ay,bx,by,x0,y0,x1,y1){let t0=0,t1=1;const dx=bx-ax,dy=by-ay;
@@ -1677,8 +1713,8 @@ const CMDS=[
  {g:'Modeling',l:'Clear face paint',k:'Shift+P',en:need,f:()=>paintFaces(true)},
  {g:'Modeling',l:'Reset point edits',k:'Shift+R',en:inEd,f:resetEdits},
  {g:'Modeling',l:'Mirror polygons',k:'Alt+X',en:need,f:mirrorPolys,on:()=>symEdit},
- {g:'Modeling',l:'Symmetrize',k:'Ctrl+Shift+Y',en:need,f:symToggle,on:()=>symEdit&&!sym4},
- {g:'Modeling',l:'Symmetrize 4-way',k:'Ctrl+Alt+Y',en:need,f:sym4Toggle,on:()=>symEdit&&sym4},
+ {g:'Modeling',l:'Symmetrize',k:'Ctrl+Shift+Y',en:need,f:sym4Toggle,on:()=>symEdit&&sym4},
+ {g:'Modeling',l:'Symmetrize one plane',k:'Ctrl+Alt+Y',en:need,f:symToggle,on:()=>symEdit&&!sym4},
  {g:'Modeling',l:'Symmetrize object',k:'Alt+Y',en:need,f:symmetrizeChanges},
  {g:'Modeling',l:'Smooth surface',k:'Alt+S',en:need,f:smoothObj},
  {g:'Modeling',l:'Paint tool (click or drag faces)',k:'B',en:need,f:pick('paint'),on:()=>paintOn},
@@ -2493,7 +2529,7 @@ const SHELVES=[
  {n:'Basic Modeling Tools',rows:[
   {n:'Primitives',items:[{c:'Add cube',t:'Cube',ic:'cube'},{c:'Add sphere',t:'Sphere',ic:'sphere'},{c:'Add torus',t:'Torus',ic:'torus'},{c:'Add trapezoid',t:'Trapezoid',ic:'trap'},{c:'Add teapot',t:'Teapot',ic:'teapot'},{c:'Add tree',t:'Tree',ic:'tree'}]},
   {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid',ic:'grid'},{sp:1},{gl:'Component'},{c:'Object mode',t:'Object'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{gl:'Pivot'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X',ic:'axX'},{c:'Lock to Y axis',t:'Y',ic:'axY'},{c:'Lock to Z axis',t:'Z',ic:'axZ'},{c:'World (free move)',t:'World',ic:'world'},{sp:1},{gl:'Scene'},{c:'Remove object',t:'Remove object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save file',t:'Save'},{c:'Open file',t:'Load'}]},
-  {n:'Modeling tools',items:[{c:'Loop cut',t:'Loop Cut'},{c:'Knife Area',t:'Knife Area',ic:'karea'},{c:'Add loop edge',t:'Add Loop Edge',ic:'ledge'},{c:'Add vertex',t:'Add Vertex',ic:'points'},{c:'Group weld',t:'Group Weld',ic:'bullseye'},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Symmetrize',t:'Symmetrize'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize 4-way',t:'Symmetrize 4-Way'},{c:'Symmetrize object',t:'Symmetrize Object'},{c:'Smooth surface',t:'Smooth'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Duplicate',ic:'dup3'},{c:'Group selected',t:'Group',ic:'dup'},{c:'Delete',t:'Delete'},{sp:1},{gl:'Soft select'},{c:'Soft select',t:'Soft Select',ic:'soft'},{soft:'mode'},{soft:'curve'},{soft:'r'}]},
+  {n:'Modeling tools',items:[{c:'Loop cut',t:'Loop Cut'},{c:'Knife Area',t:'Knife Area',ic:'karea'},{c:'Add loop edge',t:'Add Loop Edge',ic:'ledge'},{c:'Add vertex',t:'Add Vertex',ic:'points'},{c:'Group weld',t:'Group Weld',ic:'bullseye'},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object',t:'Symmetrize Object'},{c:'Smooth surface',t:'Smooth'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Duplicate',ic:'dup3'},{c:'Group selected',t:'Group',ic:'dup'},{c:'Delete',t:'Delete'},{sp:1},{gl:'Soft select'},{c:'Soft select',t:'Soft Select',ic:'soft'},{soft:'mode'},{soft:'curve'},{soft:'r'}]},
   {n:'Draw',items:[{c:'World Draw',t:'World Draw',ic:'draw'},{c:'Object Draw',t:'Object Draw',ic:'odraw'},{c:'Free Draw',t:'Free Draw',ic:'fdraw'}]},
   {n:'Rotoscope',items:[{c:'Rotoscope: load image',t:'Load image…'},{c:'Rotoscope: move and scale',t:'Move / Scale'},{c:'Rotoscope: show or hide',t:'Visible'},{c:'Rotoscope: remove image',t:'Remove'},{roto:'op'},{roto:'size'},{roto:'x'},{roto:'y'},{rname:1}]},
   {n:'File',items:[{c:'New file',t:'New File'},{c:'Open file',t:'Open File'},{c:'Save file',t:'Save File'},{c:'Save file as',t:'Save As'},{fname:1},{c:'Export file',t:'Export File'},{fmt:1},{c:'Export and save to this computer',t:'Save to Computer'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Perspective view',t:'Perspective View'},{c:'Orthographic view',t:'Orthographic View'},{sp:1},{c:'Record video (MP4)',t:'Record',id:'rec'},{sp:1},{gl:'Selected object'},{c:'Object wireframe',t:'Wireframe'},{c:'Object shaded',t:'Shaded'},{c:'Object wireframe + shaded',t:'Wireframe + Shaded'},{vp:'op'}]}]},
@@ -2767,11 +2803,14 @@ function symmetrize(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK
  selPts.clear();selEdges.clear();ringPrev=null;all();toast(symWhy(r,ax)+'Change axis, dir and offset in the Symmetrize card; delete the card to undo.')}
 /* Symmetrize object changes: same detection, kept as its own command. Every earlier node and edit stays in the stack, so nothing is lost; delete the Symmetrize node to go back. */
 function symmetrizeChanges(){symmetrize()}
-/* Symmetrize 4-way is a switch: while on, every edit is copied in both directions across the left/right plane (X) and the front/back plane (Z) at once, so each change appears in all four quadrants. It does not change the model when clicked. */
+/* Symmetrize is a switch: while on, every edit is copied in both directions across the left/right plane (X) and the front/back plane (Z) at once, so each change appears in all four quadrants. It does not change the model when clicked. */
 function sym4Toggle(){const o=objs[sel];if(!o)return;
- if(symEdit&&sym4){symEdit=false;sym4=false;symAx=0;all();toast('Symmetrize 4-way off.');return}
- symEdit=true;sym4=true;symAx=0;if(!editMode)setTool('face');all();
- toast('Symmetrize 4-way on: every edit you make (move, rotate, scale, sculpt, loop cut, extrude, bevel, delete, paint) is copied left to right, right to left, front to back and back to front. Click it again to turn it off.')}
+ if(symEdit&&sym4){symEdit=false;sym4=false;symAx=0;all();toast('Symmetrize off. New edits are no longer repeated on the other sides.');return}
+ /* first mirror the object left to right (or right to left): whichever side has the cuts and shape changes is copied onto the side that lacks them */
+ symEdit=true;sym4=true;symAx=0;const r=symSide(o,0);let msg;
+ if(r.why==='none')msg='Both sides already match, so nothing needed copying. ';else{symmetrize();msg=symWhy(r,0)}
+ if(!editMode)setTool('face');all();
+ toast('Symmetrize on. '+msg+'Every edit you make now (move, rotate, scale, sculpt, loop cut, extrude, bevel, delete, paint) is copied left to right, right to left, front to back and back to front. Click Symmetrize again to turn it off.')}
 /* Symmetrize is a switch: clicking it on mirrors the modelled side across the plane now and then stays on, repeating every later edit (move, rotate, scale, loop cut, knife, extrude, bevel, weld, delete) on the opposite side until it is clicked off. */
 function symToggle(){const o=objs[sel];if(!o)return;
  if(symEdit){symEdit=false;sym4=false;symAx=0;all();toast('Symmetrize off. New edits are no longer repeated on the other side (the symmetrized shape stays; delete the Symmetrize card to undo it).');return}
@@ -3167,6 +3206,7 @@ if(e.button===2){drag.rc=true;return}
  if(draw.exm&&e.button===0){const x=e.clientX-r0.left,y=e.clientY-r0.top,m=draw.exm,vx=m.x1-m.x0,vy=m.y1-m.y0,L2=vx*vx+vy*vy||1,t=Math.max(0,Math.min(1.08,((x-m.x0)*vx+(y-m.y0)*vy)/L2)),dd=Math.hypot(x-(m.x0+vx*t),y-(m.y0+vy*t));
   if(dd<12){const so=objs[sel],ks=(((so&&so.sc)||[1,1,1]).reduce((a,b)=>a+b,0)/3)||1;drag.exm={d0:exNode.p.dist,ks};return}}
  const gh=gizmoHit(e.clientX-r0.left,e.clientY-r0.top);if(gh){drag.gz=gh;return}
+ if(sampleOn&&editMode&&(sub==='pt'||sub==='face'||sub==='edge')&&e.button===0){drag.smp=true;if(!add(e)){selPts.clear();selEdges.clear()}sampleAt(e);return}
  if(editMode&&sub==='face'&&draw.polys){const x=e.clientX-r0.left,y=e.clientY-r0.top;let h=null;
   if(draw.hed){const q=hugeFaceAt(x,y);if(q)h=q}else for(let k=draw.polys.length-1;k>=0&&!h;k--){const p=draw.polys[k];if(p.oi===sel&&inPoly(x,y,p.pts))h=p}
   if(h){if(add(e)){selPts.has(h.fi)?selPts.delete(h.fi):selPts.add(h.fi)}else if(!selPts.has(h.fi)){selPts.clear();selPts.add(h.fi)}drag.pt={z:h.z};draw()}
@@ -3190,6 +3230,7 @@ cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,
  if(drag.ro){rotoDrag(e);return}
  if(drag.sc){sculptMove(e);return}
  if(drag.wp){wpMove(e);return}
+ if(drag.smp){sampleAt(e);return}
  if(drag.rc||drag.orb){if(ortho){panX+=dx;panY+=dy;drag.x=e.clientX;drag.y=e.clientY;draw();return}orbitBy(dx,dy,.008,drag.rc);drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.zm){dist=Math.max(.3,Math.min(80,dist*Math.exp((dy-dx)*.008)));drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.exm&&exNode&&draw.exm){const m=draw.exm,s2=((e.clientX-drag.x)*m.ux+(e.clientY-drag.y)*m.uy)/m.pxu/drag.exm.ks;exNode.p.dist=Math.max(-5,Math.min(5,+(drag.exm.d0+s2).toFixed(3)));const so=objs[sel],i=so.nodes.indexOf(exNode);dirtyFrom(so,i);evaluate(so);draw();return}
@@ -3223,6 +3264,7 @@ cv.addEventListener('pointerup',e=>{if(drag&&drag.sbx){const b=box;box=null;drag
  if(drag&&drag.exm){drag=null;panels();draw();return}
  if(drag&&drag.sc){sculptEnd();drag=null;panels();return}
  if(drag&&drag.wp){wpEnd();drag=null;panels();return}
+ if(drag&&drag.smp){drag=null;all();return}
  if(drag&&drag.jn){const mv=(drag.jm||drag.ik)&&drag.moved>2,ik=!!drag.ik;if(drag.jm&&mv)skinDirty();drag=null;if(mv&&ik)tlAutoKey();panels();if(mv)commit();return}
  if(drag&&drag.pn){drag=null;return}
  if(drag&&drag.kn){knifeCut();kn=null;drag=null;all();return}
@@ -3234,11 +3276,11 @@ cv.addEventListener('pointerup',e=>{if(drag&&drag.sbx){const b=box;box=null;drag
  if(drag&&(drag.pt||drag.ot||drag.gz))panels();
  if(drag&&drag.clr){if(drag.moved<5&&!e.shiftKey){selPts.clear();selEdges.clear();all()}}else if(drag&&!editMode&&drag.moved<5&&draw.centers){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
   const ch=(draw.camPts||[]).find(c=>Math.hypot(c.x-x,c.y-y)<14);if(ch){camSel=ch.i;panels();draw();drag=null;return}
-  let best=-1,bd=0;if(draw.polys)for(let k=draw.polys.length-1;k>=0;k--){const pp=draw.polys[k];if(inPoly(x,y,pp.pts)){best=pp.oi;break}}
-  if(best<0&&draw.heavy&&draw.heavy.length){const hh=heavyHit(x,y);if(hh)best=hh.oi}
-  if(best<0){bd=1e9;draw.centers.forEach((c,i)=>{const d=Math.hypot(c[0]-x,c[1]-y);if(d<bd){bd=d;best=i}});if(bd>=40)best=-1}
+  let best=-1,bd=0;if(selFilt!=='center'){if(draw.polys)for(let k=draw.polys.length-1;k>=0;k--){const pp=draw.polys[k];if(inPoly(x,y,pp.pts)){best=pp.oi;break}}
+  if(best<0&&draw.heavy&&draw.heavy.length){const hh=heavyHit(x,y);if(hh)best=hh.oi}}
+  if(best<0){bd=1e9;draw.centers.forEach((c,i)=>{const d=Math.hypot(c[0]-x,c[1]-y);if(d<bd){bd=d;best=i}});if(bd>=(selFilt==='center'?16:40))best=-1}
   if(best<0&&!add(e)&&!e.ctrlKey&&!e.metaKey&&(sel>=0||osel.size||camSel>=0)){sel=-1;camSel=-1;osel.clear();selPts.clear();all()}
-  if(best>=0){camSel=-1;if(add(e)||e.ctrlKey||e.metaKey){const oo=objs[best];if(best===sel){if(osel.size){const nx=[...osel][0],ix=objs.indexOf(nx);osel.delete(nx);if(ix>=0)sel=ix}}else if(osel.has(oo))osel.delete(oo);else osel.add(oo)}else{sel=best;osel.clear()}selPts.clear();all()}}drag=null});
+  if(best>=0){camSel=-1;if(add(e)||e.ctrlKey||e.metaKey){const oo=objs[best];if(best===sel){if(osel.size){const nx=[...osel][0],ix=objs.indexOf(nx);osel.delete(nx);if(ix>=0)sel=ix}}else if(osel.has(oo))osel.delete(oo);else osel.add(oo)}else{sel=best;osel.clear();if(selFilt==='group'&&objs[best]&&objs[best].g)objs.forEach(q=>{if(q!==objs[best]&&q.g===objs[best].g)osel.add(q)})}selPts.clear();all()}}drag=null});
 cv.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(.3,Math.min(80,dist*(1+e.deltaY*.001)));draw()},{passive:false});
 addEventListener('resize',draw);
 /* ---- scene dialog, history hooks, edge-loop double-click ---- */
