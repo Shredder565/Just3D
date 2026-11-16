@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v163 — Numbered shelves spread across the top
+- The numbered shelf buttons 1–11 now run in one row across the full width of the window, directly under the NOVA 3D bar, spread evenly from left to right instead of being clustered in the left frame. Clicking one still opens its tools in the same place in the left frame, under the Object select button. (On a narrow window the row wraps.)
+
 ## v162 — Cleaner top bar, numbered shelves under the logo
 - **Top bar (next to the NOVA 3D logo):** removed *Save File*, *Save to Computer*, the export format selector (*.obj*), the *Perspective View* / *Orthographic View* buttons and the *Selected object* label. It now fits on one line: New File, Open File, Save As, file name, Export File, Create New Model, Record, Wireframe, Shaded, Wireframe + Shaded, Opacity. Ctrl+S still saves; Export File still exports (as .obj).
 - **Perspective and Orthographic are clickable in the viewport.** Click the *Perspective* or *Orthographic* label in the corner of a view to show only that view; click it again to go back to the split view.
