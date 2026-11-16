@@ -1604,12 +1604,15 @@ function deleteFaces(){const o=objs[sel];if(!o||sub!=='face'||!selPts.size)retur
 let tw=false,twSrc=null;
 function addNode(name,fl){const o=objs[sel],nn=mk(name),L=o.nodes.length-1;nn.fl=fl;placeNode(o,nn);return nn}
 function weldSel(){const o=objs[sel];if(!inEd()||sub!=='pt'||selPts.size<2){toast('Select two or more points first (Points mode), then Weld');return}
- const n=selPts.size,mp=[...selPts].map(mirPt),hasMir=symEdit&&mp.length>=2&&mp.every(x=>x!==undefined)&&mp.some(x=>!selPts.has(x));addNode('Weld',[...selPts]);if(hasMir)addNode('Weld',mp);const m=evaluate(o);selPts.clear();toast('Welded '+n+' points to their center. Use the Weld card in the properties panel to set a distance.');all()}
+ const n=selPts.size,P0=[...selPts],MS=mirSets(P0);addNode('Weld',P0);MS.forEach(mp=>addNode('Weld',mp));const m=evaluate(o);selPts.clear();toast('Welded '+n+' points to their center. Use the Weld card in the properties panel to set a distance.');all()}
 /* Group weld: whatever is selected (points, edges or faces) is merged into one single point at the centre of the group; faces and edges that collapse are removed */
+/* the matching points on every mirrored side (left/right, and front/back with Symmetrize on), for a weld to be repeated there */
+function mirSets(pts){if(!symEdit||pts.length<2)return[];const seen=new Set([pts.slice().sort((a,b)=>a-b).join(',')]),out=[];
+ symSubsets().forEach(ss=>{const mp=pts.map(i=>mirPt(i,ss));if(!mp.every(x=>x!==undefined))return;const k=mp.slice().sort((a,b)=>a-b).join(',');if(seen.has(k))return;seen.add(k);out.push(mp)});return out}
 function groupWeld(){const o=objs[sel],en=o&&editNode(o);if(!o||!inEd()||!en){toast('Select points, edges or faces first, then Group weld');return}
  const pts=[...(sub==='face'?facePts(en):selPts)];if(pts.length<2){toast(sub==='face'?'Select one or more faces first, then Group weld':'Select two or more points (or edges) first, then Group weld');return}
- const mp=pts.map(mirPt),hasMir=symEdit&&mp.every(x=>x!==undefined)&&mp.some(x=>!pts.includes(x));
- addNode('Weld',pts);if(hasMir)addNode('Weld',mp);evaluate(o);selPts.clear();if(typeof selEdges!=='undefined')selEdges.clear();
+ const MS=mirSets(pts);
+ addNode('Weld',pts);MS.forEach(mp=>addNode('Weld',mp));evaluate(o);selPts.clear();if(typeof selEdges!=='undefined')selEdges.clear();
  toast('Group weld: merged '+pts.length+' points into one. Ctrl+Z undoes it.');all()}
 function targetWeldTool(){if(!objs[sel])return;tw=!tw;twSrc=null;if(tw){if(!(editMode&&sub==='pt'))setTool('pt');selPts.clear();toast('Target Weld: click a point, then click the point to weld it onto. Dragging one point onto another works too. Esc to finish.')}else toast('Target Weld off');all()}
 function twDo(a,b){if(a===b)return;const ma=mirPt(a),mb=mirPt(b);addNode('TargetWeld',[a,b]);if(symEdit&&ma!==undefined&&mb!==undefined&&ma!==mb&&!(ma===a&&mb===b)&&!(ma===b&&mb===a))addNode('TargetWeld',[ma,mb]);selPts.clear();twSrc=null;toast('Welded point onto target');all()}

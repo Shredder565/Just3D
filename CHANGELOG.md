@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v160 — Group weld fixed
+- **Group weld (and Weld) work again while Symmetrize is on.** A mistake in the front/back mirroring added in v155 made the weld fail with an error whenever Symmetrize was on and two or more points were selected.
+- With Symmetrize on, the weld is now repeated on every mirrored side (left/right and front/back), not just one.
+
 ## v159 — Select panel, and "Symmetrize" renamed
 - **New Select panel at the top of the left side, above the numbered shelves.** The big arrow is the Select tool. Next to it: **Group** (click any object to select its whole group), **Center** (click an object's center dot to select it), **Object** (click an object to select it), **Point**, **Edge** and **Polygon** (select those parts of the model), and **Sample** (drag across the model and every point, edge or polygon you pass over is selected). The active choice is highlighted.
 - **Click now chooses.** With the Select tool, a plain click selects what you clicked and replaces the old selection. Shift+click adds, Ctrl+click removes. (Before, every click was added to the selection.)
