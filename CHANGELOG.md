@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v166 — Modeling tools shelf trimmed
+- Removed the **Symmetrize**, **Symmetrize Object**, **Smooth**, **Relax**, **Group** and **Delete** buttons from the Modeling tools shelf. The shelf now has Loop Cut, Knife Area, Add Loop Edge, Add Vertex, Group Weld, Target Weld, Extrude, Bevel, Invert, Loop, Ring, Mirror, Freeze, Merge, Duplicate and Soft Select. The commands still work from their keyboard shortcuts (Ctrl+Shift+Y Symmetrize, Alt+Y Symmetrize object, Alt+S Smooth, Shift+G Group, Delete key) and the right-click menu.
+
 ## v165 — Maya-style Smooth and Mirror
 - **Smooth now works like Maya's Mesh > Smooth** (Modeling tools shelf → Smooth, or Alt+S). It is Catmull-Clark subdivision: every face is split into quads and the surface is rounded, so a box turns into a soft, pillow-like shape. The new **MeshSmooth** card has *divisions* (1–4, each one makes it rounder and 4× denser), *continuity* (1 = fully smooth, 0 = just split, shape kept) and *keepBorder* (open edges stay put, Maya's "Keep border"). The result matches Maya's numbers: a 1×1×1 box smoothed once has its corners at 0.2778, exactly as in Maya. Face colours are carried over.
 - The cube's *res* can now go down to 1, like Maya's default box, for the classic smoothed-box shape.
