@@ -4,6 +4,12 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v172 — Symmetrize is back, next to Mirror
+- **Symmetrize** is back on the Modeling tools shelf, right after Mirror (also Ctrl+Shift+Y). It copies your **point moves** from one side of the model to the other: left to right or right to left, whichever side has the changes. It does not copy or mirror the object itself and does not change its polygons.
+- "Left" and "right" are the sides of the viewport you are working in, so it works the same in any view: in the front or back view it mirrors across X, in a side view across Z, and in the perspective view across whichever axis runs across the screen. Points on the middle line stay on it. A message says which side was copied to which and on which axis; Ctrl+Z undoes it.
+- The old always-on mirroring switch (every edit repeated left/right and front/back) is still available as the command *Live symmetry (4-way)*.
+- The Modeling tools row was tightened slightly so every button still fits on one row.
+
 ## v171 — Auto-rig clicks no longer change the selection
 - Fixed: since v159 (where a plain click selects and replaces the selection), each click that places an Auto-rig point also deselected the model or selected whatever was under it. When the skeleton finished, the model was then not bound automatically. Auto-rig clicks now leave the selection alone, so the selected model (or every selected part) is bound as soon as the skeleton is done.
 

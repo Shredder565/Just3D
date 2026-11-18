@@ -62,8 +62,8 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 @media(max-width:1100px){#numTabs .tabrow{flex-wrap:wrap}}
 /* Modeling tools (with the Draw tools) fit on one row: compact buttons, no icons or undock buttons; if the window is too narrow the row scrolls instead of wrapping */
 #sideTabs #shelf.onerow .srow,#sideTabs #shelf.onerow .tools{flex-wrap:nowrap!important;gap:2px}
-#sideTabs #shelf.onerow{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;font-size:clamp(9px,.74vw,11.5px)}
-#sideTabs #shelf.onerow .tools .sb{padding:.25em .45em;font-size:1em;min-height:22px;white-space:nowrap;border-left-width:3px!important}
+#sideTabs #shelf.onerow{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;font-size:clamp(8.5px,.7vw,11.5px)}
+#sideTabs #shelf.onerow .tools .sb{padding:.25em .4em;font-size:1em;min-height:22px;white-space:nowrap;border-left-width:3px!important}
 #sideTabs #shelf.onerow .sb .ic,#sideTabs #shelf.onerow .pop,#sideTabs #shelf.onerow .gl{display:none}
 #sideTabs #shelf.onerow select{font-size:1em;padding:0 1px;max-width:5.6em}
 #sideTabs #shelf.onerow input[type=range]{width:4.5em!important}
@@ -1774,7 +1774,8 @@ const CMDS=[
  {g:'Modeling',l:'Clear face paint',k:'Shift+P',en:need,f:()=>paintFaces(true)},
  {g:'Modeling',l:'Reset point edits',k:'Shift+R',en:inEd,f:resetEdits},
  {g:'Modeling',l:'Mirror polygons',k:'Alt+X',en:need,f:mirrorPolys,on:()=>symEdit},
- {g:'Modeling',l:'Symmetrize',k:'Ctrl+Shift+Y',en:need,f:sym4Toggle,on:()=>symEdit&&sym4},
+ {g:'Modeling',l:'Symmetrize',k:'Ctrl+Shift+Y',en:need,f:symPoints},
+ {g:'Modeling',l:'Live symmetry (4-way)',en:need,f:sym4Toggle,on:()=>symEdit&&sym4},
  {g:'Modeling',l:'Symmetrize one plane',k:'Ctrl+Alt+Y',en:need,f:symToggle,on:()=>symEdit&&!sym4},
  {g:'Modeling',l:'Symmetrize object',k:'Alt+Y',en:need,f:symmetrizeChanges},
  {g:'Modeling',l:'Smooth surface',k:'Alt+S',en:need,f:smoothObj},
@@ -2593,7 +2594,7 @@ const SHELVES=[
  {n:'Basic Modeling Tools',rows:[
   {n:'Primitives',items:[{c:'Add cube',t:'Cube',ic:'cube'},{c:'Add sphere',t:'Sphere',ic:'sphere'},{c:'Add torus',t:'Torus',ic:'torus'},{c:'Add trapezoid',t:'Trapezoid',ic:'trap'},{c:'Add teapot',t:'Teapot',ic:'teapot'},{c:'Add tree',t:'Tree',ic:'tree'}]},
   {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid',ic:'grid'},{sp:1},{gl:'Component'},{c:'Object mode',t:'Object'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{gl:'Pivot'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X',ic:'axX'},{c:'Lock to Y axis',t:'Y',ic:'axY'},{c:'Lock to Z axis',t:'Z',ic:'axZ'},{c:'World (free move)',t:'World',ic:'world'},{sp:1},{gl:'Scene'},{c:'Remove object',t:'Remove object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save file',t:'Save'},{c:'Open file',t:'Load'}]},
-  {n:'Modeling tools',items:[{c:'Loop cut',t:'Loop Cut'},{c:'Knife Area',t:'Knife Area',ic:'karea'},{c:'Add loop edge',t:'Add Loop Edge',ic:'ledge'},{c:'Add vertex',t:'Add Vertex',ic:'points'},{c:'Group weld',t:'Group Weld',ic:'bullseye'},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Mirror',t:'Mirror'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Duplicate',ic:'dup3'},{sp:1},{c:'World Draw',t:'World Draw',ic:'draw'},{c:'Object Draw',t:'Object Draw',ic:'odraw'},{c:'Free Draw',t:'Free Draw',ic:'fdraw'},{sp:1},{gl:'Soft select'},{c:'Soft select',t:'Soft Select',ic:'soft'},{soft:'mode'},{soft:'curve'},{soft:'r'}]},
+  {n:'Modeling tools',items:[{c:'Loop cut',t:'Loop Cut'},{c:'Knife Area',t:'Knife Area',ic:'karea'},{c:'Add loop edge',t:'Add Loop Edge',ic:'ledge'},{c:'Add vertex',t:'Add Vertex',ic:'points'},{c:'Group weld',t:'Group Weld',ic:'bullseye'},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Mirror',t:'Mirror'},{c:'Symmetrize',t:'Symmetrize'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Duplicate',ic:'dup3'},{sp:1},{c:'World Draw',t:'World Draw',ic:'draw'},{c:'Object Draw',t:'Object Draw',ic:'odraw'},{c:'Free Draw',t:'Free Draw',ic:'fdraw'},{sp:1},{gl:'Soft select'},{c:'Soft select',t:'Soft Select',ic:'soft'},{soft:'mode'},{soft:'curve'},{soft:'r'}]},
   {n:'Rotoscope',items:[{c:'Rotoscope: load image',t:'Load image…'},{c:'Rotoscope: move and scale',t:'Move / Scale'},{c:'Rotoscope: show or hide',t:'Visible'},{c:'Rotoscope: remove image',t:'Remove'},{roto:'op'},{roto:'size'},{roto:'x'},{roto:'y'},{rname:1}]},
   {n:'File',items:[{c:'New file',t:'New File'},{c:'Open file',t:'Open File'},{c:'Save file as',t:'Save As'},{fname:1},{c:'Export file',t:'Export File'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Record video (MP4)',t:'Record',id:'rec'},{sp:1},{c:'Object wireframe',t:'Wireframe'},{c:'Object shaded',t:'Shaded'},{c:'Object wireframe + shaded',t:'Wireframe + Shaded'},{vp:'op'}]}]},
  {n:'Coloring and Rendering',rows:[
@@ -2869,6 +2870,22 @@ function symmetrize(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK
 /* Symmetrize object changes: same detection, kept as its own command. Every earlier node and edit stays in the stack, so nothing is lost; delete the Symmetrize node to go back. */
 function symmetrizeChanges(){symmetrize()}
 /* Symmetrize is a switch: while on, every edit is copied in both directions across the left/right plane (X) and the front/back plane (Z) at once, so each change appears in all four quadrants. It does not change the model when clicked. */
+/* Symmetrize: copies your point moves (not the object) from one side to the other. "Left and right" are the sides of the viewport you are working in: the axis is the one that runs across the screen, so it works the same in the front, side, top and perspective views. Whichever side has the larger point moves is copied onto the other side; points on the middle line keep their moves along it but stay on the line. The model's polygons and the object itself are not changed. */
+function symPoints(){const o=objs[sel];if(!o){toast('Select an object first');return}evaluate(o);const en=editNode(o);
+ if(!en||!en.out||!en.rep||!Object.keys(en.off||{}).length){toast('Symmetrize copies point moves from one side to the other, and this object has no moved points yet.');return}
+ const r=mulvT(rotMat(o.rot),[Math.cos(yaw),0,Math.sin(yaw)]);let ax=0;for(let k=1;k<3;k++)if(Math.abs(r[k])>Math.abs(r[ax]))ax=k;
+ const V=en.out.v,rep=en.rep,off=en.off,base=i=>{const q=off[i]||[0,0,0],v=V[i];return[v[0]-q[0],v[1]-q[1],v[2]-q[2]]},Q=1000,key=b=>Math.round(b[0]*Q)+','+Math.round(b[1]*Q)+','+Math.round(b[2]*Q),K=new Map();
+ let sz=0;for(let i=0;i<V.length;i++){if(rep[i]!==i)continue;const b=base(i);K.set(key(b),i);sz=Math.max(sz,Math.abs(b[ax]))}const eps=Math.max(1e-5,sz*1e-4);
+ let pos=0,neg=0;Object.keys(off).forEach(k=>{const i=+k,d=off[k];if(!V[i]||rep[i]!==i)return;const m=Math.hypot(d[0],d[1],d[2]),x=base(i)[ax];if(x>eps)pos+=m;else if(x<-eps)neg+=m});
+ if(pos<1e-9&&neg<1e-9){toast('All moved points sit on the middle line, so there is nothing to copy across.');return}
+ const sg=pos>=neg?1:-1;let n=0,miss=0;
+ for(let i=0;i<V.length;i++){if(rep[i]!==i)continue;const b=base(i),x=b[ax];
+  if(Math.abs(x)<=eps){if(off[i])off[i][ax]=0;continue}
+  if(Math.sign(x)!==sg)continue;const w=b.slice();w[ax]=-w[ax];const j=K.get(key(w));if(j===undefined){if(off[i])miss++;continue}
+  const d=off[i];if(d&&(d[0]||d[1]||d[2])){const e=d.slice();e[ax]=-e[ax];off[j]=e;n++}else if(off[j]){delete off[j];n++}}
+ dirtyFrom(o,o.nodes.indexOf(en));evaluate(o);all();commit();
+ const side=['left','right'][sg*(r[ax]>=0?1:-1)>0?1:0],other=side==='left'?'right':'left';
+ toast('Symmetrize: point moves on the '+side+' side (as seen in this view) were copied to the '+other+' side, across the '+'XYZ'[ax]+' axis'+(miss?'. '+miss+' moved point'+(miss>1?'s have':' has')+' no matching point on the other side, so '+(miss>1?'they were':'it was')+' left alone':'')+'. Ctrl+Z undoes it.')}
 function sym4Toggle(){const o=objs[sel];if(!o)return;
  if(symEdit&&sym4){symEdit=false;sym4=false;symAx=0;all();toast('Symmetrize off. New edits are no longer repeated on the other sides.');return}
  /* first mirror the object left to right (or right to left): whichever side has the cuts and shape changes is copied onto the side that lacks them */
