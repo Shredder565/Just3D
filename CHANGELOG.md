@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v168 — Text top bar, dark middle shelf
+- The top bar next to the NOVA 3D logo is now plain text, like a menu bar: New File, Open File, Save As, file name, Export File, Create New Model, Record, Wireframe, Shaded, Wireframe + Shaded. Hovering a word highlights it; the active display mode (for example Shaded) is shown in bold, underlined teal.
+- The middle shelf with the numbered shelves 1–11 now sits on a dark grey band.
+
 ## v167 — Shelf tools in a row under the numbered shelves
 - When you pick a numbered shelf (1–11), its tools now appear left to right in their own row directly under the numbered shelves, across the full width of the window, instead of in a column on the left side. Long shelves wrap onto a second line. The left side keeps the Object select button.
 

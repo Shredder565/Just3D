@@ -60,6 +60,13 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 :is(#sideTabs,#numTabs) .tab .tn{font-weight:500;margin-left:4px}
 #numTabs{grid-column:1/4;padding:4px 10px;background:var(--panel);color:var(--tx);box-sizing:border-box;min-width:0}#numTabs .tabrow{flex-wrap:nowrap;justify-content:space-between;gap:6px}#numTabs .tabrow .tab{flex:1 1 auto;justify-content:center;white-space:nowrap;min-width:0}
 @media(max-width:1100px){#numTabs .tabrow{flex-wrap:wrap}}
+/* top bar: plain text commands, like a menu bar */
+#fileBar .sb,#fileBar .sb[style*="--gc"]{background:none!important;border:0!important;box-shadow:none!important;padding:4px 9px;border-radius:4px;color:var(--tx);font-weight:500}
+#fileBar .sb:hover:not(:disabled){background:rgba(0,0,0,.09)!important;text-decoration:underline}
+#fileBar .sb.on{color:#0b7d6d;font-weight:700;text-decoration:underline}
+#fileBar .fname,#shelfTabs .fname{border:0!important;background:none!important;padding:3px 6px}
+/* middle shelf (numbered shelves): dark grey band */
+#numTabs{background:#3b3d41!important;border-top:1px solid #2a2b2e;border-bottom:1px solid #2a2b2e}
 /* the open shelf's tools run left to right in their own row under the numbered shelves */
 #sideTabs{grid-column:1/4;margin:0!important;padding:3px 10px 4px;background:var(--panel);box-sizing:border-box;min-width:0;max-height:30vh;overflow:auto}
 #sideTabs #shelf{flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px 14px;margin:0;padding:0;border:0;background:transparent}
