@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v169 — Draw merged into Modeling tools, one row
+- The **Draw** shelf is merged into **Modeling tools**: World Draw, Object Draw and Free Draw now sit next to Duplicate. The numbered shelves are now 1 Primitives, 2 Transform and scene, 3 Modeling tools, 4 Coloring, 5 Render 2K, 6 Rotoscope, 7 Navigating, 8 Rigging, 9 Sculpting, 10 Experimental and proprietary.
+- Every Modeling tools button fits on one row: compact buttons (no icons or undock buttons, text sized to the window), checked at 1500 and 1280 pixels wide. On a very narrow window the row scrolls sideways instead of wrapping.
+
 ## v168 — Text top bar, dark middle shelf
 - The top bar next to the NOVA 3D logo is now plain text, like a menu bar: New File, Open File, Save As, file name, Export File, Create New Model, Record, Wireframe, Shaded, Wireframe + Shaded. Hovering a word highlights it; the active display mode (for example Shaded) is shown in bold, underlined teal.
 - The middle shelf with the numbered shelves 1–11 now sits on a dark grey band.
