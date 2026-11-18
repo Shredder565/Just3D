@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v171 — Auto-rig clicks no longer change the selection
+- Fixed: since v159 (where a plain click selects and replaces the selection), each click that places an Auto-rig point also deselected the model or selected whatever was under it. When the skeleton finished, the model was then not bound automatically. Auto-rig clicks now leave the selection alone, so the selected model (or every selected part) is bound as soon as the skeleton is done.
+
 ## v170 — Select panel on the right
 - The Select panel (Object button) moved to the right side, at the top above the Explorer. The left column was empty after that, so it is closed and the viewports now use the full width.
 

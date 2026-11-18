@@ -3264,7 +3264,7 @@ if(e.button===2){drag.rc=true;return}
  if(scOn&&e.button===0&&!e.altKey){const x=e.clientX-r0.left,y=e.clientY-r0.top;box={x0:x,y0:y,x1:x,y1:y,sc:true};drag.sbx=true;draw();return}
  if(knife&&e.button===0&&!e.altKey){kn={x0:e.clientX-r0.left,y0:e.clientY-r0.top,x1:e.clientX-r0.left,y1:e.clientY-r0.top};drag.kn=true;return}
  if(sculptOn&&e.button===0&&!e.altKey){sculptStart(e);return}
- if(rigFit&&e.button===0&&!e.altKey){fitClick(e);return}
+ if(rigFit&&e.button===0&&!e.altKey){drag.fit=true;fitClick(e);return}
  if(jointOn&&e.button===0&&!e.altKey){jointClick(e);return}
  if(wpOn&&e.button===0&&!e.altKey){wpStart(e);return}
  if(paintOn&&e.button===0&&!e.altKey){drag.pn=true;paintAt(e);return}
@@ -3322,6 +3322,7 @@ cv.addEventListener('pointerup',e=>{if(drag&&drag.sbx){const b=box;box=null;drag
   if(oi<0){box=null;draw();toast('Click an object, or drag a box around the part you want');return}
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;P.forEach(q=>{if(q.oi===oi)q.pts.forEach(s=>{x0=Math.min(x0,s[0]);y0=Math.min(y0,s[1]);x1=Math.max(x1,s[0]);y1=Math.max(y1,s[1])})});
   finishHighlight({x0,y0,x1,y1});return}
+ if(drag&&drag.fit){drag=null;return}
  if(drag&&drag.ro){drag=null;rotoSync();return}
  if(drag&&drag.dw){dwUp(e);drag=null;draw();return}
  if(drag&&drag.od){odUp(e);drag=null;draw();return}
