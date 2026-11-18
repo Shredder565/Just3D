@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v167 — Shelf tools in a row under the numbered shelves
+- When you pick a numbered shelf (1–11), its tools now appear left to right in their own row directly under the numbered shelves, across the full width of the window, instead of in a column on the left side. Long shelves wrap onto a second line. The left side keeps the Object select button.
+
 ## v166 — Modeling tools shelf trimmed
 - Removed the **Symmetrize**, **Symmetrize Object**, **Smooth**, **Relax**, **Group** and **Delete** buttons from the Modeling tools shelf. The shelf now has Loop Cut, Knife Area, Add Loop Edge, Add Vertex, Group Weld, Target Weld, Extrude, Bevel, Invert, Loop, Ring, Mirror, Freeze, Merge, Duplicate and Soft Select. The commands still work from their keyboard shortcuts (Ctrl+Shift+Y Symmetrize, Alt+Y Symmetrize object, Alt+S Smooth, Shift+G Group, Delete key) and the right-click menu.
 

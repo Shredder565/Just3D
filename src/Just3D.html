@@ -17,7 +17,7 @@ header,#shelfTabs,#shelf,aside,#rside,#props{color:var(--tx);color-scheme:light;
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--tx);font:13px/1.4 "IBM Plex Sans","Segoe UI",system-ui,sans-serif}
-#app{display:grid;grid-template-columns:340px 1fr 300px;grid-template-rows:auto auto minmax(0,1fr);height:100%;gap:1px;background:var(--line)}
+#app{display:grid;grid-template-columns:340px 1fr 300px;grid-template-rows:auto auto auto minmax(0,1fr);height:100%;gap:1px;background:var(--line)}
 header[hidden]{display:none!important}header{grid-column:1/4;display:flex;align-items:flex-start;gap:6px;padding:6px 10px;background:var(--panel)}header .hb{display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex:1;min-width:0}header .logo{margin-top:2px}
 header b{font-size:14px;margin-right:10px;white-space:nowrap}
 aside,#props{background:var(--panel);overflow:auto;padding:8px}#rside{display:flex;flex-direction:column;min-height:0;background:var(--panel)}#rside #props{flex:1;min-height:0}#explorerBox{flex:none;max-height:42%;overflow:auto;padding:8px;border-bottom:1px solid var(--line)}
@@ -60,6 +60,15 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 :is(#sideTabs,#numTabs) .tab .tn{font-weight:500;margin-left:4px}
 #numTabs{grid-column:1/4;padding:4px 10px;background:var(--panel);color:var(--tx);box-sizing:border-box;min-width:0}#numTabs .tabrow{flex-wrap:nowrap;justify-content:space-between;gap:6px}#numTabs .tabrow .tab{flex:1 1 auto;justify-content:center;white-space:nowrap;min-width:0}
 @media(max-width:1100px){#numTabs .tabrow{flex-wrap:wrap}}
+/* the open shelf's tools run left to right in their own row under the numbered shelves */
+#sideTabs{grid-column:1/4;margin:0!important;padding:3px 10px 4px;background:var(--panel);box-sizing:border-box;min-width:0;max-height:30vh;overflow:auto}
+#sideTabs #shelf{flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px 14px;margin:0;padding:0;border:0;background:transparent}
+#sideTabs #shelf .srow{flex-direction:row;align-items:center;flex-wrap:wrap;gap:4px 10px;overflow:visible;min-height:0}
+#sideTabs #shelf .tools{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;width:auto;flex:1 1 auto!important;min-width:0}#sideTabs #shelf .srow{flex:1 1 100%;min-width:0;overflow:visible!important}
+#sideTabs #shelf .tools>*{grid-column:auto}
+#sideTabs #shelf .tools .sb{width:auto;min-height:28px}
+#sideTabs #shelf .tools .gl{flex-basis:auto;width:auto}
+#sideTabs #shelf .rs,#sideTabs #shelf .rn{flex:0 1 auto;width:auto}#sideTabs #shelf .rs input{width:110px;flex:none}
 #selPanel{margin:0 0 8px;padding:5px 6px 7px;background:#a9a69f;border:1px solid #6f6d68;border-radius:5px;color:#17181a;box-shadow:inset 0 1px 0 #ffffff55;max-width:230px}
 #selPanel .sph{text-align:right;font-weight:700;font-size:14px;letter-spacing:.3px;color:#2a2926;text-shadow:0 1px 0 #ffffff66;margin:0 4px 4px}
 #selPanel .spg{display:grid;grid-template-columns:1fr 1fr;gap:5px}
@@ -85,7 +94,7 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 #shelf .swb,#fileBar .swb{width:18px;height:18px;padding:0;border-radius:3px}
 #shelf input[type=color],#fileBar input[type=color]{width:28px;height:26px;padding:0;border:1px solid var(--line);background:none;cursor:pointer}
 @media(max-width:820px){
- #app{grid-template-columns:1fr;grid-template-rows:auto auto 55vh auto auto;height:auto;min-height:100%}#numTabs{grid-column:1}
+ #app{grid-template-columns:1fr;grid-template-rows:auto auto auto 55vh auto auto;height:auto;min-height:100%}#numTabs,#sideTabs{grid-column:1}
  header,#shelfTabs{grid-column:1}#vps{order:1;grid-template-columns:1fr;grid-template-rows:50vw 50vw}#rside{order:2}aside{order:3}
 }
 </style></head><body>
@@ -99,8 +108,9 @@ input[type=range]{width:100%;accent-color:var(--acc)}
  <input id="pcol" type="color" value="#e5484d" aria-label="Paint color" title="Paint color" style="width:30px;height:26px;padding:0;border:1px solid var(--line);background:none"><button id="tpn" title="Paint faces (B): click or drag over faces. Shift erases, Ctrl+click picks a color">Paint</button><button id="bun" title="Undo (Ctrl+Z)">Undo</button><button id="bre" title="Redo (Ctrl+Shift+Z)">Redo</button><button id="bsc" title="Save or load the scene (Ctrl+S)">Scene</button><span style="margin-left:auto;padding-left:12px;color:var(--mut);white-space:nowrap">Drag pans · Alt+drag or right-drag orbits · middle-drag zooms · right-click for commands</span></div></header>
  <div id="shelfTabs" role="tablist" aria-label="Shelves"></div>
  <div id="numTabs" role="tablist" aria-label="Shelves"></div>
+ <div id="sideTabs" role="region" aria-label="Shelf tools"></div>
  <aside><div id="selPanel" role="group" aria-label="Select"><div class="sph">Select</div><div class="spg">
-  <button data-sf="object" class="on wide" title="Select tool: click an object to select it. Shift adds to the selection, Ctrl removes.">Object</button></div></div><div id="sideTabs" role="region" aria-label="Shelf tools"></div></aside>
+  <button data-sf="object" class="on wide" title="Select tool: click an object to select it. Shift adds to the selection, Ctrl removes.">Object</button></div></div></aside>
  <div id="vps"><div id="vp"><canvas id="glc" aria-hidden="true"></canvas><canvas id="cv"></canvas><div id="stat" class="stat"></div><span class="vlab" data-vl="0" role="button" tabindex="0" title="Click: show only the perspective view (click again for split view)">Perspective</span><canvas id="vcube" class="vcube" aria-label="Perspective view cube: click a face to look from that side, drag to orbit"></canvas></div><div id="vp2"><canvas id="glcB" aria-hidden="true"></canvas><canvas id="cvB"></canvas><div id="statB" class="stat"></div><span class="vlab" data-vl="1" role="button" tabindex="0" title="Click: show only the orthographic view (click again for split view)">Orthographic</span><button class="vnav" data-d="up" style="top:6px;right:76px" aria-label="Top view">▲</button><button class="vnav" data-d="down" style="top:142px;right:76px" aria-label="Bottom view">▼</button><button class="vnav" data-d="left" style="top:74px;right:144px" aria-label="Previous side view">◀</button><button class="vnav" data-d="right" style="top:74px;right:8px" aria-label="Next side view">▶</button><canvas id="vcubeB" class="vcube" aria-label="Orthographic view cube: click a face to look from that side, drag to orbit"></canvas></div></div>
  <div id="rside"><div id="explorerBox"><div class="sec" style="margin-top:0">Explorer</div><div id="tree"></div></div><div id="props"></div></div>
  <div id="ctx" role="menu" hidden></div>
