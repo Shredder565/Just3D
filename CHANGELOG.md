@@ -4,6 +4,12 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v165 — Maya-style Smooth and Mirror
+- **Smooth now works like Maya's Mesh > Smooth** (Modeling tools shelf → Smooth, or Alt+S). It is Catmull-Clark subdivision: every face is split into quads and the surface is rounded, so a box turns into a soft, pillow-like shape. The new **MeshSmooth** card has *divisions* (1–4, each one makes it rounder and 4× denser), *continuity* (1 = fully smooth, 0 = just split, shape kept) and *keepBorder* (open edges stay put, Maya's "Keep border"). The result matches Maya's numbers: a 1×1×1 box smoothed once has its corners at 0.2778, exactly as in Maya. Face colours are carried over.
+- The cube's *res* can now go down to 1, like Maya's default box, for the classic smoothed-box shape.
+- The old shape-keeping smoother is still there as **Relax** (Relax surface).
+- **New Mirror, like Maya's Mesh > Mirror** (Modeling tools shelf → Mirror, or Ctrl+Alt+M): copies the mesh across X, Y or Z and keeps both halves in one object, with the border points merged into one piece. The **Mirror** card has *axis*, *dir* (+/-), *position* (0 = bounding box, the default: the copy sits right against the object's side; 1 = object centre; 2 = world centre), *offset*, *merge* and *threshold*. Press X, Y or Z before clicking Mirror to pick the axis. *Mirror copy (separate object)* makes a mirrored duplicate instead.
+
 ## v164 — Coloring is shelf 4, Rendering is shelf 5
 - The numbered shelves are now: 1 Primitives, 2 Transform and scene, 3 Modeling tools, **4 Coloring**, **5 Render 2K**, 6 Draw, 7 Rotoscope, 8 Navigating, 9 Rigging, 10 Sculpting, 11 Experimental and proprietary.
 

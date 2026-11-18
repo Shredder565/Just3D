@@ -123,7 +123,7 @@ const FACES=[[[0,0,1],[1,0,0],[0,1,0]],[[0,0,-1],[1,0,0],[0,1,0]],[[1,0,0],[0,0,
 const GEN={
  Sphere:{p:{radius:[1,.2,2,.05],res:[24,6,48,1]},fn:p=>{const m={v:[],f:[]};
   grid(m,p.res,p.res,(u,v)=>{const t=u*TAU,h=v*Math.PI;return[p.radius*Math.sin(h)*Math.cos(t),p.radius*Math.cos(h),p.radius*Math.sin(h)*Math.sin(t)]});return m}},
- Cube:{p:{size:[1.6,.3,3,.05],res:[10,2,24,1]},fn:p=>{const m={v:[],f:[]};
+ Cube:{p:{size:[1.6,.3,3,.05],res:[10,1,24,1]},fn:p=>{const m={v:[],f:[]};
   FACES.forEach(([o,A,B])=>grid(m,p.res,p.res,(u,v)=>[0,1,2].map(k=>o[k]*p.size/2+(u-.5)*p.size*A[k]+(v-.5)*p.size*B[k])));return m}},
  Torus:{p:{major:[1,.4,2,.05],minor:[.4,.1,1,.05],res:[32,8,64,1]},fn:p=>{const m={v:[],f:[]};
   grid(m,p.res,Math.max(6,p.res>>1),(u,v)=>{const t=u*TAU,h=v*TAU,r=p.major+p.minor*Math.cos(h);return[r*Math.cos(t),p.minor*Math.sin(h),r*Math.sin(t)]});return m}}
@@ -369,13 +369,20 @@ FOPS.CleanVerts={p:{},fn:(m,p,n)=>({v:m.v,f:cleanVerts(m,n.fl||[]).f})};
 FOPS.DissolveEdges={p:{},fn:(m,p,n)=>({v:m.v,f:dissolveEdges(m,n.fl||[]).f})};
 FOPS.DissolveVerts={p:{},fn:(m,p,n)=>({v:m.v,f:dissolveVerts(m,n.fl||[]).f})};
 /* Mirror Geometry: adds a reflected copy of the whole mesh on one side of a plane. The plane sits on the mesh's bounding-box edge (or at a chosen offset); optionally the border points are merged so the halves become one surface. */
-FOPS.Mirror={p:{axis:[0,0,2,1],dir:[1,-1,1,2],atEdge:[1,0,1,1],offset:[0,-5,5,.01],merge:[1,0,1,1],threshold:[.01,0,.5,.005]},fn:(m,p)=>{
- if(!m.v.length)return m;const ax=Math.max(0,Math.min(2,Math.round(p.axis))),dr=p.dir<0?-1:1;let pl=p.offset;
- if(p.atEdge>=.5){pl=dr>0?-Infinity:Infinity;m.v.forEach(v=>{pl=dr>0?Math.max(pl,v[ax]):Math.min(pl,v[ax])})}
- const n=m.v.length,V=m.v.map(v=>v.slice()),map=new Map(),W=[];
- m.v.forEach((v,i)=>{const w=v.slice();w[ax]=2*pl-w[ax];if(p.merge>=.5&&Math.abs(v[ax]-pl)<=p.threshold){V[i][ax]=pl;map.set(n+i,i);W.push(V[i].slice())}else{map.set(n+i,n+i);W.push(w)}});
- const F=m.f.map(f=>f.slice());m.f.forEach(f=>{const g=f.map(i=>map.get(n+i)),h=g.filter((i,k)=>i!==g[(k+1)%g.length]).reverse();if(h.length>=3&&new Set(h).size>=3)F.push(h)});
- return{v:V.concat(W),f:F}}};
+/* Mirror, like Maya's Mesh > Mirror: copies the mesh across a plane and keeps both halves in one object.
+   position: 0 = bounding box (the plane touches the side of the object, so the copy sits right next to it), 1 = object (the object's own centre plane), 2 = world (the scene's centre plane).
+   axis X/Y/Z, dir + or -, offset moves the plane. merge 1 = merge border vertices: points lying on the plane (within threshold) are shared, so the two halves become one closed piece. */
+FOPS.Mirror={p:{axis:[0,0,2,1],dir:[1,-1,1,2],position:[0,0,2,1],offset:[0,-5,5,.01],merge:[1,0,1,1],threshold:[.01,0,.5,.005]},fn:(m,p,n)=>{
+ if(!m.v.length)return m;const ax=Math.max(0,Math.min(2,Math.round(p.axis))),dr=p.dir<0?-1:1,o=n&&n.owner;
+ let mode=Math.round(p.position);if(p.atEdge!==undefined)mode=p.atEdge<.5?1:0;
+ const world=mode===2&&o,Mo=world?mulM(rotMat(o.rot),diag(o.sc||[1,1,1])):null,toW=v=>{const q=mulv(Mo,v);return[q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2]]},toO=w=>wl(o,[w[0]-o.pos[0],w[1]-o.pos[1],w[2]-o.pos[2]]);
+ const P=world?m.v.map(toW):m.v;let pl;
+ if(mode===0){pl=dr>0?-Infinity:Infinity;const used=new Set(m.f.flat());used.forEach(i=>{const x=P[i][ax];pl=dr>0?Math.max(pl,x):Math.min(pl,x)});if(!isFinite(pl))pl=0}else pl=0;pl+=p.offset;
+ const nv=m.v.length,V=m.v.map(v=>v.slice()),map=new Int32Array(nv),W=[];
+ for(let i=0;i<nv;i++){const x=P[i][ax];if(p.merge>=.5&&Math.abs(x-pl)<=p.threshold){if(world){const w=P[i].slice();w[ax]=pl;V[i]=toO(w)}else V[i][ax]=pl;map[i]=i}else{const w=P[i].slice();w[ax]=2*pl-w[ax];map[i]=nv+W.length;W.push(world?toO(w):w)}}
+ const F=m.f.map(f=>f.slice()),src=m.f.map((_,k)=>k);
+ m.f.forEach((f,k)=>{const g=f.map(i=>map[i]),h=g.filter((i,q)=>i!==g[(q+1)%g.length]).reverse();if(h.length>=3&&new Set(h).size>=3){F.push(h);src.push(k)}});
+ return{v:V.concat(W),f:F,src}}};
 /* Reflect: flips the whole mesh across a plane through its own origin and reverses the face winding so the faces still point outward. Used by Mirror Polygons. */
 FOPS.Reflect={p:{axis:[0,0,2,1]},fn:(m,p)=>{const ax=Math.max(0,Math.min(2,Math.round(p.axis)));return{v:m.v.map(v=>{const w=v.slice();w[ax]=-w[ax];return w}),f:m.f.map(f=>f.slice().reverse())}}};
 /* Weld / Target Weld: merge points. Vertex numbers stay put (merged points just stop being used) so later point edits still line up. */
@@ -401,6 +408,28 @@ FOPS.Subdivide={p:{},fn:m=>{const V=m.v.map(v=>v.slice()),F=[],mp=new Map();
  const mid=(a,b)=>{const k=a<b?a+'_'+b:b+'_'+a;let i=mp.get(k);if(i===undefined){const A=m.v[a],B=m.v[b];i=V.length;V.push([(A[0]+B[0])/2,(A[1]+B[1])/2,(A[2]+B[2])/2]);mp.set(k,i)}return i};
  m.f.forEach(f=>{const n=f.length,ms=f.map((a,k)=>mid(a,f[(k+1)%n])),c=[0,0,0];f.forEach(i=>{c[0]+=m.v[i][0];c[1]+=m.v[i][1];c[2]+=m.v[i][2]});const ci=V.length;V.push([c[0]/n,c[1]/n,c[2]/n]);
   f.forEach((a,k)=>F.push([a,ms[k],ci,ms[(k+n-1)%n]]))});return{v:V,f:F}}};
+/* Mesh Smooth, like Maya's Mesh > Smooth: Catmull-Clark subdivision. Every face is split into quads (one per corner) and every point is moved toward the average of its neighbours, so a box becomes a rounded, pillow-like shape and each division makes it rounder and 4x denser.
+   divisions 1-4. continuity 1 = fully smooth, 0 = just split (shape kept), in between blends. keepBorder 1 = open edges stay put (Maya's "Keep border"). Coincident points (the seams of the primitives) are treated as one point, so the surface does not tear. */
+function catmullClark(m,cont,keepB){const nv=m.v.length,rep=weldRep(m),R=new Int32Array(nv).fill(-1),P=[];
+ m.f.forEach(f=>f.forEach(i=>{const r=rep[i]>=0?rep[i]:i;if(R[r]<0){R[r]=P.length;P.push(m.v[r])}}));
+ const F=m.f.map(f=>{const g=f.map(i=>R[rep[i]>=0?rep[i]:i]);return g.filter((v,k)=>v!==g[(k+1)%g.length])}).filter(f=>f.length>=3),np=P.length;
+ const FP=F.map(f=>{const c=[0,0,0];f.forEach(i=>{c[0]+=P[i][0];c[1]+=P[i][1];c[2]+=P[i][2]});return[c[0]/f.length,c[1]/f.length,c[2]/f.length]});
+ const E=new Map(),eid=(a,b)=>a<b?a*np+b:b*np+a;
+ F.forEach((f,fi)=>f.forEach((a,k)=>{const b=f[(k+1)%f.length],key=eid(a,b);let e=E.get(key);if(!e){e={a:Math.min(a,b),b:Math.max(a,b),f:[],i:0};E.set(key,e)}e.f.push(fi)}));
+ const EL=[...E.values()];EL.forEach((e,k)=>{e.i=np+k});
+ const EP=EL.map(e=>{const A=P[e.a],B=P[e.b],mid=[(A[0]+B[0])/2,(A[1]+B[1])/2,(A[2]+B[2])/2];if(e.f.length!==2)return mid;const f0=FP[e.f[0]],f1=FP[e.f[1]],s=[(A[0]+B[0]+f0[0]+f1[0])/4,(A[1]+B[1]+f0[1]+f1[1])/4,(A[2]+B[2]+f0[2]+f1[2])/4];return[mid[0]+(s[0]-mid[0])*cont,mid[1]+(s[1]-mid[1])*cont,mid[2]+(s[2]-mid[2])*cont]});
+ const vF=Array.from({length:np},()=>[]),vE=Array.from({length:np},()=>[]);F.forEach((f,fi)=>f.forEach(a=>vF[a].push(fi)));EL.forEach(e=>{vE[e.a].push(e);vE[e.b].push(e)});
+ const VP=P.map((S,i)=>{const es=vE[i],bd=es.filter(e=>e.f.length!==2);let q;
+  if(bd.length){if(keepB||bd.length!==2)q=S;else{const a=P[bd[0].a===i?bd[0].b:bd[0].a],b=P[bd[1].a===i?bd[1].b:bd[1].a];q=[(6*S[0]+a[0]+b[0])/8,(6*S[1]+a[1]+b[1])/8,(6*S[2]+a[2]+b[2])/8]}}
+  else{const n=es.length;if(n<3)q=S;else{const Q=[0,0,0],Rm=[0,0,0];vF[i].forEach(fi=>{const c=FP[fi];Q[0]+=c[0];Q[1]+=c[1];Q[2]+=c[2]});const nf=vF[i].length||1;es.forEach(e=>{const A=P[e.a],B=P[e.b];Rm[0]+=(A[0]+B[0])/2;Rm[1]+=(A[1]+B[1])/2;Rm[2]+=(A[2]+B[2])/2});
+   q=[0,1,2].map(c=>(Q[c]/nf+2*Rm[c]/n+(n-3)*S[c])/n)}}
+  return[S[0]+(q[0]-S[0])*cont,S[1]+(q[1]-S[1])*cont,S[2]+(q[2]-S[2])*cont]});
+ const V=VP.concat(EP),fb=V.length;FP.forEach(c=>V.push(c));const NF=[],src=[];
+ F.forEach((f,fi)=>{const n=f.length;for(let k=0;k<n;k++){const a=f[k],b=f[(k+1)%n],z=f[(k+n-1)%n];NF.push([a,E.get(eid(a,b)).i,fb+fi,E.get(eid(z,a)).i]);src.push(fi)}});
+ return{v:V,f:NF,src,fsrc:F.length===m.f.length?null:true}}
+FOPS.MeshSmooth={p:{divisions:[1,1,4,1],continuity:[1,0,1,.05],keepBorder:[1,0,1,1]},fn:(m,p)=>{if(!m.f.length)return m;const d=Math.max(1,Math.min(4,Math.round(p.divisions)));
+ let cur=m,src=m.f.map((_,i)=>i);for(let k=0;k<d;k++){if(cur.f.length*4>1500000)break;const r=catmullClark(cur,Math.max(0,Math.min(1,p.continuity)),p.keepBorder>=.5);src=r.src.map(i=>src[i]);cur=r}
+ return{v:cur.v,f:cur.f,src}}};
 /* Smooth: evens out the surface without changing the shape. Each point moves toward the average of its neighbours and then back out a little (Taubin smoothing), so the object does not shrink. Points on open edges and on sharp edges and corners (sharper than "sharp" degrees) stay where they are, so a cube stays a cube while lumps, dents and stray points on its faces are flattened. amount = how many passes (0 to 1). Topology, colours and size are untouched. */
 function smoothMesh(m,amount,sharp){const key=v=>Math.round(v[0]*1e5)+','+Math.round(v[1]*1e5)+','+Math.round(v[2]*1e5),cid=new Map(),P=[],map=new Int32Array(m.v.length).fill(-1);
  m.f.forEach(f=>f.forEach(i=>{if(map[i]>=0)return;const k=key(m.v[i]);let c=cid.get(k);if(c===undefined){c=P.length;P.push(m.v[i].slice());cid.set(k,c)}map[i]=c}));
@@ -420,10 +449,15 @@ function smoothMesh(m,amount,sharp){const key=v=>Math.round(v[0]*1e5)+','+Math.r
  for(let it=0;it<n;it++){pass(.5);pass(-.53)}
  return m.v.map((v,i)=>map[i]>=0?A[map[i]].slice():v)}
 FOPS.Smooth={p:{amount:[.6,0,1,.05],sharp:[35,0,180,1]},fn:(m,p)=>{if(!m.f.length)return m;return{v:smoothMesh(m,Math.max(0,Math.min(1,p.amount)),p.sharp),f:m.f,src:m.f.map((_,i)=>i)}}};
+/* Smooth (like Maya): Catmull-Clark subdivision, 1 division */
 function smoothObj(){const o=objs[sel];if(!o)return;const m=evaluate(o);if(!m.f.length){toast('Nothing to smooth');return}
- if(m.f.reduce((a,f)=>a+f.length,0)>30000){toast('This model is already very dense, so smoothing it would be slow.');return}
+ if(m.f.reduce((a,f)=>a+f.length,0)*4>2000000){toast('This model is already very dense ('+m.f.length.toLocaleString()+' polygons); smoothing it would make it too heavy.');return}
+ const nn=mk('MeshSmooth');insertNodeKeepColors(o,nn);dirtyFrom(o,o.nodes.indexOf(nn));selPts.clear();selEdges.clear();ringPrev=null;all();
+ toast('Smoothed like Maya (Catmull-Clark): every face split into 4 and the shape rounded. Raise divisions in the MeshSmooth card for rounder; continuity 0 keeps the shape; delete the card to undo.')}
+function relaxObj(){const o=objs[sel];if(!o)return;const m=evaluate(o);if(!m.f.length){toast('Nothing to relax');return}
+ if(m.f.reduce((a,f)=>a+f.length,0)>30000){toast('This model is already very dense, so relaxing it would be slow.');return}
  const nn=mk('Smooth');insertNodeKeepColors(o,nn);dirtyFrom(o,o.nodes.indexOf(nn));selPts.clear();selEdges.clear();ringPrev=null;all();
- toast('Surface smoothed; the shape is kept. Change amount and the sharp-edge angle in the Smooth card (right panel); delete the card to undo.')}
+ toast('Surface relaxed; the shape and polygon count are kept. Change amount and the sharp-edge angle in the Smooth card; delete the card to undo.')}
 /* Skin: each point follows the nearest bones. On a biped skeleton only bones within two steps of the nearest one are used, so a finger never takes weight from its neighbour's far end and an arm never from the hip. */
 function hopTable(J){const n=J.length,D=[];for(let i=0;i<n;i++){D[i]=new Array(n).fill(99);D[i][i]=0}J.forEach((j,i)=>{if(j.parent>=0&&J[j.parent]){D[i][j.parent]=1;D[j.parent][i]=1}});for(let k=0;k<n;k++)for(let i=0;i<n;i++)for(let q=0;q<n;q++)if(D[i][k]+D[k][q]<D[i][q])D[i][q]=D[i][k]+D[k][q];return D}
 /* Skin weights live on the Skin card, per point: up to 4 bones each (0..255). Automatic weights are recomputed when the skeleton or the Skin settings change; painted weights are kept. */
@@ -1718,6 +1752,9 @@ const CMDS=[
  {g:'Modeling',l:'Symmetrize one plane',k:'Ctrl+Alt+Y',en:need,f:symToggle,on:()=>symEdit&&!sym4},
  {g:'Modeling',l:'Symmetrize object',k:'Alt+Y',en:need,f:symmetrizeChanges},
  {g:'Modeling',l:'Smooth surface',k:'Alt+S',en:need,f:smoothObj},
+ {g:'Modeling',l:'Relax surface',en:need,f:relaxObj},
+ {g:'Modeling',l:'Mirror',k:'Ctrl+Alt+M',en:need,f:mirrorGeo},
+ {g:'Modeling',l:'Mirror copy (separate object)',en:need,f:mirrorObj},
  {g:'Modeling',l:'Paint tool (click or drag faces)',k:'B',en:need,f:pick('paint'),on:()=>paintOn},
  {g:'Object',l:'Add sphere',k:'Shift+S',f:addO('Sphere')},
  {g:'Object',l:'Add cube',k:'Shift+C',f:addO('Cube')},
@@ -2530,7 +2567,7 @@ const SHELVES=[
  {n:'Basic Modeling Tools',rows:[
   {n:'Primitives',items:[{c:'Add cube',t:'Cube',ic:'cube'},{c:'Add sphere',t:'Sphere',ic:'sphere'},{c:'Add torus',t:'Torus',ic:'torus'},{c:'Add trapezoid',t:'Trapezoid',ic:'trap'},{c:'Add teapot',t:'Teapot',ic:'teapot'},{c:'Add tree',t:'Tree',ic:'tree'}]},
   {n:'Transform and scene',items:[{gl:'Tools'},{c:'Select'},{c:'Move',ic:'move'},{c:'Rotate',ic:'rotate'},{c:'Scale',ic:'scale'},{c:'Toggle grid',t:'Grid',ic:'grid'},{sp:1},{gl:'Component'},{c:'Object mode',t:'Object'},{c:'Points',ic:'points'},{c:'Edges',ic:'edges'},{c:'Faces',ic:'faces'},{sp:1},{gl:'Pivot'},{c:'Center pivot',t:'Center Pivot'},{c:'Center to object',t:'Center to Object'},{sp:1},{gl:'Axis lock'},{c:'Lock to X axis',t:'X',ic:'axX'},{c:'Lock to Y axis',t:'Y',ic:'axY'},{c:'Lock to Z axis',t:'Z',ic:'axZ'},{c:'World (free move)',t:'World',ic:'world'},{sp:1},{gl:'Scene'},{c:'Remove object',t:'Remove object'},{c:'Clear selection',t:'Clear'},{c:'Undo'},{c:'Redo'},{c:'Save file',t:'Save'},{c:'Open file',t:'Load'}]},
-  {n:'Modeling tools',items:[{c:'Loop cut',t:'Loop Cut'},{c:'Knife Area',t:'Knife Area',ic:'karea'},{c:'Add loop edge',t:'Add Loop Edge',ic:'ledge'},{c:'Add vertex',t:'Add Vertex',ic:'points'},{c:'Group weld',t:'Group Weld',ic:'bullseye'},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object',t:'Symmetrize Object'},{c:'Smooth surface',t:'Smooth'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Duplicate',ic:'dup3'},{c:'Group selected',t:'Group',ic:'dup'},{c:'Delete',t:'Delete'},{sp:1},{gl:'Soft select'},{c:'Soft select',t:'Soft Select',ic:'soft'},{soft:'mode'},{soft:'curve'},{soft:'r'}]},
+  {n:'Modeling tools',items:[{c:'Loop cut',t:'Loop Cut'},{c:'Knife Area',t:'Knife Area',ic:'karea'},{c:'Add loop edge',t:'Add Loop Edge',ic:'ledge'},{c:'Add vertex',t:'Add Vertex',ic:'points'},{c:'Group weld',t:'Group Weld',ic:'bullseye'},{c:'Target weld',t:'Target Weld',ic:'bullseye'},{c:'Extrude faces',t:'Extrude'},{c:'Bevel faces or edges',t:'Bevel'},{c:'Invert selection',t:'Invert'},{c:'Select edge loop',t:'Loop'},{c:'Select edge ring',t:'Ring'},{c:'Symmetrize',t:'Symmetrize'},{c:'Symmetrize object',t:'Symmetrize Object'},{c:'Mirror',t:'Mirror'},{c:'Smooth surface',t:'Smooth'},{c:'Relax surface',t:'Relax'},{c:'Freeze (delete history)',t:'Freeze',ic:'freeze'},{c:'Merge'},{sp:1},{c:'Duplicate',ic:'dup3'},{c:'Group selected',t:'Group',ic:'dup'},{c:'Delete',t:'Delete'},{sp:1},{gl:'Soft select'},{c:'Soft select',t:'Soft Select',ic:'soft'},{soft:'mode'},{soft:'curve'},{soft:'r'}]},
   {n:'Draw',items:[{c:'World Draw',t:'World Draw',ic:'draw'},{c:'Object Draw',t:'Object Draw',ic:'odraw'},{c:'Free Draw',t:'Free Draw',ic:'fdraw'}]},
   {n:'Rotoscope',items:[{c:'Rotoscope: load image',t:'Load image…'},{c:'Rotoscope: move and scale',t:'Move / Scale'},{c:'Rotoscope: show or hide',t:'Visible'},{c:'Rotoscope: remove image',t:'Remove'},{roto:'op'},{roto:'size'},{roto:'x'},{roto:'y'},{rname:1}]},
   {n:'File',items:[{c:'New file',t:'New File'},{c:'Open file',t:'Open File'},{c:'Save file as',t:'Save As'},{fname:1},{c:'Export file',t:'Export File'},{c:'Create new model',t:'Create New Model'},{sp:1},{c:'Record video (MP4)',t:'Record',id:'rec'},{sp:1},{c:'Object wireframe',t:'Wireframe'},{c:'Object shaded',t:'Shaded'},{c:'Object wireframe + shaded',t:'Wireframe + Shaded'},{vp:'op'}]}]},
@@ -2776,8 +2813,8 @@ function mirrorObj(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK:
  c.pos=o.pos.slice();c.pos[ax]=-c.pos[ax];c.rot=o.rot.slice();for(let k=0;k<3;k++)if(k!==ax)c.rot[k]=-c.rot[k];
  const nn=mk('Reflect');nn.p.axis=ax;c.nodes.push(nn);dirtyFrom(c,c.nodes.length-1);selPts.clear();selEdges.clear();
  all();toast('Mirrored copy "'+c.name+'" made across the world '+'XYZ'[ax]+' plane'+(Math.abs(o.pos[ax])<1e-6?'. The object sits on that plane, so move the original to see both.':'. Press X, Y or Z first to choose another plane.'))}
-function mirrorGeo(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK:0;const nn=addNode('Mirror',null);nn.p.axis=ax;dirtyFrom(o,o.nodes.indexOf(nn));
- selPts.clear();selEdges.clear();ringPrev=null;all();toast('Mirrored across the '+'XYZ'[ax]+' side. Change axis, direction, merge and offset in the Mirror card (right panel). Press X, Y or Z first to pick the axis.')}
+function mirrorGeo(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK:0;const nn=mk('Mirror');nn.p.axis=ax;insertNodeKeepColors(o,nn);dirtyFrom(o,o.nodes.indexOf(nn));
+ selPts.clear();selEdges.clear();ringPrev=null;all();toast('Mirrored across '+'XYZ'[ax]+' (like Maya: the copy sits against the side of the bounding box and the border points are merged into one piece). In the Mirror card: axis, direction (+/-), position (0 bounding box, 1 object, 2 world), offset, merge and threshold. Press X, Y or Z first to pick the axis.')}
 /* Which side of the plane was modelled? Compares every point with its mirror image (measured on the shape before manual point edits): the side with more points that have no partner on the other side got the loop cuts, knife cuts or extrusions, so that side is kept and cloned. If the topology is the same on both sides, the side with the larger point edits wins; with no information the positive side is kept. Returns {dir, why}. */
 function symSide(o,ax){const m=evaluate(o),last=o.nodes[o.nodes.length-1],en=last&&last.type==='Edit'?last:null,off=en&&en.off||{},rep=en&&en.rep,big=m.v.length>=50000;
  const usedA=new Uint8Array(m.v.length);if(big){for(let i=0;i<m.f.length;i++){const f=m.f[i];for(let k=0;k<f.length;k++)usedA[f[k]]=1}}
