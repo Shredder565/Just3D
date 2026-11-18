@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v173 — Symmetrize stays on until clicked off
+- **Symmetrize is now a switch.** Click it once: it copies the point moves already made from one side to the other (whichever side has them), turns on (the button stays highlighted) and switches to Points mode. From then on every point you move, and every sculpt, extrude, cut or weld, is copied to the other side automatically. Click Symmetrize again to turn it off.
+- Left/right always follows the viewport you are working in: across X in the front view, across Z in a side view, and across whichever axis runs across the screen in the perspective view. Turning the view changes the mirror axis for the next edit.
+
 ## v172 — Symmetrize is back, next to Mirror
 - **Symmetrize** is back on the Modeling tools shelf, right after Mirror (also Ctrl+Shift+Y). It copies your **point moves** from one side of the model to the other: left to right or right to left, whichever side has the changes. It does not copy or mirror the object itself and does not change its polygons.
 - "Left" and "right" are the sides of the viewport you are working in, so it works the same in any view: in the front or back view it mirrors across X, in a side view across Z, and in the perspective view across whichever axis runs across the screen. Points on the middle line stay on it. A message says which side was copied to which and on which axis; Ctrl+Z undoes it.

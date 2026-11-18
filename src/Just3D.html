@@ -1774,7 +1774,7 @@ const CMDS=[
  {g:'Modeling',l:'Clear face paint',k:'Shift+P',en:need,f:()=>paintFaces(true)},
  {g:'Modeling',l:'Reset point edits',k:'Shift+R',en:inEd,f:resetEdits},
  {g:'Modeling',l:'Mirror polygons',k:'Alt+X',en:need,f:mirrorPolys,on:()=>symEdit},
- {g:'Modeling',l:'Symmetrize',k:'Ctrl+Shift+Y',en:need,f:symPoints},
+ {g:'Modeling',l:'Symmetrize',k:'Ctrl+Shift+Y',en:need,f:symSwitch,on:()=>symEdit&&symView},
  {g:'Modeling',l:'Live symmetry (4-way)',en:need,f:sym4Toggle,on:()=>symEdit&&sym4},
  {g:'Modeling',l:'Symmetrize one plane',k:'Ctrl+Alt+Y',en:need,f:symToggle,on:()=>symEdit&&!sym4},
  {g:'Modeling',l:'Symmetrize object',k:'Alt+Y',en:need,f:symmetrizeChanges},
@@ -2807,7 +2807,10 @@ let symEdit=false;
 function mfind(K,a){const c=a.map(t=>{const u=t*1e4,f=Math.floor(u),r=u-f;return(r>.2&&r<.8)?[Math.round(u)]:[f,f+1]});
  for(const x of c[0])for(const y of c[1])for(const z of c[2]){const r=K.get(x+','+y+','+z);if(r!==undefined)return r}return undefined}
 let symAx=0;
-function symAxis(){return axisK!==null?axisK:symAx}
+var symView=false;
+/* with Symmetrize on, left/right is the axis that runs across the screen in the viewport you are working in */
+function viewAxis(o){const r=o?mulvT(rotMat(o.rot),[Math.cos(yaw),0,Math.sin(yaw)]):[Math.cos(yaw),0,Math.sin(yaw)];let ax=0;for(let k=1;k<3;k++)if(Math.abs(r[k])>Math.abs(r[ax]))ax=k;return ax}
+function symAxis(){if(symView&&symEdit)return viewAxis(objs[sel]);return axisK!==null?axisK:symAx}
 function symPt(p){const q=p.slice(),a=symAxis();q[a]=-q[a];return q}
 var sym4=false;/* Symmetrize 4-way: edits are copied across the left/right plane and the front/back plane at once */
 function symAxes(){return symEdit&&sym4?[0,2]:[symAxis()]}
@@ -2833,7 +2836,7 @@ function symApply(P){if(!P)return;const{so,en,A,groups,plane}=P,off=en.off;
 function rotPts(dx,dy){const P=symPrep();rotPts0(dx,dy);symApply(P)}
 function movePts(w){const P=symPrep();movePts0(w);symApply(P)}
 function scalePts(k,f){const P=symPrep();scalePts0(k,f);symApply(P)}
-function mirrorPolys(){if(!objs[sel])return;symEdit=!symEdit;sym4=false;if(symEdit&&!editMode)setTool('face');
+function mirrorPolys(){if(!objs[sel])return;symEdit=!symEdit;sym4=false;symView=false;if(symEdit&&!editMode)setTool('face');
  all();toast(symEdit?'Mirror Polygons on: moving points or faces, and loop cut, extrude, bevel, weld, target weld, knife and delete, are repeated on the opposite side ('+'XYZ'[symAxis()]+' plane). Press X, Y or Z first to change the plane.':'Mirror Polygons off')}
 function mirrorObj(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK:0;dupObj();const c=objs[sel];c.name=o.name+'_mirror';
  c.pos=o.pos.slice();c.pos[ax]=-c.pos[ax];c.rot=o.rot.slice();for(let k=0;k<3;k++)if(k!==ax)c.rot[k]=-c.rot[k];
@@ -2871,13 +2874,13 @@ function symmetrize(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK
 function symmetrizeChanges(){symmetrize()}
 /* Symmetrize is a switch: while on, every edit is copied in both directions across the left/right plane (X) and the front/back plane (Z) at once, so each change appears in all four quadrants. It does not change the model when clicked. */
 /* Symmetrize: copies your point moves (not the object) from one side to the other. "Left and right" are the sides of the viewport you are working in: the axis is the one that runs across the screen, so it works the same in the front, side, top and perspective views. Whichever side has the larger point moves is copied onto the other side; points on the middle line keep their moves along it but stay on the line. The model's polygons and the object itself are not changed. */
-function symPoints(){const o=objs[sel];if(!o){toast('Select an object first');return}evaluate(o);const en=editNode(o);
- if(!en||!en.out||!en.rep||!Object.keys(en.off||{}).length){toast('Symmetrize copies point moves from one side to the other, and this object has no moved points yet.');return}
+function symPoints(quiet){const o=objs[sel];if(!o){toast('Select an object first');return false}evaluate(o);const en=editNode(o);
+ if(!en||!en.out||!en.rep||!Object.keys(en.off||{}).length){if(!quiet)toast('Symmetrize copies point moves from one side to the other, and this object has no moved points yet.');return false}
  const r=mulvT(rotMat(o.rot),[Math.cos(yaw),0,Math.sin(yaw)]);let ax=0;for(let k=1;k<3;k++)if(Math.abs(r[k])>Math.abs(r[ax]))ax=k;
  const V=en.out.v,rep=en.rep,off=en.off,base=i=>{const q=off[i]||[0,0,0],v=V[i];return[v[0]-q[0],v[1]-q[1],v[2]-q[2]]},Q=1000,key=b=>Math.round(b[0]*Q)+','+Math.round(b[1]*Q)+','+Math.round(b[2]*Q),K=new Map();
  let sz=0;for(let i=0;i<V.length;i++){if(rep[i]!==i)continue;const b=base(i);K.set(key(b),i);sz=Math.max(sz,Math.abs(b[ax]))}const eps=Math.max(1e-5,sz*1e-4);
  let pos=0,neg=0;Object.keys(off).forEach(k=>{const i=+k,d=off[k];if(!V[i]||rep[i]!==i)return;const m=Math.hypot(d[0],d[1],d[2]),x=base(i)[ax];if(x>eps)pos+=m;else if(x<-eps)neg+=m});
- if(pos<1e-9&&neg<1e-9){toast('All moved points sit on the middle line, so there is nothing to copy across.');return}
+ if(pos<1e-9&&neg<1e-9){if(!quiet)toast('All moved points sit on the middle line, so there is nothing to copy across.');return false}
  const sg=pos>=neg?1:-1;let n=0,miss=0;
  for(let i=0;i<V.length;i++){if(rep[i]!==i)continue;const b=base(i),x=b[ax];
   if(Math.abs(x)<=eps){if(off[i])off[i][ax]=0;continue}
@@ -2885,18 +2888,23 @@ function symPoints(){const o=objs[sel];if(!o){toast('Select an object first');re
   const d=off[i];if(d&&(d[0]||d[1]||d[2])){const e=d.slice();e[ax]=-e[ax];off[j]=e;n++}else if(off[j]){delete off[j];n++}}
  dirtyFrom(o,o.nodes.indexOf(en));evaluate(o);all();commit();
  const side=['left','right'][sg*(r[ax]>=0?1:-1)>0?1:0],other=side==='left'?'right':'left';
- toast('Symmetrize: point moves on the '+side+' side (as seen in this view) were copied to the '+other+' side, across the '+'XYZ'[ax]+' axis'+(miss?'. '+miss+' moved point'+(miss>1?'s have':' has')+' no matching point on the other side, so '+(miss>1?'they were':'it was')+' left alone':'')+'. Ctrl+Z undoes it.')}
+ const msg='Point moves on the '+side+' side (as seen in this view) were copied to the '+other+' side, across the '+'XYZ'[ax]+' axis'+(miss?'. '+miss+' moved point'+(miss>1?'s have':' has')+' no matching point on the other side, so '+(miss>1?'they were':'it was')+' left alone':'')+'. ';if(!quiet)toast('Symmetrize: '+msg+'Ctrl+Z undoes it.');return msg}
+/* Symmetrize button: a switch. Clicking it on copies the moves already made, then every point you move (or sculpt, extrude, cut...) is repeated on the other side until you click it off. Left/right always follows the viewport you are working in. */
+function symSwitch(){const o=objs[sel];if(!o){toast('Select an object first');return}
+ if(symEdit&&symView){symEdit=false;symView=false;sym4=false;all();toast('Symmetrize off. Moves are no longer copied to the other side.');return}
+ const msg=symPoints(true);sym4=false;symView=true;symEdit=true;if(!editMode)setTool('pt');all();
+ toast('Symmetrize on. '+(msg||'')+'Every point you move now is copied to the other side (left/right as seen in the viewport you work in) until you click Symmetrize again.')}
 function sym4Toggle(){const o=objs[sel];if(!o)return;
- if(symEdit&&sym4){symEdit=false;sym4=false;symAx=0;all();toast('Symmetrize off. New edits are no longer repeated on the other sides.');return}
+ if(symEdit&&sym4){symEdit=false;sym4=false;symView=false;symAx=0;all();toast('Symmetrize off. New edits are no longer repeated on the other sides.');return}
  /* first mirror the object left to right (or right to left): whichever side has the cuts and shape changes is copied onto the side that lacks them */
- symEdit=true;sym4=true;symAx=0;const r=symSide(o,0);let msg;
+ symEdit=true;sym4=true;symView=false;symAx=0;const r=symSide(o,0);let msg;
  if(r.why==='none')msg='Both sides already match, so nothing needed copying. ';else{symmetrize();msg=symWhy(r,0)}
  if(!editMode)setTool('face');all();
  toast('Symmetrize on. '+msg+'Every edit you make now (move, rotate, scale, sculpt, loop cut, extrude, bevel, delete, paint) is copied left to right, right to left, front to back and back to front. Click Symmetrize again to turn it off.')}
 /* Symmetrize is a switch: clicking it on mirrors the modelled side across the plane now and then stays on, repeating every later edit (move, rotate, scale, loop cut, knife, extrude, bevel, weld, delete) on the opposite side until it is clicked off. */
 function symToggle(){const o=objs[sel];if(!o)return;
- if(symEdit){symEdit=false;sym4=false;symAx=0;all();toast('Symmetrize off. New edits are no longer repeated on the other side (the symmetrized shape stays; delete the Symmetrize card to undo it).');return}
- sym4=false;symAx=axisK!==null?0:autoAxis(o);symEdit=true;symmetrize();toast('Symmetrize on ('+'XYZ'[symAxis()]+' plane): the model was mirrored and every edit you make now is repeated on the opposite side until you click Symmetrize again. Press X, Y or Z before clicking to choose another plane.')}
+ if(symEdit){symEdit=false;sym4=false;symView=false;symAx=0;all();toast('Symmetrize off. New edits are no longer repeated on the other side (the symmetrized shape stays; delete the Symmetrize card to undo it).');return}
+ sym4=false;symView=false;symAx=axisK!==null?0:autoAxis(o);symEdit=true;symmetrize();toast('Symmetrize on ('+'XYZ'[symAxis()]+' plane): the model was mirrored and every edit you make now is repeated on the opposite side until you click Symmetrize again. Press X, Y or Z before clicking to choose another plane.')}
 /* Merge: joins the selected objects (select two or more with Shift+click) into one object. Each object's final shape, position, rotation and scale are baked in and face colours are kept. Where objects overlap, the faces of each that lie inside the other are deleted and the nearest points along the open seam are welded together. The originals are replaced by the merged object (Ctrl+Z undoes it). */
 function insideMesh(P,M,bb){if(P[0]<bb[0][0]||P[0]>bb[1][0]||P[1]<bb[0][1]||P[1]>bb[1][1]||P[2]<bb[0][2]||P[2]>bb[1][2])return false;
  const D=[[.5774,.6101,.5422],[-.4432,.7311,-.5189],[.2977,-.5513,.7799]];let votes=0;
