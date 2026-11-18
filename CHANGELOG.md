@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v170 — Select panel on the right
+- The Select panel (Object button) moved to the right side, at the top above the Explorer. The left column was empty after that, so it is closed and the viewports now use the full width.
+
 ## v169 — Draw merged into Modeling tools, one row
 - The **Draw** shelf is merged into **Modeling tools**: World Draw, Object Draw and Free Draw now sit next to Duplicate. The numbered shelves are now 1 Primitives, 2 Transform and scene, 3 Modeling tools, 4 Coloring, 5 Render 2K, 6 Rotoscope, 7 Navigating, 8 Rigging, 9 Sculpting, 10 Experimental and proprietary.
 - Every Modeling tools button fits on one row: compact buttons (no icons or undock buttons, text sized to the window), checked at 1500 and 1280 pixels wide. On a very narrow window the row scrolls sideways instead of wrapping.
