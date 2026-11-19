@@ -4,6 +4,11 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v175 — Tools back on the left, every tool undockable, custom shelf
+- **The open shelf's tools are back in the left column** (as a list), under the numbered shelves.
+- **Every single tool button can be undocked:** drag any button (Bevel, Extrude, Mirror, ...) off the left shelf into the viewport and it becomes its own small floating palette there. Press ⇲ on the palette to put it back. Whole groups can still be undocked with ⧉ as before.
+- **New custom shelf ("MY SHELF")**, a row under the numbered shelves, empty to start. Drag any tool button into it from the left shelf or from a floating palette to build your own shelf; drop onto another tool to place it before that one. Right-click a tool in it, or drag it off, to remove it. Your shelf is remembered between sessions.
+
 ## v174 — Smooth button back, works like Maya
 - **Smooth** is back on the Modeling tools shelf (after Symmetrize; also Alt+S). Each click smooths the model once more, the way Maya's Smooth button does: every face is split into 4 and the shape is rounded (Catmull-Clark). A new cube smoothed twice gives the same 96-face rounded ball as Maya.
 - **New cubes now start like Maya's default cube**: one face per side (res 1). Raise *res* in the Cube card for a denser box.
