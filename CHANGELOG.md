@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v174 — Smooth button back, works like Maya
+- **Smooth** is back on the Modeling tools shelf (after Symmetrize; also Alt+S). Each click smooths the model once more, the way Maya's Smooth button does: every face is split into 4 and the shape is rounded (Catmull-Clark). A new cube smoothed twice gives the same 96-face rounded ball as Maya.
+- **New cubes now start like Maya's default cube**: one face per side (res 1). Raise *res* in the Cube card for a denser box.
+
 ## v173 — Symmetrize stays on until clicked off
 - **Symmetrize is now a switch.** Click it once: it copies the point moves already made from one side to the other (whichever side has them), turns on (the button stays highlighted) and switches to Points mode. From then on every point you move, and every sculpt, extrude, cut or weld, is copied to the other side automatically. Click Symmetrize again to turn it off.
 - Left/right always follows the viewport you are working in: across X in the front view, across Z in a side view, and across whichever axis runs across the screen in the perspective view. Turning the view changes the mirror axis for the next edit.
