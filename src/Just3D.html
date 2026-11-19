@@ -1637,13 +1637,15 @@ function avInsert(h,x,y){const o=objs[sel];if(!o)return;const q=avPoint(h,x,y);i
  if(symEdit){const m=baseMesh(o);if(m){const mi=symMirrorIdx(m,symAxis()),a2=mi(h.ra),b2=mi(h.rb);if(a2!==undefined&&b2!==undefined&&a2!==b2){const c=canonOf(m);if(ek(c[a2],c[b2])!==ek(c[h.ra],c[h.rb])){n2=mk('AddVertex');n2.edge=[a2,b2];n2.t=q.t}}}}
  placeNode(o,nn);if(n2)placeNode(o,n2);selPts.clear();selEdges.clear();avHov=null;dirtyFrom(o,o.nodes.indexOf(nn));
  toast('Vertex added on the edge. Click again to add more, or choose another tool to stop.')}
-function loopInsert(h){const o=objs[sel],nn=mk('LoopCut');nn.edge=[h.a,h.b];let mirror=null;
+function loopInsert(h,t){const o=objs[sel],nn=mk('LoopCut');nn.edge=[h.a,h.b];if(t!==undefined)nn.p.pos=t;let mirror=null;let n2=null;
  if(symEdit){const m=baseMesh(o);if(m){const mi=symMirrorIdx(m,symAxis()),a2=mi(h.a),b2=mi(h.b);
   if(a2!==undefined&&b2!==undefined&&a2!==b2){const r=ringOf(m,h.a,h.b),c=r&&r.c;if(c&&ek(c[a2],c[b2])!==ek(c[h.a],c[h.b])&&!r.R.has(ek(c[a2],c[b2])))mirror=[a2,b2]}
   else toast('Mirror Polygons: no matching edge on the other side, so only this side was cut')}}
  insertNodeKeepColors(o,nn);
- if(mirror){const n2=mk('LoopCut');n2.edge=mirror;insertNodeKeepColors(o,n2)}
- selPts.clear();selEdges.clear();ringPrev=null;hoverK=null}
+ if(mirror){n2=mk('LoopCut');n2.edge=mirror;n2.p.pos=nn.p.pos;insertNodeKeepColors(o,n2)}
+ selPts.clear();selEdges.clear();ringPrev=null;hoverK=null;return[nn,n2].filter(Boolean)}
+/* Loop cut slide: the cut is made where you press on the edge; keep holding and drag along the edge to slide it, release to keep it */
+function loopT(L,x,y){const vx=L.x2-L.x1,vy=L.y2-L.y1,l2=vx*vx+vy*vy||1;let t=((x-L.x1)*vx+(y-L.y1)*vy)/l2;if(!L.fwd)t=1-t;return Math.max(.05,Math.min(.95,+t.toFixed(3)))}
 function ringKeys(h){const o=objs[sel],en=editNode(o),i=o.nodes.indexOf(en);if(!en||i<1||!o.nodes[i-1].out)return null;const m=o.nodes[i-1].out,r=ringOf(m,h.a,h.b);if(!r)return null;const segs=[];
  m.f.forEach(f=>{if(f.length!==4)return;const ks=[];for(let k=0;k<4;k++){const a=r.c[f[k]],b=r.c[f[(k+1)%4]];if(a!==b&&r.R.has(ek(a,b)))ks.push(ek(a,b))}if(ks.length===2)segs.push(ks)});
  return{keys:new Set(r.R.keys()),segs}}
@@ -3340,7 +3342,7 @@ if(e.button===2){drag.rc=true;return}
   else startBox(e,x,y)}
  else if(editMode&&(sub==='edge'||sub==='loop'||sub==='av')&&draw.edges){const x=e.clientX-r0.left,y=e.clientY-r0.top,h=nearEdge(x,y);
   if(sub==='av'){if(h)drag.av={h,x,y}}
-  else if(sub==='loop'){if(h)drag.loop=h}
+  else if(sub==='loop'){if(h){const L={x1:h.x1,y1:h.y1,x2:h.x2,y2:h.y2,fwd:h.ra===h.a},t=loopT(L,x,y),N=loopInsert(h,t);L.nodes=N;drag.lcs=L;const o=objs[sel];evaluate(o);draw();$('#stat').textContent='Loop cut at '+Math.round(t*100)+'% · drag along the edge to slide it, release to keep it'}}
   else{if(!selPts.size)selEdges.clear();
    if(h){if(add(e)){selEdges.has(h.k)?selEdges.delete(h.k):selEdges.add(h.k)}else if(!selEdges.has(h.k)||!selPts.size){selEdges.clear();selEdges.add(h.k)}lastEdge=h;syncEdges();drag.pt={z:h.z};draw()}
    else startBox(e,x,y)}}
@@ -3357,6 +3359,7 @@ cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,
  if(drag.ro){rotoDrag(e);return}
  if(drag.sc){sculptMove(e);return}
  if(drag.wp){wpMove(e);return}
+ if(drag.lcs){const r=cv.getBoundingClientRect(),L=drag.lcs,t=loopT(L,e.clientX-r.left,e.clientY-r.top),o=objs[sel];if(o&&L.nodes.length&&L.nodes[0].p.pos!==t){L.nodes.forEach(n=>{n.p.pos=t;const i=o.nodes.indexOf(n);if(i>=0)dirtyFrom(o,i)});evaluate(o);draw()}$('#stat').textContent='Loop cut at '+Math.round(t*100)+'% · release to keep it';return}
  if(drag.smp){sampleAt(e);return}
  if(drag.rc||drag.orb){if(ortho){panX+=dx;panY+=dy;drag.x=e.clientX;drag.y=e.clientY;draw();return}orbitBy(dx,dy,.008,drag.rc);drag.x=e.clientX;drag.y=e.clientY;draw();return}
  if(drag.zm){dist=Math.max(.3,Math.min(80,dist*Math.exp((dy-dx)*.008)));drag.x=e.clientX;drag.y=e.clientY;draw();return}
@@ -3396,6 +3399,7 @@ cv.addEventListener('pointerup',e=>{if(drag&&drag.sbx){const b=box;box=null;drag
  if(drag&&drag.jn){const mv=(drag.jm||drag.ik)&&drag.moved>2,ik=!!drag.ik;if(drag.jm&&mv)skinDirty();drag=null;if(mv&&ik)tlAutoKey();panels();if(mv)commit();return}
  if(drag&&drag.pn){drag=null;return}
  if(drag&&drag.kn){knifeCut();kn=null;drag=null;all();return}
+ if(drag&&drag.lcs){drag=null;all();commit();return}
  if(drag&&drag.loop){if(drag.moved<5)loopInsert(drag.loop);drag=null;all();return}
  if(drag&&drag.av){const d=drag.av;if(drag.moved<5)avInsert(d.h,d.x,d.y);drag=null;all();return}
  if(drag&&drag.tw&&drag.moved>=5&&twSrc!=null){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;let h=null;if(draw.hed&&draw.hed.pb){h=hugePick(x,y);if(h&&h.i===twSrc)h=null}else for(const q of draw.pts||[])if(Math.hypot(q.x-x,q.y-y)<11&&q.i!==twSrc&&(!h||q.z<h.z))h=q;if(h)twDo(twSrc,h.i);drag=null;all();return}

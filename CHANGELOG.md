@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v180 — Loop cut you can slide before letting go
+- **Loop Cut** (Modeling tools shelf, or 4): press the mouse button on an edge and the loop is cut right where you pressed. Keep holding and drag along the edge to slide the loop up or down (or left and right); the model updates live and the status bar shows the position in %. Release the mouse button to keep it. Ctrl+Z undoes it, and the position can still be changed later with *pos* in the LoopCut card.
+- With Symmetrize on, the mirrored loop slides with it.
+
 ## v179 — Hide hides what is highlighted
 - **Hide now hides only the highlighted part** when you are in Points, Edges or Faces mode: the selected faces disappear (for points or edges, the faces they fully cover; if they cover none, the faces they touch), the rest of the object stays visible. Hidden faces can't be picked, stay in the model and are saved with the file. In Object mode Hide still hides the whole selected objects.
 - **Unhide** shows every hidden face and every hidden object again. Ctrl+Z undoes either.
