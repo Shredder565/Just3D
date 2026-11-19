@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v178 — Hide and Unhide
+- **Hide** (Transform and scene shelf, Scene group; Ctrl+H): everything selected is hidden. Hidden objects are not drawn and cannot be clicked, but stay in the scene (unticked in the Explorer) and are saved with the file.
+- **Unhide** (right below it; Ctrl+Shift+H): shows every hidden object again and selects them. Both work with Ctrl+Z.
+
 ## v177 — Left shelf half as wide
 - The left shelf is now half as wide (170 pixels instead of 340), giving the viewports more room. Buttons, drop-downs and sliders shrink to fit; a label too long for the width is cut short with "…" and still shows in full in its tooltip.
 
