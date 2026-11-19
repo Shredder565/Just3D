@@ -4,6 +4,11 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v181 — Smooth below 1, paint that survives undo, Clusters
+- **Smooth can go below 1.** The MeshSmooth card's *divisions* now moves in steps of 0.1 from 0 to 4. A fraction rounds the last level only that far: 0.9 splits the faces and rounds them 90%, 0.5 about half way, 0 leaves the model as it was; 1.5 is one full level plus a half-rounded second one.
+- **Painted faces no longer get scrambled.** Face colours (and clusters and hidden faces) now follow every change to the model: adding Smooth (or any other step), undoing it, deleting its card, switching it off, or changing its divisions. Each face keeps the colour of the face it came from.
+- **New Clusters button** (Transform and scene → Component, next to Faces, and on the Coloring shelf). Select some polygons and press Clusters: they are saved as "Cluster 1", "Cluster 2", ... and listed under **Clusters** in the Explorer (below Colors) with their colour and polygon count. Click a cluster to select all its polygons again (Shift+click adds), ready to paint, hide or extrude. Double-click to rename, ✕ to delete the cluster (the polygons stay). Clusters are saved with the file and follow Smooth and other changes.
+
 ## v180 — Loop cut you can slide before letting go
 - **Loop Cut** (Modeling tools shelf, or 4): press the mouse button on an edge and the loop is cut right where you pressed. Keep holding and drag along the edge to slide the loop up or down (or left and right); the model updates live and the status bar shows the position in %. Release the mouse button to keep it. Ctrl+Z undoes it, and the position can still be changed later with *pos* in the LoopCut card.
 - With Symmetrize on, the mirrored loop slides with it.
