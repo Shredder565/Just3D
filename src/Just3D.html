@@ -835,7 +835,8 @@ function draw(){
   if((heavyOn||hedOK)&&m.f.length>=HEAVY_MIN){const fs=hedOK&&editMode&&oi===sel&&sub==='face'?[...selPts].filter(i=>i<m.f.length):null,he=heavyEntry(o,m,oi,cy,sy,cp,sp,fs);if(he){if(Array.isArray(he))GP.H.push(...he);else GP.H.push(he);draw.heavy.push(oi);heavyN+=m.f.length;if(hedOK){const rec={o,m,oi};hvAll.push(rec);if(oi===sel)hedO=rec}centers.push(scr(view(...o.pos)));return}}
   const M=mulM(rotMat(o.rot),diag(o.sc||[1,1,1])),V=m.v.map(v=>{const q=mulv(M,v);return view(q[0]+o.pos[0],q[1]+o.pos[1],q[2]+o.pos[2])}),S=V.map(scr);let frontFlips=null;
   centers.push(scr(view(...o.pos)));
-  m.f.forEach((f,fi)=>{if(!ortho&&f.some(i=>V[i][2]+dist<.05))return;const a=V[f[0]],b=V[f[1]],c=V[f[2]];
+  const HF=o.hf&&Object.keys(o.hf).length?o.hf:null;
+  m.f.forEach((f,fi)=>{if(HF&&HF[fi])return;if(!ortho&&f.some(i=>V[i][2]+dist<.05))return;const a=V[f[0]],b=V[f[1]],c=V[f[2]];
    let nx=(b[1]-a[1])*(c[2]-a[2])-(b[2]-a[2])*(c[1]-a[1]),ny=(b[2]-a[2])*(c[0]-a[0])-(b[0]-a[0])*(c[2]-a[2]),nz=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
    nx=ny=nz=0;for(let k=0;k<f.length;k++){const u=V[f[k]],w=V[f[(k+1)%f.length]];nx+=(u[1]-w[1])*(u[2]+w[2]);ny+=(u[2]-w[2])*(u[0]+w[0]);nz+=(u[0]-w[0])*(u[1]+w[1])}
    if(frontOnly&&editMode&&oi===sel){/* Affect Front Vertices: hide the polygons that face away from the camera (the viewer looks along +z in this space; in perspective the camera sits at z = -dist) */
@@ -855,7 +856,7 @@ function draw(){
  draw.polys=polys;draw.pts=[];draw.allPts=[];draw.hed=null;const so=objs[sel],en=editMode&&sub==='pt'&&editNode(so),Ms=so&&mulM(rotMat(so.rot),diag(so.sc||[1,1,1])),hedE=hedO&&hedO.oi===sel?hedO:null;if(hedE)draw.hed={P:hedE.P,m:hedE.m,o:so};
  if(en&&en.out&&en.rep){const big=hedE&&hedE.m===en.out;
   if(big)hugePts(hedE.P,en.rep,W,H);
-  else{const usedV=new Set(en.out.f.flat().map(i=>en.rep[i]));en.out.v.forEach((v,i)=>{if(en.rep[i]!==i||!usedV.has(i))return;const q=mulv(Ms,v),w=view(q[0]+so.pos[0],q[1]+so.pos[1],q[2]+so.pos[2]),s=scr(w);draw.allPts.push({i,x:s[0],y:s[1],z:w[2]});if(vis(s[0],s[1],w[2]))draw.pts.push({i,x:s[0],y:s[1],z:w[2]})})}
+  else{const usedV=new Set(visF(so,en.out).flat().map(i=>en.rep[i]));en.out.v.forEach((v,i)=>{if(en.rep[i]!==i||!usedV.has(i))return;const q=mulv(Ms,v),w=view(q[0]+so.pos[0],q[1]+so.pos[1],q[2]+so.pos[2]),s=scr(w);draw.allPts.push({i,x:s[0],y:s[1],z:w[2]});if(vis(s[0],s[1],w[2]))draw.pts.push({i,x:s[0],y:s[1],z:w[2]})})}
   const swp=softWeights(so,en);
   if(big)hugeDots(g,acc,swp);
   else for(const p of draw.pts){const on=selPts.has(p.i),wt=swp&&!on?swp.get(p.i):0;g.beginPath();g.arc(p.x,p.y,on?5:wt?3.6:2.6,0,TAU);g.fillStyle=on?acc:wt?softHeat(wt):'#fff';g.fill();g.strokeStyle=on?'#fff':'#1b2026';g.lineWidth=1;g.stroke()}}
@@ -873,7 +874,7 @@ function draw(){
  draw.edges=null;draw.edgesAll=null;
  if(editMode&&(sub==='edge'||sub==='loop'||sub==='av')){const en2=editNode(so);
   draw.edgeCap=false;if(en2&&en2.out&&en2.rep){const bigE=hedE&&hedE.m===en2.out,rp=en2.rep,P=bigE?new Proxy({},{get:(_,k)=>[hedE.P.PX[k],hedE.P.PY[k],hedE.P.PZ[k]]}):en2.out.v.map(v=>{const q=mulv(Ms,v),w=view(q[0]+so.pos[0],q[1]+so.pos[1],q[2]+so.pos[2]),s=scr(w);return[s[0],s[1],w[2]]}),seen=new Set(),E=[],EA=[];
-   if(bigE)draw.hed.en=en2;else en2.out.f.forEach(f=>f.forEach((a,k)=>{const ra=rp[a],rb=rp[f[(k+1)%f.length]];if(ra===rb||ra<0||rb<0)return;const kk=ek(ra,rb);if(seen.has(kk))return;seen.add(kk);
+   if(bigE)draw.hed.en=en2;else visF(so,en2.out).forEach(f=>f.forEach((a,k)=>{const ra=rp[a],rb=rp[f[(k+1)%f.length]];if(ra===rb||ra<0||rb<0)return;const kk=ek(ra,rb);if(seen.has(kk))return;seen.add(kk);
     const A=P[ra],B=P[rb],en={k:kk,a:Math.min(ra,rb),b:Math.max(ra,rb),ra,rb,x1:A[0],y1:A[1],x2:B[0],y2:B[1],z:(A[2]+B[2])/2,z1:A[2],z2:B[2]};EA.push(en);if(vis((A[0]+B[0])/2,(A[1]+B[1])/2,(A[2]+B[2])/2))E.push(en)}));
    draw.edges=E;draw.edgesAll=EA;
    if(bigE&&sub==='edge'&&selPts.size&&selEdges.size){let c=0;g.strokeStyle=acc;g.lineWidth=3.5;g.beginPath();const PX=hedE.P.PX,PY=hedE.P.PY;for(const k of selEdges){if(++c>20000)break;const[a,b]=k.split('_');g.moveTo(PX[a],PY[a]);g.lineTo(PX[b],PY[b])}g.stroke()}
@@ -1812,7 +1813,7 @@ const CMDS=[
  {g:'Render',l:'Ray trace 2K (CPU)',f:()=>renderRT()},
  {g:'Render',l:'Show last render',f:()=>showRender()},
  {g:'Object',l:'Hide selected',k:'Ctrl+H',en:()=>!!objs[sel]||osel.size>0,f:hideSel},
- {g:'Object',l:'Unhide all',k:'Ctrl+Shift+H',en:()=>objs.some(o=>o.hid),f:unhideAll},
+ {g:'Object',l:'Unhide all',k:'Ctrl+Shift+H',en:()=>objs.some(o=>o.hid||(o.hf&&Object.keys(o.hf).length)),f:unhideAll},
  {g:'Render',l:'Save last render',f:()=>saveRender()},
  {g:'View',l:'Toggle grid',k:'G',en:()=>!sculptOn,f:()=>{gridOn=!gridOn;draw()},on:()=>gridOn},
  {g:'View',l:'Toggle GPU rendering',f:()=>setGpu(!gpuOn),on:()=>gpuOn&&!!GL},
@@ -1934,10 +1935,10 @@ const MREG=new Map(),MID=new WeakMap();let mseq=0;const BIGM=20000;
 function meshTok(m){let id=MID.get(m);if(!id){id=++mseq;MID.set(m,id)}MREG.set(id,m);return {$M:id}}
 function meshMem(){let t=0;MREG.forEach(m=>{t+=(m.v.length+m.f.length)*50});return t}
 function pruneMeshes(){if(!MREG.size&&!WREG.size)return;const um=new Set(),uw=new Set(),sc=x=>{const re=/"\$([MW])":(\d+)/g;let r;while((r=re.exec(x)))(r[1]==='M'?um:uw).add(+r[2])};undoSt.forEach(sc);redoSt.forEach(sc);sc(lastSnap);if(curFile&&curFile.saved)sc(curFile.saved);[...MREG.keys()].forEach(k=>{if(!um.has(k))MREG.delete(k)});[...WREG.keys()].forEach(k=>{if(!uw.has(k))WREG.delete(k)})}
-function snap(full){return JSON.stringify({v:1,rig:rig.joints,rigm:rig.meta,anim:anim&&Object.keys(anim.keys).length?anim:undefined,groups:groups,cams:cams,objs:objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name,pos:o.pos,rot:o.rot,sc:o.sc||[1,1,1],color:o.color,fc:o.fc,cnm:o.cnm&&Object.keys(o.cnm).length?o.cnm:undefined,dm:o.dm,op:o.op,
+function snap(full){return JSON.stringify({v:1,rig:rig.joints,rigm:rig.meta,anim:anim&&Object.keys(anim.keys).length?anim:undefined,groups:groups,cams:cams,objs:objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name,pos:o.pos,rot:o.rot,sc:o.sc||[1,1,1],color:o.color,fc:o.fc,hf:o.hf&&Object.keys(o.hf).length?o.hf:undefined,cnm:o.cnm&&Object.keys(o.cnm).length?o.cnm:undefined,dm:o.dm,op:o.op,
  nodes:o.nodes.filter(n=>!(n.type==='Edit'&&!Object.keys(n.off).length)).map(n=>({type:n.type,on:n.on,p:n.p,off:n.off,fl:n.fl,edge:n.edge||null,mesh:n.mesh?(full||n.mesh.v.length+n.mesh.f.length<BIGM?n.mesh:meshTok(n.mesh)):null,path:n.path||null,pairs:n.pairs||null,sw:n.type==='Skin'&&n.sw&&!n.sw.auto?(full?swPack(n.sw):swTok(n.sw)):undefined}))}))})}
 function restore(s){const sc=JSON.parse(s);if(!sc||!Array.isArray(sc.objs))throw new Error('bad scene');
- const next=sc.objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name||'Object',pos:o.pos||[0,0,0],rot:o.rot||[0,0,0],sc:o.sc||[1,1,1],hue:0,color:o.color||'#3aa393',fc:o.fc||{},cnm:o.cnm||{},dm:o.dm,op:o.op,
+ const next=sc.objs.map(o=>({g:o.g||0,hid:!!o.hid,name:o.name||'Object',pos:o.pos||[0,0,0],rot:o.rot||[0,0,0],sc:o.sc||[1,1,1],hue:0,color:o.color||'#3aa393',fc:o.fc||{},hf:o.hf||{},cnm:o.cnm||{},dm:o.dm,op:o.op,
   nodes:(o.nodes||[]).filter(n=>TY[n.type]).map(n=>{const k=mk(n.type);Object.assign(k.p,n.p||{});k.on=n.on!==false;if(n.off)k.off=n.off;k.fl=n.fl||null;if(n.edge)k.edge=n.edge;if(n.mesh){if(n.mesh.$M){k.mesh=MREG.get(n.mesh.$M);if(!k.mesh)throw new Error('bad scene')}else k.mesh=n.mesh}if(n.path)k.path=n.path;if(n.pairs)k.pairs=n.pairs;if(n.sw){k.sw=n.sw.$W?WREG.get(n.sw.$W):swUnpack(n.sw);if(!k.sw)throw new Error('bad scene')}return k})}));
  if(!next.every(o=>o.nodes.length&&GEN[o.nodes[0].type]))throw new Error('bad scene');
  objs.length=0;next.forEach(o=>objs.push(o));rig.joints=(sc.rig||[]).map(j=>({...j,rot:j.rot||[0,0,0]}));rig.meta=sc.rigm||null;anim=sc.anim?{fps:24,len:48,frame:0,keys:{},loop:true,ease:'smooth',...sc.anim}:{fps:24,len:48,frame:0,keys:{},loop:true,ease:'smooth'};animRev++;tlStop();groups=(sc.groups||[]).map(g=>({id:g.id,name:g.name,open:g.open!==false}));gid2=groups.reduce((m,g)=>Math.max(m,g.id),0);cams=(sc.cams||[]).map(c=>({name:c.name||'camera',tgt:c.tgt||[0,0,0],yaw:c.yaw||0,pitch:c.pitch||0,dist:c.dist||9,pan:c.pan||[0,0],f:c.f||35}));if(camSel>=cams.length)camSel=-1;if(camAct>=cams.length){camAct=-1;tgt=[0,0,0]}osel.clear();rigSel=-1;sel=Math.min(sel,Math.max(0,objs.length-1));selPts.clear();selEdges.clear();ringPrev=null;all()}
@@ -2860,10 +2861,20 @@ function movePts(w){const P=symPrep();movePts0(w);symApply(P)}
 function scalePts(k,f){const P=symPrep();scalePts0(k,f);symApply(P)}
 function mirrorPolys(){if(!objs[sel])return;symEdit=!symEdit;sym4=false;symView=false;if(symEdit&&!editMode)setTool('face');
  all();toast(symEdit?'Mirror Polygons on: moving points or faces, and loop cut, extrude, bevel, weld, target weld, knife and delete, are repeated on the opposite side ('+'XYZ'[symAxis()]+' plane). Press X, Y or Z first to change the plane.':'Mirror Polygons off')}
-/* Hide / Unhide: hidden objects are not drawn and cannot be picked; they stay in the scene (and the Explorer, unticked) and are saved with the file */
-function hideSel(){const L=[objs[sel],...osel].filter((o,i,a)=>o&&a.indexOf(o)===i&&!o.hid);if(!L.length){toast('Select an object to hide');return}
+/* Hide / Unhide. In Object mode, Hide hides the selected objects. In Points, Edges or Faces mode it hides only the highlighted part: the selected faces (or, for points and edges, the faces they fully cover; if none, the faces they touch). Hidden parts are not drawn and cannot be picked; they stay in the model and are saved with the file. Unhide shows everything again. */
+const visF=(o,m)=>o&&o.hf&&Object.keys(o.hf).length?m.f.filter((f,fi)=>!o.hf[fi]):m.f;
+function hideSel(){const o=objs[sel];
+ if(editMode&&o&&(selPts.size||selEdges.size)){const en=editNode(o),m=evaluate(o),rep=en&&en.rep;if(!o.hf)o.hf={};const F=[];
+  if(sub==='face')selPts.forEach(fi=>{if(m.f[fi])F.push(fi)});
+  else{const S=new Set();if(sub==='edge'&&selEdges.size)selEdges.forEach(k=>k.split('_').forEach(v=>S.add(+v)));else selPts.forEach(v=>S.add(v));const R=i=>rep?rep[i]:i;
+   m.f.forEach((f,fi)=>{if(!o.hf[fi]&&f.every(i=>S.has(R(i))))F.push(fi)});if(!F.length)m.f.forEach((f,fi)=>{if(!o.hf[fi]&&f.some(i=>S.has(R(i))))F.push(fi)})}
+  const NF=F.filter(fi=>!o.hf[fi]);if(!NF.length){toast('Nothing new to hide');return}NF.forEach(fi=>{o.hf[fi]=1});selPts.clear();selEdges.clear();ringPrev=null;all();commit();
+  toast('Hid '+NF.length+' face'+(NF.length>1?'s':'')+' of '+o.name+'. Press Unhide to show '+(NF.length>1?'them':'it')+' again.'+(m.f.length>=HEAVY_MIN?' (On very large models the faces may still be drawn by the graphics card.)':''));return}
+ const L=[objs[sel],...osel].filter((o,i,a)=>o&&a.indexOf(o)===i&&!o.hid);if(!L.length){toast('Select an object, or highlight points, edges or faces, to hide');return}
  if(editMode||sculptOn||paintOn)setTool(null);L.forEach(o=>{o.hid=true});sel=-1;osel.clear();selPts.clear();selEdges.clear();all();commit();toast('Hid '+L.length+' object'+(L.length>1?'s':'')+'. Press Unhide to show '+(L.length>1?'them':'it')+' again.')}
-function unhideAll(){const L=objs.filter(o=>o.hid);if(!L.length){toast('Nothing is hidden');return}L.forEach(o=>{o.hid=false});osel.clear();sel=objs.indexOf(L[0]);L.slice(1).forEach(o=>osel.add(o));all();commit();toast('Showing '+L.length+' hidden object'+(L.length>1?'s':'')+' again (now selected).')}
+function unhideAll(){const L=objs.filter(o=>o.hid),FO=objs.filter(o=>o.hf&&Object.keys(o.hf).length);if(!L.length&&!FO.length){toast('Nothing is hidden');return}
+ let nf=0;FO.forEach(o=>{nf+=Object.keys(o.hf).length;o.hf={}});L.forEach(o=>{o.hid=false});if(L.length){osel.clear();sel=objs.indexOf(L[0]);L.slice(1).forEach(o=>osel.add(o))}all();commit();
+ toast('Showing again: '+[L.length?L.length+' object'+(L.length>1?'s':''):'',nf?nf+' face'+(nf>1?'s':''):''].filter(Boolean).join(' and ')+'.')}
 function mirrorObj(){const o=objs[sel];if(!o)return;const ax=axisK!==null?axisK:0;dupObj();const c=objs[sel];c.name=o.name+'_mirror';
  c.pos=o.pos.slice();c.pos[ax]=-c.pos[ax];c.rot=o.rot.slice();for(let k=0;k<3;k++)if(k!==ax)c.rot[k]=-c.rot[k];
  const nn=mk('Reflect');nn.p.axis=ax;c.nodes.push(nn);dirtyFrom(c,c.nodes.length-1);selPts.clear();selEdges.clear();

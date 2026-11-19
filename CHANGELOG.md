@@ -4,6 +4,11 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v179 — Hide hides what is highlighted
+- **Hide now hides only the highlighted part** when you are in Points, Edges or Faces mode: the selected faces disappear (for points or edges, the faces they fully cover; if they cover none, the faces they touch), the rest of the object stays visible. Hidden faces can't be picked, stay in the model and are saved with the file. In Object mode Hide still hides the whole selected objects.
+- **Unhide** shows every hidden face and every hidden object again. Ctrl+Z undoes either.
+- On very large models (60,000+ polygons) the graphics card may still draw hidden faces.
+
 ## v178 — Hide and Unhide
 - **Hide** (Transform and scene shelf, Scene group; Ctrl+H): everything selected is hidden. Hidden objects are not drawn and cannot be clicked, but stay in the scene (unticked in the Explorer) and are saved with the file.
 - **Unhide** (right below it; Ctrl+Shift+H): shows every hidden object again and selects them. Both work with Ctrl+Z.
