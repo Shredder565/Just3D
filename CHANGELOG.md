@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v177 — Left shelf half as wide
+- The left shelf is now half as wide (170 pixels instead of 340), giving the viewports more room. Buttons, drop-downs and sliders shrink to fit; a label too long for the width is cut short with "…" and still shows in full in its tooltip.
+
 ## v176 — Save is back in the top bar
 - **Save** is back in the top bar, right before Save As (also Ctrl+S). It saves to the file you opened or last saved; for a new, unsaved scene it asks where to save, like Save As.
 
