@@ -4,6 +4,9 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v176 — Save is back in the top bar
+- **Save** is back in the top bar, right before Save As (also Ctrl+S). It saves to the file you opened or last saved; for a new, unsaved scene it asks where to save, like Save As.
+
 ## v175 — Tools back on the left, every tool undockable, custom shelf
 - **The open shelf's tools are back in the left column** (as a list), under the numbered shelves.
 - **Every single tool button can be undocked:** drag any button (Bevel, Extrude, Mirror, ...) off the left shelf into the viewport and it becomes its own small floating palette there. Press ⇲ on the palette to put it back. Whole groups can still be undocked with ⧉ as before.
