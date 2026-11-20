@@ -10,7 +10,7 @@ Some virus scanners started flagging NOVA3D.exe as a "trojan". NOVA 3D contains 
 - **The exe now carries proper version details** (Properties > Details: product NOVA 3D, description, version 1.0.183.0, file name), which unlabelled programs lack.
 - **No more rundll32.** The rare fallback that opens NOVA 3D in your browser (only when neither WebView2 nor Edge/Chrome is found) now asks Windows directly instead of going through rundll32, a tool malware often misuses.
 - **The exe is no longer stripped** of its internal names, another thing scanners treat as suspicious. The file is slightly bigger.
-If your scanner still flags it, see the note in the reply about reporting it as a false positive.
+If a scanner still flags it, report it to that scanner's maker as a false positive (Microsoft Defender: microsoft.com/wdsi/filesubmission, choose "Incorrectly detected as malware").
 
 ## v182 — Smart line select for points, resizable floating palettes
 - **Smart point lines.** In Points mode, click a point, then double-click the point right next to it: every point along that line of the mesh is selected, in that direction. Next point up or down gives the whole vertical line; next point left or right gives the whole horizontal line. Shift+double-click adds the line to what is already selected. (Double-clicking a point without first clicking a neighbour still selects its horizontal row, as before.)
