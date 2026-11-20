@@ -98,7 +98,7 @@ aside{padding:6px 4px!important;overflow-x:hidden}
 .fpal{position:absolute;z-index:6;background:#2b2f35;border:1px solid #555c66;border-radius:6px;box-shadow:0 4px 14px #0008;color:#e6e9ee;user-select:none;touch-action:none}
 .fpal .fh{display:flex;align-items:center;gap:6px;padding:3px 6px;cursor:move;background:#3a4048;border-radius:5px 5px 0 0;font-size:11px}
 .fpal .fh b{font-weight:600}.fpal .fh button,.pop{padding:0 6px;font-size:12px;line-height:18px;cursor:pointer}.fpal .fh .sp{flex:1}
-.fpal .fb{display:flex;flex-wrap:wrap;align-items:center;gap:3px;padding:5px;max-width:250px}.fpal .fb button.sb{padding:4px 10px;white-space:nowrap}.fpal .fb button:disabled{opacity:.35}
+.fpal .fb{display:flex;flex-wrap:wrap;align-items:center;gap:3px;padding:5px 10px 5px 5px;max-width:250px;box-sizing:border-box}.fpal .fgrip{position:absolute;top:24px;right:0;bottom:0;width:8px;cursor:ew-resize;border-radius:0 6px 6px 0;background:linear-gradient(90deg,transparent,#ffffff22)}.fpal .fgrip:hover{background:#9fc2ff66}.fpal .fh button.on{background:#2dc4ad;color:#10202c}.fpal .fb button.sb{padding:4px 10px;white-space:nowrap}.fpal .fb button:disabled{opacity:.35}
 .pop{margin-left:4px;cursor:grab;touch-action:none}
 #shelf .gl,#fileBar .gl{color:var(--mut);font-size:11px;margin-left:2px;white-space:nowrap}#shelf .vs,#fileBar .vs{width:1px;height:22px;background:var(--line);margin:0 6px}
 #fileBar .fname{font-weight:600;padding:3px 10px;border:1px solid var(--line);border-radius:6px;background:rgba(0,0,0,.2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx)}#fileBar .fname.dirty:after{content:' \2022';color:#f2b01e}
@@ -2720,7 +2720,8 @@ function findGroup(id){const P=id.split(':'),si=+P[0];if(P.length===3){const S=S
 function savePals(){try{localStorage.setItem('simply3d.pals',JSON.stringify(pals))}catch(_){}}
 function renderPals(){const vp=$('#vps');if(!vp)return;vp.querySelectorAll('.fpal').forEach(n=>n.remove());
  Object.keys(pals).forEach(id=>{const{si,g}=findGroup(id);if(!g){delete pals[id];return}const S=SHELVES[si],f=document.createElement('div');f.className='fpal';f.dataset.gid=id;f.setAttribute('role','toolbar');f.setAttribute('aria-label',g.name);
-  f.innerHTML='<div class="fh" data-fdrag="'+id+'"><b>'+g.name+'</b><span class="sp"></span><button data-fdock="'+id+'" title="Dock back into the shelf" aria-label="Dock '+g.name+'">⇲</button></div><div class="fb">'+S.items.slice(g.a,g.b).map((it,j)=>it.gl?'':itemHtmlG(it,g.a+j,si)).join('')+'</div>';
+  const q0=pals[id],fbSt=q0.row?' style="flex-wrap:nowrap;max-width:none"':q0.w?' style="width:'+q0.w+'px;max-width:none"':'';
+  f.innerHTML='<div class="fh" data-fdrag="'+id+'"><b>'+g.name+'</b><span class="sp"></span><button data-frow="'+id+'" class="'+(q0.row?'on':'')+'" title="Put every button on one row (click again to wrap). You can also drag the right edge to make the palette wider or narrower." aria-label="One row">↔</button><button data-fdock="'+id+'" title="Dock back into the shelf" aria-label="Dock '+g.name+'">⇲</button></div><div class="fb"'+fbSt+'>'+S.items.slice(g.a,g.b).map((it,j)=>it.gl?'':itemHtmlG(it,g.a+j,si)).join('')+'</div><div class="fgrip" data-fgrip="'+id+'" title="Drag to make the palette wider or narrower"></div>';
   vp.appendChild(f);clampPal(f,id)})}
 function clampPal(f,id){const v=$('#vps'),q=pals[id];q.x=Math.max(0,Math.min(Math.max(0,v.clientWidth-f.offsetWidth),q.x));q.y=Math.max(0,Math.min(Math.max(0,v.clientHeight-f.offsetHeight),q.y));f.style.left=q.x+'px';f.style.top=q.y+'px'}
 function undockGroup(id,x,y){if(pals[id])return;pals[id]={x,y};renderShelf();savePals()}
@@ -2732,15 +2733,18 @@ function handleShelfClick(e){const t=e.target.closest('button');if(!t||t.disable
 document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('button');if(!t)return;
  if(t.dataset.pop!==undefined){if(!fdrDid)undockGroup(t.dataset.pop,14,14)}
  else if(t.dataset.fdock!==undefined)dockGroup(t.dataset.fdock);
+ else if(t.dataset.frow!==undefined){const q=pals[t.dataset.frow];if(q){q.row=!q.row;delete q.w;renderPals();savePals()}}
  else if(t.closest('.fpal')&&!itemDragDid)handleShelfClick(e)});
 let fdr=null,fdrDid=false;
-document.addEventListener('pointerdown',e=>{const pop=e.target.closest&&e.target.closest('[data-pop]'),h=e.target.closest&&e.target.closest('[data-fdrag]');fdrDid=false;
+document.addEventListener('pointerdown',e=>{const pop=e.target.closest&&e.target.closest('[data-pop]'),h=e.target.closest&&e.target.closest('[data-fdrag]'),gr=e.target.closest&&e.target.closest('[data-fgrip]');fdrDid=false;
+ if(gr){const f=gr.closest('.fpal'),fb=f.querySelector('.fb');fdr={grip:gr.dataset.fgrip,x:e.clientX,w0:fb.getBoundingClientRect().width};gr.setPointerCapture(e.pointerId);e.preventDefault();return}
  if(pop){fdr={pop:pop.dataset.pop,x:e.clientX,y:e.clientY}}
  else if(h&&!e.target.closest('button')){const f=h.closest('.fpal'),v=$('#vps').getBoundingClientRect();fdr={id:h.dataset.fdrag,dx:e.clientX-v.left-f.offsetLeft,dy:e.clientY-v.top-f.offsetTop};h.setPointerCapture(e.pointerId)}});
 document.addEventListener('pointermove',e=>{if(!fdr)return;const v=$('#vps').getBoundingClientRect();
+ if(fdr.grip!==undefined){const q=pals[fdr.grip],f=document.querySelector('.fpal[data-gid="'+fdr.grip+'"]');if(!q||!f)return;const w=Math.max(40,Math.min(v.width-20,Math.round(fdr.w0+e.clientX-fdr.x)));q.w=w;q.row=false;const fb=f.querySelector('.fb');fb.style.width=w+'px';fb.style.maxWidth='none';fb.style.flexWrap='wrap';const rb=f.querySelector('[data-frow]');if(rb)rb.classList.remove('on');clampPal(f,fdr.grip);return}
  if(fdr.pop!==undefined){if(!pals[fdr.pop]&&Math.hypot(e.clientX-fdr.x,e.clientY-fdr.y)>8){fdrDid=true;const id=fdr.pop;undockGroup(id,e.clientX-v.left-30,e.clientY-v.top-10);fdr={id,dx:30,dy:10}}return}
  const q=pals[fdr.id],f=document.querySelector('.fpal[data-gid="'+fdr.id+'"]');if(!q||!f)return;q.x=e.clientX-v.left-fdr.dx;q.y=e.clientY-v.top-fdr.dy;clampPal(f,fdr.id)});
-document.addEventListener('pointerup',()=>{if(fdr&&fdr.id)savePals();fdr=null;setTimeout(()=>{fdrDid=false},0)});
+document.addEventListener('pointerup',()=>{if(fdr&&(fdr.id||fdr.grip!==undefined))savePals();fdr=null;setTimeout(()=>{fdrDid=false},0)});
 addEventListener('resize',()=>document.querySelectorAll('.fpal').forEach(f=>clampPal(f,f.dataset.gid)));
 function initFloat(){try{const s=JSON.parse(localStorage.getItem('simply3d.pals')||'null');if(s&&typeof s==='object'){pals=s;renderShelf()}}catch(_){}}
 /* Viewport settings: apply to the selected object (and every object in the selection) */
@@ -3374,7 +3378,7 @@ if(e.button===2){drag.rc=true;return}
  else if(editMode&&draw.pts){const r=r0,x=e.clientX-r.left,y=e.clientY-r.top;let h=null;
   if(draw.hed&&draw.hed.pb)h=hugePick(x,y);else for(const p of draw.pts)if(Math.hypot(p.x-x,p.y-y)<11&&(!h||p.z<h.z))h=p;
   if(h&&tw){drag.tw=h;if(twSrc==null){twSrc=h.i;selPts.clear();selPts.add(h.i);draw()}else if(h.i!==twSrc){twDo(twSrc,h.i);drag.tw=null;drag.moved=99}}
-  else if(h){if(e.ctrlKey||e.metaKey){selPts.delete(h.i)}else if(e.shiftKey){selPts.add(h.i)}else if(add(e)){selPts.has(h.i)?selPts.delete(h.i):selPts.add(h.i)}else if(!selPts.has(h.i)){selPts.clear();selPts.add(h.i)}drag.pt=h;draw()}
+  else if(h){if(ptHist[ptHist.length-1]!==h.i){ptHist.push(h.i);if(ptHist.length>4)ptHist.shift()}if(e.ctrlKey||e.metaKey){selPts.delete(h.i)}else if(e.shiftKey){selPts.add(h.i)}else if(add(e)){selPts.has(h.i)?selPts.delete(h.i):selPts.add(h.i)}else if(!selPts.has(h.i)){selPts.clear();selPts.add(h.i)}drag.pt=h;draw()}
   else startBox(e,x,y)}
  else if(!editMode&&draw.polys&&objs[sel]){const x=e.clientX-r0.left,y=e.clientY-r0.top;for(let k=draw.polys.length-1;k>=0;k--){const p=draw.polys[k];if(p.oi===sel&&inPoly(x,y,p.pts)){drag.ot={z:p.z};break}}if(!drag.ot&&draw.heavy&&draw.heavy.includes(sel)){const hh=heavyHit(x,y);if(hh&&hh.oi===sel)drag.ot={z:hh.z}}}});
 cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.abs(dx)+Math.abs(dy);
@@ -3465,9 +3469,16 @@ function faceRow(en,fi){const F=en.out.f,V=en.out.v,rp=en.rep,{eF}=edgeGraph(en)
  E0.forEach(([a,b],k)=>{const sl=Math.abs(V[a][1]-V[b][1])/(Math.hypot(V[a][0]-V[b][0],V[a][1]-V[b][1],V[a][2]-V[b][2])||1);if(sl>bs){bs=sl;best=k%2}});
  const out=new Set([fi]),walk=(f,k)=>{for(let g=0;g<5000;g++){const E=edges(F[f]),key=ek(E[k][0],E[k][1]),fs=eF.get(key);if(!fs||fs.size!==2)break;const nf=[...fs].find(x=>x!==f);if(nf===undefined||out.has(nf))break;const Fn=F[nf];if(!Fn||Fn.length!==4)break;out.add(nf);const ik=edges(Fn).findIndex(([a,b])=>ek(a,b)===key);if(ik<0)break;f=nf;k=(ik+2)%4}};
  walk(fi,best);walk(fi,best+2);return out}
+/* Smart row: click a point, then double-click the point right next to it (above, below, left or right): every point along that line of the mesh is selected, in that direction */
+let ptHist=[];
+function smartRow(e,en,h){const B=en.rep[h.i];let A=-1;for(let k=ptHist.length-1;k>=0;k--){const q=en.rep[ptHist[k]];if(q!==undefined&&q!==B){A=q;break}}if(A<0)return false;
+ const{vN}=edgeGraph(en),nb=vN.get(B);if(!nb||!nb.has(A))return false;const set=new Set([A,B]);edgeLoop(en,A,B).forEach(k=>k.split('_').forEach(x=>set.add(+x)));if(set.size<3)return false;
+ const V=en.out.v,dx=Math.abs(V[A][0]-V[B][0])+Math.abs(V[A][2]-V[B][2]),dy=Math.abs(V[A][1]-V[B][1]);
+ if(!e.shiftKey)selPts.clear();set.forEach(i=>{if(en.rep[i]===i)selPts.add(i)});ptHist=[];all();toast(selPts.size+' point(s) in that '+(dy>dx?'vertical':'horizontal')+' line selected');return true}
 function rowSelect(e){const so=objs[sel],en=so&&editNode(so);if(!en||!en.out||!en.rep)return false;
  const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,V=en.out.v,F=en.out.f;let ys=Infinity,yb=-Infinity;V.forEach(v=>{ys=Math.min(ys,v[1]);yb=Math.max(yb,v[1])});const tol=Math.max(1e-4,(yb-ys)*.01);
  if(sub==='pt'){let h=null;if(draw.hed&&draw.hed.pb)h=hugePick(x,y);else for(const p of draw.pts||[])if(Math.hypot(p.x-x,p.y-y)<11&&(!h||p.z<h.z))h=p;
+  if(h&&smartRow(e,en,h))return true;
   if(h){const set=ptRow(en,en.rep[h.i]),big=set&&set.size>=3;if(big){if(!e.shiftKey)selPts.clear();set.forEach(i=>{if(en.rep[i]===i)selPts.add(i)});all();toast(selPts.size+' point(s) in the row selected');return true}}
   const a=h?[h.i]:[...selPts];if(!a.length)return false;const rows=a.map(i=>V[i][1]),rt=rowTol(V.filter((_,i)=>en.rep[i]===i).map(v=>v[1]),rows,tol);if(!e.shiftKey)selPts.clear();
   V.forEach((v,i)=>{if(en.rep[i]===i&&rows.some(t=>Math.abs(v[1]-t)<=rt))selPts.add(i)});all();toast(selPts.size+' point(s) in the row selected');return true}

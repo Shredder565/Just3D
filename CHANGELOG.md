@@ -4,6 +4,10 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v182 — Smart line select for points, resizable floating palettes
+- **Smart point lines.** In Points mode, click a point, then double-click the point right next to it: every point along that line of the mesh is selected, in that direction. Next point up or down gives the whole vertical line; next point left or right gives the whole horizontal line. Shift+double-click adds the line to what is already selected. (Double-clicking a point without first clicking a neighbour still selects its horizontal row, as before.)
+- **Floating palettes can be resized.** Every undocked palette (Move/Rotate/Scale tools, Component, a single tool, ...) has a grip on its right edge: drag it to make the palette wider or narrower, so all its buttons fit on one row. The new **↔** button in the palette's title bar puts every button on one row in one click (click again to wrap). The size is remembered.
+
 ## v181 — Smooth below 1, paint that survives undo, Clusters
 - **Smooth can go below 1.** The MeshSmooth card's *divisions* now moves in steps of 0.1 from 0 to 4. A fraction rounds the last level only that far: 0.9 splits the faces and rounds them 90%, 0.5 about half way, 0 leaves the model as it was; 1.5 is one full level plus a half-rounded second one.
 - **Painted faces no longer get scrambled.** Face colours (and clusters and hidden faces) now follow every change to the model: adding Smooth (or any other step), undoing it, deleting its card, switching it off, or changing its divisions. Each face keeps the colour of the face it came from.
