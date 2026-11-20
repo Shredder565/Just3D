@@ -149,7 +149,10 @@ func fallback(url, dir string) {
 			}
 		}
 	}
-	_ = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	// last resort: let Windows open the page in the default browser
+	verb, _ := windows.UTF16PtrFromString("open")
+	file, _ := windows.UTF16PtrFromString(url)
+	_ = windows.ShellExecute(0, verb, file, nil, nil, windows.SW_SHOWNORMAL)
 }
 
 // openArg handles a file dropped on the exe icon (or opened with it): the file is written next to the page as

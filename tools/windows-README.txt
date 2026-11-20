@@ -9,9 +9,8 @@ Big models (millions of faces) open and turn smoothly. Hover the "GPU: On" butto
 If it names the built-in graphics on a laptop with an NVIDIA card: Settings > System > Display > Graphics, add "msedgewebview2.exe"
 (C:\Program Files (x86)\Microsoft\EdgeWebView\Application\<version>) and set it to High performance.
 
-Desktop / Start menu / Quick Launch icon: double-click Create-NOVA3D-shortcuts.cmd. It makes a "NOVA 3D" shortcut in each of those places,
-pointing at the .exe in this folder and using the current icon (NOVA3D.ico is the same picture). Run it again after moving the folder
-or downloading a new version. A shortcut or taskbar pin made from an older version keeps the older picture: delete it and make a new one.
+Desktop / Start menu / taskbar icon: right-click NOVA3D-@VER@.exe and choose "Pin to Start" or "Pin to taskbar",
+or (Windows 11: Show more options >) Send to > Desktop (create shortcut). Make a new pin or shortcut after downloading a new version.
 
 First launch: Windows may show "Windows protected your PC" because the file is not code-signed.
 To clear it once: right-click the .exe > Properties > tick "Unblock" > OK.

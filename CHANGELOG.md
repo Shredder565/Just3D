@@ -4,6 +4,14 @@ Newest first. Version numbers are the published build numbers of NOVA 3D (former
 
 > Versions 1–67 were built over many early steps and per-version numbers were not recorded, so they are grouped at the bottom. Every version from v68 on is listed individually.
 
+## v183 — Fewer false virus alarms
+Some virus scanners started flagging NOVA3D.exe as a "trojan". NOVA 3D contains nothing harmful; the alarms are false positives caused by things that look like what malware does. This version removes those triggers:
+- **The shortcut maker script is gone.** Create-NOVA3D-shortcuts.cmd ran PowerShell with "-ExecutionPolicy Bypass" and wrote shortcuts into the Start menu, a pattern scanners strongly associate with malware. To make an icon now: right-click NOVA3D-vNNN.exe > Pin to Start / Pin to taskbar, or Send to > Desktop (create shortcut) (README.txt explains it).
+- **The exe now carries proper version details** (Properties > Details: product NOVA 3D, description, version 1.0.183.0, file name), which unlabelled programs lack.
+- **No more rundll32.** The rare fallback that opens NOVA 3D in your browser (only when neither WebView2 nor Edge/Chrome is found) now asks Windows directly instead of going through rundll32, a tool malware often misuses.
+- **The exe is no longer stripped** of its internal names, another thing scanners treat as suspicious. The file is slightly bigger.
+If your scanner still flags it, see the note in the reply about reporting it as a false positive.
+
 ## v182 — Smart line select for points, resizable floating palettes
 - **Smart point lines.** In Points mode, click a point, then double-click the point right next to it: every point along that line of the mesh is selected, in that direction. Next point up or down gives the whole vertical line; next point left or right gives the whole horizontal line. Shift+double-click adds the line to what is already selected. (Double-clicking a point without first clicking a neighbour still selects its horizontal row, as before.)
 - **Floating palettes can be resized.** Every undocked palette (Move/Rotate/Scale tools, Component, a single tool, ...) has a grip on its right edge: drag it to make the palette wider or narrower, so all its buttons fit on one row. The new **↔** button in the palette's title bar puts every button on one row in one click (click again to wrap). The size is remembered.

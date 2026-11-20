@@ -7,10 +7,10 @@ cd "$(dirname "$0")"
 cp src/Just3D.html native/app.html
 rm -rf "dist/both-$VER" "dist/pkg"
 mkdir -p "dist/both-$VER/NOVA3D-$VER"
-( cd native && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -H=windowsgui" -o "../dist/both-$VER/NOVA3D-$VER/NOVA3D-$VER.exe" . )
+python3 tools/winres.py native/rsrc_windows_amd64.syso "$VER" >/dev/null
+( cd native && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-H=windowsgui" -o "../dist/both-$VER/NOVA3D-$VER/NOVA3D-$VER.exe" . )
 cp CHANGELOG.md "dist/both-$VER/NOVA3D-$VER/CHANGELOG.txt"
 sed "s/@VER@/$VER/g" tools/windows-README.txt > "dist/both-$VER/NOVA3D-$VER/README.txt"
-cp tools/Create-NOVA3D-shortcuts.cmd "dist/both-$VER/NOVA3D-$VER/Create-NOVA3D-shortcuts.cmd"
 cp assets/nova3d.ico "dist/both-$VER/NOVA3D-$VER/NOVA3D.ico"
 ( cd "dist/both-$VER" && rm -f "../NOVA3D-$VER-windows.zip" && zip -qr "../NOVA3D-$VER-windows.zip" "NOVA3D-$VER" )
 echo "built dist/NOVA3D-$VER-windows.zip (native Windows app)"
